@@ -18,10 +18,17 @@ import numpy as np
 
 from hypostases.engine._math import compute_temperature, softmax
 from hypostases.engine.constants import (
+    CROWDING_OUT_HYSTERESIS_GAIN,
+    GOVERNANCE_SCALING_LAMBDA,
+    INEQUITY_AVERSION_GAIN,
     KALMAN_OBS_NOISE_R,
     KALMAN_PROCESS_NOISE_Q,
     MOOD_DECAY_RATE,
     PEER_BELIEF_ALPHA,
+    PUNISH_MOOD_GAIN,
+    PUNISH_RESERVE_COST,
+    PUNISH_TARGET_PENALTY,
+    REGIME_SHIFT_GAIN,
     RELATIONAL_U_GAIN,
     REQUEST_MOOD_PENALTY,
     REQUEST_SOCIAL_COST,
@@ -87,6 +94,7 @@ GOAL_SPEC: dict[GoalCategory, GoalBranch] = {
 
 _STATUS_IDX: Final[int] = K.index(GoalCategory.STATUS)
 _RELATIONAL_IDX: Final[int] = K.index(GoalCategory.RELATIONAL)
+_ACQUISITION_IDX: Final[int] = K.index(GoalCategory.ACQUISITION)
 
 
 def _effective_utilities(agent: AgentState, coupling: float = STATUS_COUPLING) -> np.ndarray:
@@ -98,7 +106,12 @@ def _effective_utilities(agent: AgentState, coupling: float = STATUS_COUPLING) -
     return u_eff
 
 
-def goal_probs(agent: AgentState, xi: np.ndarray, coupling: float = STATUS_COUPLING) -> np.ndarray:
+def goal_probs(
+    agent: AgentState,
+    xi: np.ndarray,
+    coupling: float = STATUS_COUPLING,
+    pool_belief: float = 10.0,
+) -> np.ndarray:
     """Computes transient goal probabilities π ∈ Δ(K) dynamically from latent utilities u (v4).
 
     Shared generative goal distribution between pi_decision and action_likelihood.
@@ -107,9 +120,10 @@ def goal_probs(agent: AgentState, xi: np.ndarray, coupling: float = STATUS_COUPL
         agent: The AgentState containing primitives and weights.
         xi: The Index of Exploration context vector used to compute logit scaling temperature.
         coupling: Status-reserve coupling coefficient.
+        pool_belief: Current pool estimate S_t used for endogenous scarcity action cost scaling (Contention 1).
     """
     u_eff = _effective_utilities(agent, coupling=coupling)
-    omega = agent.omega(xi)
+    omega = agent.omega(xi, pool_belief=pool_belief)
     logits = omega * u_eff
     temperature = compute_temperature(xi, offset=TEMPERATURE_OFFSET)
     return softmax(logits / temperature)
@@ -134,7 +148,7 @@ def pi_decision(
     if rng is None:
         rng = np.random.default_rng()
 
-    probs = goal_probs(agent, xi)
+    probs = goal_probs(agent, xi, pool_belief=pool_belief)
     chosen_goal_idx = int(rng.choice(len(K), p=probs))
 
     goal = K[chosen_goal_idx]
@@ -160,13 +174,17 @@ def step_env(
       - "priority": Greedy allocation sorted by priorities (highest first).
       - "lottery": Greedy allocation in shuffled random order.
     """
+    n_agents = max(1, len(agent_actions))
     withdraws_count = sum(1 for _, act in agent_actions if act.action_type == ActionType.WITHDRAW)
+    withdraw_prevalence = withdraws_count / n_agents  # Contention 3: defection ratio
 
     withdraw_deductions = 0.0
     if enable_withdraw_fee:
         from hypostases.engine.constants import WITHDRAW_FEE
 
-        withdraw_deductions += withdraws_count * WITHDRAW_FEE
+        # Contention 3: Dynamic governance scaling — fee amplified by defection prevalence
+        dynamic_fee = WITHDRAW_FEE * (1.0 + GOVERNANCE_SCALING_LAMBDA * withdraw_prevalence)
+        withdraw_deductions += withdraws_count * dynamic_fee
     if enable_withdraw_degrade:
         from hypostases.engine.constants import WITHDRAW_DEGRADE
 
@@ -251,6 +269,11 @@ def step_env(
     else:
         raise ValueError(f"Unknown concurrency_operator: {concurrency_operator}")
 
+    punishments: dict[str, float] = {}
+    for _, act in agent_actions:
+        if act.action_type == ActionType.PUNISH and act.target is not None:
+            punishments[act.target] = punishments.get(act.target, 0.0) + PUNISH_TARGET_PENALTY
+
     delta_log: DeltaLog = {
         "pool_before": pool_before,
         "pool_after_shares": pool_after_shares,
@@ -258,6 +281,8 @@ def step_env(
         "shares_total": shares_total,
         "requests_total": total_requested,
         "granted": granted,
+        "punishments": punishments,
+        "enable_withdraw_fee": enable_withdraw_fee,
         "actions_log": {name: act for name, act in agent_actions},
     }
     return pool_final, delta_log
@@ -305,6 +330,29 @@ def feedback(
         delta_c["mood"] = -WITHDRAW_MOOD_PENALTY * agent.c.sociality
         delta_rho_ext["social_capital"] = -WITHDRAW_SOCIAL_COST
 
+    elif action.action_type == ActionType.PUNISH:
+        delta_c["reserve"] = -PUNISH_RESERVE_COST
+        delta_c["mood"] = PUNISH_MOOD_GAIN * agent.c.sociality
+        delta_rho_ext["social_capital"] = 0.1
+
+    # Targeted punishment penalty check
+    if agent_name in delta_log.get("punishments", {}):
+        penalty = delta_log["punishments"][agent_name]
+        delta_c["reserve"] = delta_c.get("reserve", 0.0) - penalty
+
+    # Inequity Aversion & Relative Deprivation: mood decay when peer reserves exceed own
+    if agent.w.peer_beliefs:
+        max_peer_est = max(agent.w.peer_beliefs.values())
+        if max_peer_est > agent.c.reserve:
+            deprivation = max_peer_est - agent.c.reserve
+            delta_c["mood"] = delta_c.get("mood", 0.0) - INEQUITY_AVERSION_GAIN * deprivation
+
+    # Institutional Crowding-Out: fee presence shifts latent utilities from RELATIONAL to ACQUISITION
+    if delta_log.get("enable_withdraw_fee", False) and action.action_type == ActionType.WITHDRAW:
+        shift = CROWDING_OUT_HYSTERESIS_GAIN * (1.0 - agent.c.sociality)
+        delta_g[_ACQUISITION_IDX] += shift
+        delta_g[_RELATIONAL_IDX] -= shift
+
     # World model surprise & variance update (Phase 2.3 surprise fix)
     own_impact = 0.0
     if action.action_type == ActionType.REQUEST:
@@ -315,9 +363,18 @@ def feedback(
     observed_delta = (pool_after - pool_before) - own_impact
     predicted_delta = agent.w.replenish_rate_est
     surprise = observed_delta - predicted_delta
+
+    # Contention 2: Regime-Shift Adaptive Belief Learning
+    # Expands σ² non-linearly when surprise acceleration is detected (|Δsurprise| > 0)
+    acceleration = abs(surprise - agent.w.last_surprise)
+    regime_expansion = REGIME_SHIFT_GAIN * acceleration
+
     delta_w["mu"] = WORLD_MU_GAIN * surprise
     delta_w["replenish_rate_est"] = WORLD_REPLENISH_GAIN * surprise
-    delta_w["sigma2"] = WORLD_SIGMA2_UPDATE_GAIN * (abs(surprise) - agent.w.sigma2)
+    delta_w["sigma2"] = (
+        WORLD_SIGMA2_UPDATE_GAIN * (abs(surprise) - agent.w.sigma2) + regime_expansion
+    )
+    delta_w["last_surprise"] = surprise
 
     # Theory of Mind: track peer reserve grant draws
     for peer_name, granted_amt in delta_log.get("granted", {}).items():
@@ -351,6 +408,8 @@ def evolve(agent: AgentState, phi: FeedbackDelta) -> None:
         agent.w.replenish_rate_est += phi.delta_w["replenish_rate_est"]
     if "sigma2" in phi.delta_w:
         agent.w.sigma2 = max(SIGMA2_MIN, agent.w.sigma2 + phi.delta_w["sigma2"])
+    if "last_surprise" in phi.delta_w:
+        agent.w.last_surprise = phi.delta_w["last_surprise"]
 
     # Apply memory decay to belief confidence (Phase 2)
     from hypostases.engine.constants import SIGMA2_MAX
@@ -433,6 +492,9 @@ def evolve_rb(
     # Replenish rate estimate: carry forward EMA from phi (consistent with evolve)
     if "replenish_rate_est" in phi.delta_w:
         agent.w.replenish_rate_est += phi.delta_w["replenish_rate_est"]
+
+    # Track last_surprise for regime-shift detection (Contention 2)
+    agent.w.last_surprise = surprise
 
     # --- Peer Beliefs (identical to evolve) ---
     for peer_name, val in phi.delta_peer_beliefs.items():

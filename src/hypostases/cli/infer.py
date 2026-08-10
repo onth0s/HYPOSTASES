@@ -12,7 +12,13 @@ import json
 import numpy as np
 
 from hypostases.engine.constants import DEFAULT_XI
-from hypostases.inference import goal_posterior, infer, summarize_kalman, summarize_map
+from hypostases.inference import (
+    goal_posterior,
+    infer,
+    infer_hierarchical,
+    summarize_kalman,
+    summarize_map,
+)
 from hypostases.simulation import generate_sample_trace
 
 
@@ -21,19 +27,35 @@ def run_cli_infer(
     seed: int = 42,
     agent_name: str = "Agent_A",
     n_steps: int = 12,
+    lag_window: int | None = None,
+    use_hierarchical: bool = False,
+    use_rao_blackwell: bool = False,
 ) -> dict:
     xi = DEFAULT_XI
     actions, pools = generate_sample_trace(n_steps=n_steps, seed=seed)
 
     rng = np.random.default_rng(seed)
-    particles = infer(
-        observed_actions=actions,
-        observed_pool_trace=pools,
-        xi=xi,
-        n_particles=n_particles,
-        agent_name=agent_name,
-        rng=rng,
-    )
+    if use_hierarchical:
+        particles = infer_hierarchical(
+            observed_actions=actions,
+            observed_pool_trace=pools,
+            xi=xi,
+            n_particles=n_particles,
+            agent_name=agent_name,
+            lag_window=lag_window,
+            rng=rng,
+        )
+    else:
+        particles = infer(
+            observed_actions=actions,
+            observed_pool_trace=pools,
+            xi=xi,
+            n_particles=n_particles,
+            agent_name=agent_name,
+            lag_window=lag_window,
+            use_rao_blackwell=use_rao_blackwell,
+            rng=rng,
+        )
 
     map_state = summarize_map(particles)
     kalman = summarize_kalman(particles)
@@ -43,6 +65,9 @@ def run_cli_infer(
         "n_particles": n_particles,
         "seed": seed,
         "agent_name": agent_name,
+        "lag_window": lag_window,
+        "hierarchical": use_hierarchical,
+        "rao_blackwell": use_rao_blackwell,
         "map_estimate": {
             "reserve": round(map_state.c.reserve, 2),
             "mood": round(map_state.c.mood, 2),
@@ -67,6 +92,9 @@ def format_inference_output(res: dict, output_format: str = "table") -> None:
             f"=== HYPOSTASES Inverse Inference Report (Particles={res['n_particles']}, Seed={res['seed']}) ==="
         )
         print(f"Agent Name: {res['agent_name']}")
+        print(
+            f"Lag Window: {res['lag_window']} | Hierarchical: {res['hierarchical']} | Rao-Blackwell: {res['rao_blackwell']}"
+        )
         print("\n--- MAP Estimate ---")
         print(f"Reserve: {res['map_estimate']['reserve']}")
         print(f"Mood: {res['map_estimate']['mood']}")
@@ -92,6 +120,13 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     parser.add_argument("--seed", type=int, default=42, help="Random seed (default: 42)")
     parser.add_argument("--agent-name", type=str, default="Agent_A", help="Target agent name")
     parser.add_argument("--steps", type=int, default=12, help="Trace length steps (default: 12)")
+    parser.add_argument("--lag-window", type=int, default=None, help="Bounded history lag window")
+    parser.add_argument(
+        "--hierarchical", action="store_true", help="Use two-pass hierarchical particle filter"
+    )
+    parser.add_argument(
+        "--use-rao-blackwell", action="store_true", help="Use Kalman world model updates"
+    )
     parser.add_argument(
         "--output-format", choices=["table", "json"], default="table", help="Output format"
     )
@@ -104,5 +139,8 @@ def main_infer(args: argparse.Namespace) -> None:
         seed=args.seed,
         agent_name=args.agent_name,
         n_steps=args.steps,
+        lag_window=args.lag_window,
+        use_hierarchical=args.hierarchical,
+        use_rao_blackwell=args.use_rao_blackwell,
     )
     format_inference_output(res, output_format=args.output_format)

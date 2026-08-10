@@ -15,7 +15,14 @@ def test_cli_trace_execution(capsys):
 
 def test_cli_infer_execution(capsys):
     args = argparse.Namespace(
-        particles=20, seed=42, agent_name="TestAgent", steps=3, output_format="table"
+        particles=20,
+        seed=42,
+        agent_name="TestAgent",
+        steps=3,
+        lag_window=2,
+        hierarchical=False,
+        use_rao_blackwell=True,
+        output_format="table",
     )
     infer.main_infer(args)
     captured = capsys.readouterr()
@@ -39,7 +46,14 @@ def test_cli_spec_merge_dry_run(capsys):
 
 def test_cli_infer_json_output(capsys):
     args = argparse.Namespace(
-        particles=20, seed=42, agent_name="TestAgent", steps=3, output_format="json"
+        particles=20,
+        seed=42,
+        agent_name="TestAgent",
+        steps=3,
+        lag_window=None,
+        hierarchical=True,
+        use_rao_blackwell=False,
+        output_format="json",
     )
     infer.main_infer(args)
     captured = capsys.readouterr()

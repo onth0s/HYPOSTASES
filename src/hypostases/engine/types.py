@@ -35,16 +35,20 @@ class ActionType(str, Enum):
     REQUEST = "REQUEST"
     SHARE = "SHARE"
     WITHDRAW = "WITHDRAW"
+    PUNISH = "PUNISH"
 
 
 @dataclass(frozen=True)
 class Action:
     action_type: ActionType
     amount: float = 0.0
+    target: str | None = None
 
     def __repr__(self) -> str:
         if self.action_type == ActionType.WITHDRAW:
             return "WITHDRAW"
+        if self.action_type == ActionType.PUNISH:
+            return f"PUNISH({self.target})"
         return f"{self.action_type.value}({self.amount:.2f})"
 
 
@@ -75,6 +79,7 @@ class WorldModel:
     sigma2: float = 2.0
     replenish_rate_est: float = 1.0
     peer_beliefs: dict[str, float] = field(default_factory=dict)
+    last_surprise: float = 0.0  # Contention 2: tracks previous surprise for regime-shift detection
 
     def clone(self) -> WorldModel:
         return replace(self, peer_beliefs=self.peer_beliefs.copy())
@@ -123,6 +128,8 @@ class DeltaLog(TypedDict, total=False):
     shares_total: float
     requests_total: float
     granted: dict[str, float]
+    punishments: dict[str, float]
+    enable_withdraw_fee: bool
     actions_log: dict[str, Action]
 
 
@@ -151,12 +158,16 @@ class AgentState:
         """ρ_int = proj_int(c) (derived read-only view, Part I §2.2.2, Part IV §6.6b)"""
         return {"reserve_capacity": self.c.reserve}
 
-    def omega(self, xi: np.ndarray | None = None) -> np.ndarray:
+    def omega(self, xi: np.ndarray | None = None, pool_belief: float = 10.0) -> np.ndarray:
         """ω = derive_Ω(u, ρ_ext, ρ_int, c) (derived view, Part I §2.2.2, Part IV §6.5).
 
-        In v4, willingness scales transient goal allocation π by affordability.
+        In v4, willingness scales transient goal allocation π by affordability against
+        dynamically scarcity-adjusted action costs (Contention 1).
+
+        Parameters:
+            pool_belief: Current pool estimate S_t used to compute endogenous scarcity costs.
         """
-        return compute_omega(self.g.u, self.c.reserve, xi)
+        return compute_omega(self.g.u, self.c.reserve, xi, pool_belief=pool_belief)
 
     def clone(self) -> AgentState:
         return replace(

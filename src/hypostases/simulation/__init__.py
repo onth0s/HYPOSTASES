@@ -19,9 +19,11 @@ from hypostases.simulation.harness import (
     make_test_agent,
     run_simulation_trace,
 )
+from hypostases.simulation.scenarios import create_scenario_agents
 
 __all__ = [
     "build_agent",
+    "create_scenario_agents",
     "evaluate_config",
     "generate_forced_withdraw_trace",
     "generate_sample_trace",

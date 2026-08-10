@@ -1,6 +1,8 @@
 """HYPOSTASES Engine Package — Core simulation engine (v4 target)."""
 
 from hypostases.engine import constants
+from hypostases.engine._math import dynamic_action_costs
+from hypostases.engine.continuous import step_continuous_agent, step_continuous_substrate
 from hypostases.engine.dynamics import (
     evolve,
     evolve_rb,
@@ -42,6 +44,7 @@ __all__ = [
     "WorldModel",
     "action_likelihood",
     "constants",
+    "dynamic_action_costs",
     "evolve",
     "evolve_rb",
     "expected_action_type",
@@ -49,5 +52,7 @@ __all__ = [
     "goal_probs",
     "pi_decision",
     "predict_amount",
+    "step_continuous_agent",
+    "step_continuous_substrate",
     "step_env",
 ]

@@ -41,11 +41,42 @@ PEER_BELIEF_ALPHA: Final[float] = 0.3
 LIKELIHOOD_MIN: Final[float] = 1e-12
 ROUGHEN_RESERVE_SD: Final[float] = 0.3
 
+# --- Contention 1: Endogenous Scarcity Action Costs ---
+# Scarcity multiplier κ on action cost when pool drops below SCARCITY_POOL_THRESHOLD
+SCARCITY_COST_KAPPA: Final[float] = 0.5
+SCARCITY_POOL_THRESHOLD: Final[float] = 5.0
+
+# --- Contention 2: Adaptive Regime-Shift Belief Learning ---
+# Extra σ² expansion gain applied proportionally to |surprise_t - surprise_{t-1}|
+REGIME_SHIFT_GAIN: Final[float] = 0.25
+
+# --- Contention 3: Dynamic Governance & Supervisory Fee Scaling ---
+# λ multiplier scaling WITHDRAW_FEE by recent defection prevalence ratio
+GOVERNANCE_SCALING_LAMBDA: Final[float] = 1.5
+
+# --- Stress-Test Mechanism Constants ---
+# Second-Order Altruistic Punishment
+PUNISH_RESERVE_COST: Final[float] = 2.0
+PUNISH_TARGET_PENALTY: Final[float] = 4.0
+PUNISH_MOOD_GAIN: Final[float] = 0.1
+
+# Inequity Aversion & Relative Deprivation
+INEQUITY_AVERSION_GAIN: Final[float] = 0.05
+
+# Institutional Crowding-Out / Fine Dilemma
+CROWDING_OUT_HYSTERESIS_GAIN: Final[float] = 0.05
+
 # --- Rao-Blackwellization: Kalman world-model noise parameters (Phase 4) ---
 # Q: process noise injected per tick — calibrated from WORLD_SIGMA2_UPDATE_GAIN * typical |surprise|
 KALMAN_PROCESS_NOISE_Q: Final[float] = 0.1
 # R: observation noise variance — calibrated from WORLD_MU_GAIN / WORLD_SIGMA2_UPDATE_GAIN ratio
 KALMAN_OBS_NOISE_R: Final[float] = 2.0
+
+# --- Tier-0 Continuous Substrate (Spec Part I §1.2) ---
+CONTINUOUS_RESERVE_DECAY: Final[float] = 0.05
+CONTINUOUS_POOL_DRIFT: Final[float] = 0.02
+CONTINUOUS_POOL_NOISE_SD: Final[float] = 0.1
+CONTINUOUS_RESERVE_NOISE_SD: Final[float] = 0.05
 
 # --- Defaults & Calibration ---
 DEFAULT_XI: Final[np.ndarray] = np.array([0.2, 0.2, 0.2, 0.2])
