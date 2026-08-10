@@ -1,12 +1,12 @@
 # HYPOSTASES
 
-Agent-based modeling framework — formal specification (v4 Target), reference implementation, and inverse inference engine.
+Agent-based modeling framework — formal specification (v4 Target), reference implementation, continuous substrate integration, vanguard game-theoretic mechanism design, and inverse inference engine.
 
 ## Project Structure
 
 ```
 HYPOSTASES/
-├── AGENTS.md                  # AI agent behavioral directives
+├── AGENTS.md                  # AI agent behavioral directives (including Rule 005)
 ├── pyproject.toml             # Project config, ruff & pytest settings
 │
 ├── spec/                      # Formal specification (Parts I–VII)
@@ -25,13 +25,14 @@ HYPOSTASES/
 │   └── update_dynamics.yaml       # Core loop signatures & constraints
 │
 ├── src/hypostases/            # Core package
-│   ├── engine/                    # v4 Core simulation engine (types, dynamics, likelihood)
-│   ├── inference/                 # Inverse inference (SMC particle filter, summaries)
+│   ├── engine/                    # v4 Core simulation engine (types, dynamics, likelihood, continuous)
+│   ├── inference/                 # Inverse inference (SMC particle filter, hierarchical, Rao-Blackwellized)
+│   ├── simulation/                # Multi-agent simulation & preset scenario generators
 │   ├── schemas/                   # Schema loaders, programmatic validators & static auditor
 │   ├── cli/                       # Command-line architecture (main, trace, infer, sweep, spec, sweep-memory)
 │   └── utils/                     # Package utilities (spec merging)
 │
-├── tests/                     # Test suite (91 tests covering types, dynamics, CLI, sweeps, math, specs)
+├── tests/                     # Test suite (148 tests covering engine, dynamics, inference, scenarios, CLI)
 │
 └── misc/                      # Auxiliary documents and notes
 ```
@@ -42,6 +43,8 @@ HYPOSTASES/
 2. **Goal Hierarchy $g = u \in \mathbb{R}^{n_k}$**: Latent utility weight vector is primitive. Stochastic policy allocation $\pi \in \Delta(K)$ is transient, recomputed dynamically.
 3. **World Model Theory of Mind**: Joint belief distribution over environment state and peer latent states.
 4. **Internal Power**: Read-only derived view $\rho_{\text{int}} = \text{proj}_{\text{int}}(c)$. Depletion integrates directly as $\Delta c_{\text{internal}}$ during State Evolution.
+5. **Tier-0 Continuous Substrate**: Euler-Maruyama SDE integration for continuous substrate drift and continuous reserve decay.
+6. **Strict Cognitive Integrity (Rule 005)**: Strictly forbids artificial human cognitive deficiencies or irrational biases; enforces rational state dynamics.
 
 ## Quick Start
 
@@ -49,7 +52,7 @@ HYPOSTASES/
 # Install package in development mode
 pip install -e ".[dev]"
 
-# Run tests
+# Run full test suite (148 tests)
 pytest
 
 # Code quality & formatting
@@ -66,41 +69,59 @@ hypostases --help
 # 1. Run forward simulation trace (Part VI §8 worked example)
 hypostases trace --steps 12 --seed 7
 
-# 2. Run inverse inference particle filter (Part VII §10)
-hypostases infer --particles 300 --steps 12 --output-format table
+# 2. Run inverse inference particle filter with NP-hard mitigations
+hypostases infer --particles 300 --steps 12 --lag-window 5 --use-rao-blackwell --output-format table
 
-# 3. Run diagnostic / formal 3-condition sweep (Part VII §12.7)
+# 3. Run inverse inference with hierarchical macro/micro filtering
+hypostases infer --particles 300 --hierarchical --scenario tragedy
+
+# 4. Run diagnostic / formal 3-condition sweep (Part VII §12.7)
 hypostases sweep --steps 10 50 200 --particles 300 --seeds 1 2 3 4 5
 
-# 4. Calibration sweep for memory decay stability
+# 5. Calibration sweep for memory decay stability
 hypostases sweep-memory --steps 20 --decay 0.9 --mode variance
-
-# 5. Merge specification parts into a single document
-hypostases spec merge --dry-run
 ```
 
-## Engine: Belief Dynamics & Memory Decay
+## Vanguard Game-Theoretic Mechanisms (2025–2026 Mechanism Design)
 
-`AgentState` carries a `decay_mode` field that selects between two calibrated update equations applied each tick in `evolve()`:
+1. **Endogenous Scarcity Action Costs ($C_k(S_t)$)**:
+   Action costs inflate as pool resources drop below threshold (`SCARCITY_POOL_THRESHOLD = 5.0`), suppressing high-cost actions during resource scarcity via `compute_omega`.
+   $$C_k(S_t) = C^{\text{base}}_k \cdot \left(1 + \kappa \cdot \frac{\max(0,\, S_{\text{thresh}} - S_t)}{S_t + \varepsilon}\right)$$
 
-| Mode | Equation |
-|------|----------|
-| `"variance"` *(default)* | $w.\sigma^2 \leftarrow w.\sigma^2 + (\sigma^2_{\max} - w.\sigma^2)(1 - \text{memory\_decay})$ |
-| `"precision"` | $\tau \leftarrow \tau + (\tau_{\min} - \tau)(1 - \text{memory\_decay})$ where $\tau = 1/w.\sigma^2$ |
+2. **Adaptive Regime-Shift Belief Learning ($\Delta\sigma^2$)**:
+   World model belief variance expands non-linearly upon detecting surprise acceleration ($|\Delta\text{surprise}|$), enabling rapid adaptation during environmental regime breaks.
 
-> **Note (Directive 004):** Memory decay is intentionally inert unless `memory_decay < 1.0` is set on the agent's `Characteristics`. Any calibration change requires a dedicated sweep analysis via `hypostases sweep-memory`.
+3. **Dynamic Supervisory Governance Scaling ($\lambda$)**:
+   Supervisory withdrawal fees scale dynamically based on recent defection prevalence ($n_{\text{withdraw}} / n_{\text{agents}}$), curbing cascading defection spirals.
 
-## Inference: Prior Types & Adaptive SMC
+## Multi-Agent Preset Scenarios (`scenarios.py`)
 
-`infer()` and `sample_prior()` accept a `prior_type` argument:
+Generate pre-configured agent populations for stress-testing:
 
-| Value | Distribution |
-|-------|-------------|
-| `"uniform"` *(default)* | Uniform over `reserve_range` |
-| `"truncated_normal"` | Normal distribution clipped to `reserve_range` |
-| `"log_normal"` | Log-normal centered at 10.0, clipped to `reserve_range` |
+```python
+from hypostases.simulation.scenarios import create_scenario_agents
 
-Resampling applies **adaptive roughening**: jitter standard deviation scales with the empirical spread of the surviving particle reserve values, preventing degeneracy without over-dispersing tight posteriors.
+agents = create_scenario_agents("punishment")
+```
+
+| Scenario | Description / Dynamics |
+|----------|------------------------|
+| `'tragedy'` | Tragedy of the Commons (greedy survival & acquisition agents) |
+| `'altruism'` | Cooperative pool maintenance (relational-dominant agents) |
+| `'freerider'` | Mixed population (cooperators vs. defector status-seeking withdrawers) |
+| `'punishment'` | Second-Order Altruistic Punishment (Vigilante paying reserve costs to punish Defectors) |
+| `'inequity'` | Inequity Aversion & Relative Deprivation (Peer reserve disparity triggering mood decay) |
+| `'deceptive'` | Deceptive Signaling & Asymmetric Information (High reserve agent claiming scarcity via low REQUESTs) |
+| `'crowding_out'` | Institutional Crowding-Out / Fine Dilemma (Multi-epoch fee toggling utility hysteresis) |
+
+## Inverse Inference: NP-Hard Mitigation Options
+
+The inference pipeline operationalizes four scalable techniques to mitigate SMC particle degeneracy:
+
+1. **Bounded Lag Window (`lag_window`)**: Truncates observation history to the last $L$ steps, matching memory decay.
+2. **Fast Feasibility Gate (`_is_infeasible`)**: Prunes physically impossible particle hypotheses before float arithmetic.
+3. **Hierarchical SMC Filter (`infer_hierarchical`)**: Two-pass macro/micro filtering to prevent goal-cluster collapse.
+4. **Rao-Blackwellization (`use_rao_blackwell`)**: Closed-form Kalman updates (`evolve_rb`) for continuous Gaussian beliefs.
 
 ## Environment: Concurrency Operators
 
@@ -114,46 +135,20 @@ Resampling applies **adaptive roughening**: jitter standard deviation scales wit
 | `"lottery"` | Greedy allocation in random shuffled order |
 
 `WITHDRAW` consequences are opt-in per call:
-- `enable_withdraw_fee=True` — deducts `WITHDRAW_FEE` per withdrawal from the pool
-- `enable_withdraw_degrade=True` — deducts `WITHDRAW_DEGRADE` per withdrawal (degraded replenishment)
+- `enable_withdraw_fee=True` — deducts dynamic prevalence-scaled `WITHDRAW_FEE` per withdrawal
+- `enable_withdraw_degrade=True` — deducts `WITHDRAW_DEGRADE` per withdrawal
 
-All action choices are logged publicly in `DeltaLog["actions_log"]` for use by the inference engine.
+All action choices are logged publicly in `DeltaLog["actions_log"]` for inference reweighting.
 
 ## Multi-Agent Inverse Inference
 
-Two strategies for inferring latent states across a population of agents:
+Strategies for inferring latent states across populations:
 
 ### Joint Particle Filter (`infer_joint`)
-Maintains a single particle set over the **product state space** $\Sigma_1 \times \cdots \times \Sigma_N$. Captures cross-agent correlations exactly. Complexity scales as $O(N \cdot P)$ per step.
-
-```python
-from hypostases.inference import infer_joint
-
-particles = infer_joint(
-    observed_actions,   # list[dict[str, Action]]
-    observed_pool_trace,
-    xi,
-    agent_names=["Agent_A", "Agent_B"],
-    n_particles=300,
-    concurrency_operator="shares-first",
-)
-```
+Maintains a single particle set over the **product state space** $\Sigma_1 \times \cdots \times \Sigma_N$. Captures cross-agent correlations.
 
 ### Mean-Field Particle Filter (`infer_mean_field`)
-Runs **one independent particle filter per agent**, sharing only the common environment output (`delta_log`) for state propagation. A factorized approximation — scalable to large populations.
-
-```python
-from hypostases.inference import infer_mean_field
-
-per_agent_particles = infer_mean_field(
-    observed_actions,
-    observed_pool_trace,
-    xi,
-    agent_names=["Agent_A", "Agent_B"],
-    n_particles=300,
-)
-# per_agent_particles["Agent_A"] → list[Particle]
-```
+Runs **one independent particle filter per agent**, sharing only the common environment output (`delta_log`) for state propagation.
 
 ## Schema Management & Validation
 
@@ -166,4 +161,4 @@ assert_invariants(agent_state)         # Raises InvariantViolationError if inval
 assert_schema_completeness()           # Audits schema branches for state-independence
 ```
 
-The static auditor (`audit_schemas.py`) detects branches that degenerate to state-independent constants and raises warnings unless they are decorated with `@declared_simplification` (Directive 003).
+The static auditor (`audit_schemas.py`) detects branches that degenerate to state-independent constants and raises warnings unless decorated with `@declared_simplification` (Directive 003).
