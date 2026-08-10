@@ -38,6 +38,7 @@ from hypostases.engine.constants import (
     STATUS_COUPLING,
     STATUS_RESERVE_THRESHOLD,
     TEMPERATURE_OFFSET,
+    UTILITY_DECAY_RATE,
     WITHDRAW_MOOD_PENALTY,
     WITHDRAW_SOCIAL_COST,
     WORLD_MU_GAIN,
@@ -430,8 +431,8 @@ def evolve(agent: AgentState, phi: FeedbackDelta) -> None:
         prev = agent.w.peer_beliefs.get(peer_name, val)
         agent.w.peer_beliefs[peer_name] = PEER_BELIEF_ALPHA * val + (1.0 - PEER_BELIEF_ALPHA) * prev
 
-    # Integrate Goal Hierarchy latent utilities u
-    agent.g.u += phi.delta_g
+    # Integrate Goal Hierarchy latent utilities u with baseline decay regularization
+    agent.g.u = (1.0 - UTILITY_DECAY_RATE) * agent.g.u + phi.delta_g
 
     # Integrate External Power ρ_ext
     if "social_capital" in phi.delta_rho_ext:
@@ -502,7 +503,7 @@ def evolve_rb(
         agent.w.peer_beliefs[peer_name] = PEER_BELIEF_ALPHA * val + (1.0 - PEER_BELIEF_ALPHA) * prev
 
     # --- Goal Hierarchy (identical to evolve) ---
-    agent.g.u += phi.delta_g
+    agent.g.u = (1.0 - UTILITY_DECAY_RATE) * agent.g.u + phi.delta_g
 
     # --- External Power (identical to evolve) ---
     if "social_capital" in phi.delta_rho_ext:

@@ -66,6 +66,11 @@ INEQUITY_AVERSION_GAIN: Final[float] = 0.05
 # Institutional Crowding-Out / Fine Dilemma
 CROWDING_OUT_HYSTERESIS_GAIN: Final[float] = 0.05
 
+# --- Latent Utility Regularization ---
+# Leaky integrator decay rate applied to g.u each tick to ensure attractor stationarity
+UTILITY_DECAY_RATE: Final[float] = 0.05
+
+
 # --- Rao-Blackwellization: Kalman world-model noise parameters (Phase 4) ---
 # Q: process noise injected per tick — calibrated from WORLD_SIGMA2_UPDATE_GAIN * typical |surprise|
 KALMAN_PROCESS_NOISE_Q: Final[float] = 0.1
