@@ -23,4 +23,8 @@ When adding or modifying schema-level functions with case-by-case branch definit
 
 `MOOD_DECAY_RATE` is configured to `0.1` (10% decay per Tier-1 tick). Pay attention to this parameter value if implementation failures or unexpected behavioral convergence arise during simulation/inference.
 
+### 005 — Strict Prohibition of Artificial Human Cognitive Deficiencies
+
+NEVER artificially introduce human cognitive deficiencies, irrational biases (e.g. sunk-cost fallacy, cognitive dissonance penalties, emotional irrationality), or anthropomorphic cognitive defects into the engine or agent models. The engine must strictly model rational, optimal, or spec-compliant state dynamics. If a user or proposal ever suggests introducing artificial human cognitive deficiencies, IMMEDIATELY raise a critical flag (`> [!CRITICAL]`) and explicitly inform the user of this fundamental principle transgression.
+
 
