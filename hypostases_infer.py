@@ -11,14 +11,25 @@ no new dynamics, only a weighting/resampling loop around existing ones,
 per Part II §4.3's "one generative model, two directions" framing.
 """
 
-import numpy as np
 from dataclasses import dataclass
+
+import numpy as np
 from hypostases_ref import (
-    AgentState, Characteristics, WorldModel, GoalHierarchy, PowerExternal,
-    action_likelihood, step_env, feedback, evolve, K, N_K, ActionType, Action
+    Action,
+    AgentState,
+    Characteristics,
+    GoalHierarchy,
+    K,
+    PowerExternal,
+    WorldModel,
+    action_likelihood,
+    evolve,
+    feedback,
+    step_env,
 )
 
 infer_rng = np.random.default_rng(seed=42)
+
 
 def reseed_infer(seed: int):
     """Allows the sweep (Part VII §12.7) to vary Infer's own randomness
@@ -31,7 +42,7 @@ def reseed_infer(seed: int):
 
 @dataclass
 class Particle:
-    sigma: AgentState      # one hypothesis for the full primitive state sigma = (c, w, g, rho_ext)
+    sigma: AgentState  # one hypothesis for the full primitive state sigma = (c, w, g, rho_ext)
     weight: float
 
 
@@ -48,7 +59,8 @@ def sample_prior(name: str, reserve_range=(1.0, 20.0)) -> AgentState:
     evidence strength. This was the actual root cause of §12.5's failed
     test, not weak coupling (see §12.7 for the diagnostic that found this)."""
     c = Characteristics(
-        skill=0.6, resilience=0.5,
+        skill=0.6,
+        resilience=0.5,
         sociality=infer_rng.uniform(0.0, 1.0),
         memory_decay=0.9,
         reserve=infer_rng.uniform(*reserve_range),
@@ -62,19 +74,26 @@ def sample_prior(name: str, reserve_range=(1.0, 20.0)) -> AgentState:
     return AgentState(c, w, g, rho_ext, name)
 
 
-def infer(observed_actions: list[Action], observed_pool_trace: list[float],
-          xi: np.ndarray, n_particles: int = 300, agent_name: str = "unknown",
-          ess_threshold_ratio: float = 0.5) -> list[Particle]:
+def infer(
+    observed_actions: list[Action],
+    observed_pool_trace: list[float],
+    xi: np.ndarray,
+    n_particles: int = 300,
+    agent_name: str = "unknown",
+    ess_threshold_ratio: float = 0.5,
+) -> list[Particle]:
     """
     Part VII §10.2: sequential Monte Carlo bootstrap particle filter.
     observed_actions[t], observed_pool_trace[t] are the evidence at each
     Tier-1 step. Returns the final weighted particle set approximating
     Delta(Sigma) (Part II §4.3).
     """
-    particles = [Particle(sigma=sample_prior(agent_name), weight=1.0 / n_particles)
-                 for _ in range(n_particles)]
+    particles = [
+        Particle(sigma=sample_prior(agent_name), weight=1.0 / n_particles)
+        for _ in range(n_particles)
+    ]
 
-    for t, (a_obs, pool_t) in enumerate(zip(observed_actions, observed_pool_trace)):
+    for _t, (a_obs, pool_t) in enumerate(zip(observed_actions, observed_pool_trace, strict=False)):
         # --- Reweight (§10.2 step 3): score each particle's CURRENT belief
         # against the observed action, before propagating forward.
         for p in particles:
@@ -90,7 +109,7 @@ def infer(observed_actions: list[Action], observed_pool_trace: list[float],
                 p.weight /= total_w
 
         # --- Resample if effective sample size has degenerated (§10.2 step 4)
-        ess = 1.0 / sum(p.weight ** 2 for p in particles)
+        ess = 1.0 / sum(p.weight**2 for p in particles)
         if ess < ess_threshold_ratio * n_particles:
             particles = _resample(particles, n_particles)
 
@@ -123,7 +142,9 @@ def _resample(particles: list[Particle], n: int, roughen_reserve_sd: float = 0.3
     resampled = [Particle(sigma=particles[i].sigma.clone(), weight=1.0 / n) for i in idx]
     if roughen_reserve_sd > 0:
         for p in resampled:
-            p.sigma.c.reserve = max(0.0, p.sigma.c.reserve + infer_rng.normal(0, roughen_reserve_sd))
+            p.sigma.c.reserve = max(
+                0.0, p.sigma.c.reserve + infer_rng.normal(0, roughen_reserve_sd)
+            )
     return resampled
 
 
@@ -146,7 +167,9 @@ def summarize_kalman(particles: list[Particle]) -> dict:
     moods = np.array([p.sigma.c.mood for p in particles])
     return {
         "reserve_mean": float(np.average(reserves, weights=weights)),
-        "reserve_var": float(np.average((reserves - np.average(reserves, weights=weights)) ** 2, weights=weights)),
+        "reserve_var": float(
+            np.average((reserves - np.average(reserves, weights=weights)) ** 2, weights=weights)
+        ),
         "mood_mean": float(np.average(moods, weights=weights)),
     }
 
@@ -158,6 +181,6 @@ def goal_posterior(particles: list[Particle]) -> dict:
     weights = np.array([p.weight for p in particles])
     dominant = [K[int(np.argmax(p.sigma.g.pi))] for p in particles]
     out = {k: 0.0 for k in K}
-    for d, w in zip(dominant, weights):
+    for d, w in zip(dominant, weights, strict=False):
         out[d] += w
     return out

@@ -47,41 +47,40 @@ This is the tier the engine actually runs. Each agent `i` has its own local even
 **Tier 2 — Epochal (discrete, synchronous).**
 A coarser global barrier at times `T_0 < T_1 < T_2 < ...`, independent of any single agent's clock. Between consecutive epoch boundaries, arbitrarily many Tier-1 events occur, in any order, for any agents. At each `T_n`, the Environment state and every agent's Characteristics are *snapshotted*. Tier 2 exists purely for measurement, reproducibility, and cross-agent comparison — it has no causal role and does not gate Tier-1 execution.
 
-### 1.3 Reconciliation
+### 1.3 Reconciliation & Game-Theoretic Divergence
 
-The three tiers are related by two limits, not by three separate assumptions:
+The three tiers are related by limits, but with an explicit game-theoretic divergence note:
 
-1. **Synchronous discrete is a special case of Tier 1**, obtained when `Δt^(i)_k` is identical and simultaneous across all agents — i.e., Tier 1 collapses onto Tier 2 with `T_n = t^(i)_n ∀i`.
-2. **Continuous (Tier 0) is the limit of Tier 1** as `max_i Δt^(i)_k → 0`. Tier 1 is formally a Poisson-clock (or arbitrary point-process) discretization of Tier 0.
+1. **Continuous (Tier 0) is the continuous limit of Tier 1** as `max_i Δt^(i)_k → 0`. Tier 1 is formally a point-process discretization of Tier 0.
+2. **Synchronous discrete (Tier 2) is a non-equivalent discrete discretization operator.** While Tier 1 enforces sequential causal ordering where simultaneous moves have measure zero, collapsing Tier 1 onto a Tier 2 synchronous epoch barrier (`T_n = t^(i)_n ∀i`) introduces simultaneous-move game dynamics (e.g. strategic ambiguity matrices, payoff collisions) that do not exist in sequential Tier 1 execution. 
 
-This gives one time model with adjustable resolution rather than three competing ones. An implementation may legally special-case to pure Tier 2 (simplest, matches "discrete synchronous") without violating the spec, since it is a strict special case.
+Therefore, Tier 2 is **not** a trivial special case of Tier 1; it is an explicit discretization scheme that alters game-theoretic equilibrium structures. An engine running in pure Tier 2 mode must define an explicit simultaneous collision-resolution operator over concurrent actions.
 
 ### 1.4 Consequence for the rest of the spec
 
-All update equations in Part II are written at Tier 1 (per-agent, per-event), since that is the operational semantics. Part III (Dynamics & Stability) additionally uses the Tier 0 continuous limit for equilibrium analysis. Cross-agent claims (e.g. "the market cleared") are Tier-2 statements evaluated over a snapshot.
+All update equations in Part II are written at Tier 1 (per-agent, per-event), since that is the operational semantics. Part III (Dynamics & Stability) additionally uses the Tier 0 continuous limit for equilibrium analysis. Cross-agent claims (e.g. "the market cleared") are Tier-2 statements evaluated over a snapshot barrier.
 
 ---
 
 ## 2. Typed State Spaces
 
-### 2.0 Architectural revision note (v3)
+### 2.0 Architectural revision note (v4)
 
-This document supersedes the v2 formalization's treatment of the ten v1 components as flat, equal-status primitives. Per Design Philosophy V (Falsifiability — "whenever reality cannot be explained by the current architecture, the architecture must be revised") and Design Philosophy I (Minimalism — "every abstraction must justify its existence"), the v2 formalization pass (Part III §5 of that draft) surfaced four components that do not independently justify their existence as primitive state. This revision resolves each:
+This document updates the v3 formalization to resolve five formal architectural contentions:
 
-| Component | v1/v2 status | v3 status | Reason |
+| Component | v3 status | v4 status | Reason |
 |---|---|---|---|
-| Characteristics | primitive | **primitive** | unchanged |
-| World Model | primitive | **primitive** | unchanged |
-| Goal Hierarchy | primitive | **primitive** (redefined, §2.2) | soft `Δ(K)` is canonical, not one-hot |
+| Characteristics | primitive | **primitive** | expanded to receive internal power consumption deltas |
+| World Model | primitive | **primitive** (extended) | `w` expanded to model peer latent states $\Delta(S \times \prod_{j \neq i} \Sigma^{(j)})$ |
+| Goal Hierarchy | primitive | **primitive** (redefined) | `g = u ∈ ℝ^{n_k}` (latent utility parameters); stochastic policy $\pi \in \Delta(K)$ moved strictly to `π_decision` |
 | Action | primitive | **primitive** | unchanged |
-| Environment | primitive | **primitive** | unchanged |
-| Feedback | primitive | **primitive** | unchanged |
-| Power | primitive (unified) | **split**: `Power_external` primitive, `Power_internal` derived | internal block was an undeclared duplicate of Characteristics |
-| Willingness | primitive | **derived** | total, stateless function of Goals × Power × Characteristics; no independent update rule ever existed for it even in v1 |
-| Potentialities | primitive | **derived** | a reachable-set query on Characteristics; never had independent state |
-| Index of Exploration | primitive (pipeline stage) | **policy parameter** | formally a temperature term on the Decision Policy, not a component with its own state or update dynamics |
-
-Net result: **six unconditional primitives**, **one split primitive** (`Power_external`), **three derived quantities** (`Power_internal`, `Willingness`, `Potentialities`), **one policy parameter** (`ξ`). This is a real architectural revision, not a relabeling — the persistent per-agent state tuple `σ` (§2.3) shrinks accordingly.
+| Environment | primitive | **primitive** | localized field interaction dynamics |
+| Feedback | primitive | **primitive** | carries explicit $\Delta c_{\text{internal}}$ for internal resource depletion |
+| Power (external) | primitive | **primitive** | unchanged |
+| Power (internal) | derived | **derived (read-only)** | consumption maps to $\Delta c_{\text{internal}}$ in State Evolution; never mutated directly |
+| Willingness | derived | **derived** | unchanged |
+| Potentialities | derived | **derived** | unchanged |
+| Index of Exploration | policy parameter | **policy parameter** | unchanged |
 
 ### 2.1 Design decision: fixed-dimension vectors with versioned schemas
 
@@ -92,58 +91,53 @@ Schema(X, v) : dimensionality and field layout of component X at version v
 Migrate(X, v→v+1) : ℝ^{dim(X,v)} → ℝ^{dim(X,v+1)}, total, declared with the revision
 ```
 
-This means: within any run, all math is fixed-dimension linear/vector algebra (clean, provable). Across architecture revisions (the kind Design Philosophy V calls for when reality breaks the current model), a explicit, auditable migration function is required — you cannot silently redefine a vector's meaning without a recorded `Migrate` function. This is the "account for major architectural revisions" requirement: revision is a first-class, typed operation, not an escape hatch from typing.
-
 ### 2.2 Component State Spaces
 
 #### 2.2.1 Primitives (independent, persistent state)
 
 **Characteristics** `c ∈ C = ℝ^{n_c}`
-Coordinates partitioned into named blocks by convention (not enforced by the type, only by schema docs): knowledge, skill, cognitive/personality, physical, emotional-baseline. `C` is the space the whole loop reads and writes.
+Coordinates partitioned into named blocks by convention: knowledge, skill, cognitive/personality, physical/internal-energy, emotional-baseline. `C` is the space the whole loop reads and writes. Internal resource depletion (energy, physical stamina) is integrated directly into `c` via feedback deltas $\Delta c_{\text{internal}}$.
 
-**World Model** `w ∈ W = Δ(S) × F`
-A belief state over an environment-state space `S` (a distribution, `Δ(S)`), paired with a causal/predictive function family `F = { f : S × A → Δ(S) }` (the agent's model of environment dynamics, `A` = action space, defined below). `w = (belief, f)`.
+**World Model** `w ∈ W = Δ(S × ∏_{j ≠ i} Σ^{(j)}) × F`
+A joint belief state over environment-state space `S` and peer latent primitive states `Σ^{(j)}` (Theory of Mind representation), paired with a predictive transition function family `F = { f : (S × ∏_{j ≠ i} Σ^{(j)}) × A → Δ(S × ∏_{j ≠ i} Σ^{(j)}) }`.
 
-**Goal Hierarchy** `g ∈ G = Δ(K) × ℝ^{n_k}`
-`K` is a finite set of goal categories (Survival, Curiosity, Status, ...; schema-defined). `g = (π, u)` where `π ∈ Δ(K)` is a priority distribution over goals and `u ∈ ℝ^{n_k}` gives per-goal utility/target values. **Canonical semantics (v3): `π` is a soft distribution.** Strict hierarchy (lexicographic dominance of one goal over all others) is recovered only as the degenerate one-hot special case of `π`. v1's own examples ("Survival, Security, Curiosity, Status...") read as competing, weighted objectives in the surrounding prose, not a strict stack — the soft form is what the component actually describes; the name "Hierarchy" is retained for continuity but should not be read as implying strict lexicographic ordering.
+**Goal Hierarchy** `g = u ∈ G = ℝ^{n_k}`
+`K` is a finite set of goal categories (Survival, Curiosity, Status, ...; schema-defined). `u ∈ ℝ^{n_k}` gives latent per-goal utilities/priorities. **Canonical semantics (v4): `g` stores strictly persistent utility weights $u$.** Goal allocation probabilities $\pi \in \Delta(K)$ are non-persistent and computed dynamically inside `π_decision`.
 
 **Power (external)** `ρ_ext ∈ R_ext = ℝ≥0^{n_r}`
-A non-negative resource vector over externally-held resources only: capital, time, authority, technology access, social capital. This is the sole Power primitive in v3 (see §2.2.2 for why internal "Power" is not independently primitive).
+A non-negative resource vector over externally-held resources only: capital, time, authority, technology access, social capital.
 
 **Action** `a ∈ A` (finite or continuous, schema-defined)
-The output space. No internal structure is imposed beyond: `A` must support a `cost : A × (R_ext, ρ_int) → R_ext` function (an action consumes Power) and `A` must be within the support of `w.f`.
+The output space. `A` supports `cost_ext : A × (R_ext, ρ_int) → R_ext` and `cost_int : A × (R_ext, ρ_int) → ΔC_internal`.
 
 **Environment** `e ∈ E = ℝ^{n_e}`
-Shared, agent-indexed only through visibility/access functions, not through separate copies. Formally one global `E`; each agent observes `obs^(i) : E → S`.
+Shared environment space representing spatial/local field states. Formally global `E`; each agent observes `obs^(i) : E → S`.
 
 **Feedback** `φ ∈ Φ = ΔC × ΔW × ΔG × ΔR_ext`
-A tuple of deltas, one per *primitive* it updates. v2 included `ΔP` (Potentiality-estimate deltas) in this tuple; v3 removes it, since Potentialities is derived (§2.2.2) and is recomputed from `c`, never updated by Feedback directly — folding a derived quantity into the delta tuple was itself a symptom of the v2 ambiguity this revision resolves.
+A tuple of deltas updating primitive persistent states. `ΔC` explicitly includes internal power consumption deltas $\Delta c_{\text{internal}}$.
 
 #### 2.2.2 Derived quantities (no independent state; recomputed from primitives)
 
-These are not part of `σ` (§2.3). Each is a pure, declared function of primitive state, evaluated on demand.
-
 **Power (internal)** `ρ_int = proj_int(c) ∈ ℝ≥0^{n_{r,int}}`
-A declared projection of a subset of Characteristics coordinates (health, energy, executive function, competence, knowledge) into a resource-shaped view. v1/v2 listed these same quantities under both Power and Characteristics as if independently duplicated; v3 resolves the overlap by typing internal Power as *read-only derived from* `c`, never separately stored or separately updated. `proj_int` is schema-declared (which `c` coordinates map to which `ρ_int` slots).
+A declared, read-only projection of Characteristics coordinates (health, energy, physical competence) into a resource view. `ρ_int` is read by `π_decision` to constrain action affordability. It is never mutated directly; action execution emits $\Delta c_{\text{internal}} \in \Phi$, integrated into $c$ during State Evolution.
 
-**Potentialities** `p = P(c) = { c' ∈ C : c' reachable from c under the agent's transition kernel within budget R } ⊆ C`
-A reachable-set query, parameterized by current Characteristics and a resource/time budget `R` (itself typically drawn from `ρ_ext` and `ρ_int`). No update equation exists for `P` because none is needed: it is fully determined by `c` and `R` at query time.
+**Potentialities** `p = P(c) = { c' ∈ C : c' reachable from c under transition kernel within budget R } ⊆ C`
+A reachable-set query parameterized by current Characteristics and resource budget `R`.
 
-**Willingness** `ω = derive_Ω(g, ρ_ext, ρ_int, c) ∈ ℝ≥0^{n_k}`
-A non-negative vector, one scalar per goal category, computed each step as a function of current Goal Hierarchy priorities scaled by current affordability (Power). v1 named Willingness a top-level component but never specified how Feedback updates it (Feedback's own listed targets — Characteristics, World Model, Goal Hierarchy, Potentiality- and Power-*estimates* — omitted it). v3 resolves this gap by demotion rather than invented rule: Willingness has no memory of its own; it is recomputed fresh from primitives at every decision point.
+**Willingness** `ω = derive_Ω(u, ρ_ext, ρ_int, c) ∈ ℝ≥0^{n_k}`
+A non-negative vector computed each step as a function of latent Goal Hierarchy utilities `u` scaled by current affordability.
 
 #### 2.2.3 Policy parameter (not state; governs the Decision Policy)
 
 **Index of Exploration** `ξ ∈ Ξ = ℝ≥0^{n_ξ}`
-v1 diagrammed this as a pipeline stage of equal standing to Characteristics or World Model. Formally it has no update equation of its own and no role except as a temperature/entropy parameter passed into the Decision Policy function `π_decision` (Part II §3.1). v3 therefore excludes it from `σ`: it is a hyperparameter of the policy, optionally following its own schedule (e.g. annealed over epochs), not agent state that Feedback writes to.
+A temperature/entropy parameter passed into the Decision Policy function `π_decision`.
 
-### 2.3 The Full Per-Agent State (v3, revised)
+### 2.3 The Full Per-Agent State (v4, revised)
 
 ```
 σ^(i)_t = ( c^(i)_t, w^(i)_t, g^(i)_t, ρ_ext^(i)_t ) ∈ C × W × G × R_ext
 ```
-
-Four primitives, down from the v2 draft's six-tuple. `ρ_int`, `P(c)`, `ω` are derived on demand from `σ_t` (§2.2.2); `ξ` is a policy parameter passed alongside `σ_t` into `π_decision` but is not part of `σ_t` itself (§2.2.3); `a` is an event/output; `φ` is a transient update signal. This distinction — primitive persistent state vs. derived-on-demand vs. policy parameter vs. transient event — replaces v1's flat "ten equal Core Components" list and is the direct architectural resolution of the redundancies that formalization surfaced.
+Four primitive persistent states: Characteristics $c$ (including internal energy state), World Model $w$ (including peer belief states), Goal Hierarchy $g=u$ (latent utilities), and External Power $\rho_{\text{ext}}$. Derived quantities ($\rho_{\text{int}}, P(c), \omega$) are read-only views; $\xi$ is a policy parameter; $a$ is an action event; $\phi$ is a transient delta tuple.
 
 ---
 

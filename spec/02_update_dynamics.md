@@ -22,25 +22,26 @@ v1's "High-Level Architecture" diagram is a linear pipeline. Formalized, each ar
 a_t ~ π_decision(σ_t ; ξ_t)
 ```
 
-where `σ_t = (c_t, w_t, g_t, ρ_ext,t)` (Part I §2.3, v3) and `ξ_t` is passed as an explicit *parameter*, separated by `;` from the state argument, not concatenated into it — this typing is the formal statement of Part I §2.2.3: Exploration governs the policy but is not itself state.
+where `σ_t = (c_t, w_t, g_t, ρ_ext,t)` (Part I §2.3, v4) with persistent latent utilities `g_t = u_t ∈ ℝ^{n_k}` and `ξ_t` passed as explicit policy temperature.
 
-Internally, `π_decision` first computes the two derived quantities it needs (Part I §2.2.2) before selecting an action:
+Internally, `π_decision` computes derived values and dynamic goal allocations $\pi \in \Delta(K)$ on the fly before selecting an action:
 ```
 ρ_int = proj_int(c_t)
-ω_t   = derive_Ω(g_t, ρ_ext,t, ρ_int)
+π_t   = softmax(u_t / ξ_t)                (transient policy allocation, not state)
+ω_t   = derive_Ω(u_t, ρ_ext,t, ρ_int)
 ```
-`π_decision` is the **Decision Policy** (v1's Forward Simulation, §II). It is deliberately typed as producing a *distribution* over actions, not a single action. `ξ_t` controls entropy/temperature of the returned distribution (high `ξ` ⇒ higher-entropy `Δ(A)`; low `ξ` ⇒ near-deterministic, concentrated on the exploit-optimal action) — this is Exploration's entire formal role: a temperature parameter on the policy, not a separate causal component (resolved in Part I §2.2.3; no longer merely flagged).
+`π_decision` is the **Decision Policy** (v1's Forward Simulation, §II). `ξ_t` controls entropy/temperature over goal allocation and action choice.
 
-Constraint (from Part I §2.2.1, Action): `cost(a_t, ρ_ext,t, ρ_int,t) ≤ (ρ_ext,t, ρ_int,t)` componentwise — an agent cannot take an action it cannot afford, using *both* Power views. `π_decision` must have support only on affordable actions; this is a well-formedness condition on any valid policy, not an optional check.
+Constraint: `cost_ext(a_t, ρ_ext,t, ρ_int,t) ≤ ρ_ext,t` componentwise — an action cannot exceed external resource bounds.
 
 ### 3.2 Environment Stage
 
 ```
-step_env : E × A → E
-e_{t+1} = step_env(e_t, a_t)
+step_env : E × L(A) → E
+e_{t+1} = step_env(e_t, {a^(i)_t})
 ```
 
-Since `E` is shared (Part I §2.2), `step_env` in the multi-agent case is really `step_env : E × {a^(i)_t}_{i ∈ active(t)} → E`, a joint update over all agents whose action falls in the same causal window (Part I §1.2, Tier-1 total order resolves ordering when the window is a single event, but simultaneous/concurrent actions within a Tier-2 epoch require `step_env` to define a composition or commutativity rule — this is left as a schema-level obligation, flagged in §5.4).
+`step_env` applies localized spatial field perturbations $\delta e^{(i)}(x)$ across the interaction coordinates $x \in E$ resulting from agent action vectors $a^{(i)}_t$.
 
 ### 3.3 Feedback Stage
 
@@ -50,26 +51,23 @@ feedback : S × S × A × W → Φ
 φ_t = feedback(obs(e_t), obs(e_{t+1}), a_t, w_t)
 ```
 
-Feedback is computed as a function of the *pre-* and *post-action* observations plus the action taken and the agent's prior World Model — formalizing v1's "information obtained after interaction with the environment" as a well-defined signal (a prediction-error / surprise term is the canonical instantiation: `feedback` compares what `w_t.f` predicted against what was actually observed).
+Feedback emits deltas for persistent primitive states $\Phi = \Delta C \times \Delta W \times \Delta G \times \Delta R_{\text{ext}}$, where $\Delta C$ explicitly includes internal resource consumption deltas $\Delta c_{\text{internal}} = \text{cost\_int}(a_t, \rho_{\text{ext}}, \rho_{\text{int}})$.
 
 ### 3.4 State Evolution Stage
 
-Only primitives (Part I §2.2.1, §2.3) are integrated across steps. Derived quantities and the policy parameter are never targets of a State Evolution equation — they are recomputed fresh wherever needed (§3.1).
+Only primitive states (Part I §2.2.1, §2.3) are integrated across steps:
 
 ```
-c_{t+1}       = c_t       + φ_t.Δc
-w_{t+1}       = update_W(w_t, φ_t.Δw)
-g_{t+1}       = update_G(g_t, φ_t.Δg)
-ρ_ext,{t+1}   = ρ_ext,t   + φ_t.Δρ_ext  −  cost(a_t, ρ_ext,t, ρ_int,t)
+c_{t+1}       = c_t       + φ_t.Δc          (incorporates Δc_internal)
+w_{t+1}       = update_W(w_t, φ_t.Δw)       (updates joint env & peer belief distributions)
+g_{t+1}       = update_G(g_t, φ_t.Δg)       (updates latent utility weights u)
+ρ_ext,{t+1}   = ρ_ext,t   + φ_t.Δρ_ext  −  cost_ext(a_t, ρ_ext,t, ρ_int,t)
 ```
-
-Four equations for four primitives — this is the direct payoff of Part I §2.0's revision: v2's draft carried a fifth line (`ξ_{t+1} = update_Ξ(...)`) with no principled update rule ever supplied, because none was needed. Removing it here is not a simplification for convenience, it is the corrected model: `ξ` is never a target of State Evolution (Part I §2.2.3).
 
 Notes:
-- `c_{t+1}` and `ρ_ext,{t+1}` are additive-delta updates (matching `Φ`'s typing as deltas, Part I §2.2.1).
-- `update_W` is not a simple addition because `w = (belief, f)` where `belief ∈ Δ(S)` — this is formally a **Bayesian update**: `belief_{t+1} = Bayes(belief_t, obs(e_{t+1}))`, with `f` (the causal model) updated by any standard online model-learning rule (schema-chosen, e.g. gradient step on prediction error). This is the formal cash-value of v1's "World Model governs prediction... need not be correct."
-- `update_G` re-normalizes `π ∈ Δ(K)` after `u` (utilities) shift — a softmax-style renormalization over updated utilities, not a free-form update. `π`'s soft-distribution semantics (Part I §2.2.1) makes this well-defined regardless of whether the current state happens to be near one-hot.
-- Willingness and internal Power do not appear in this stage at all — by construction (Part I §2.2.2) they have no `_t → _{t+1}` transition; they are recomputed inside `π_decision` (§3.1) each time they're needed, always from the *current* primitives.
+- `c_{t+1}` integrates physical/internal trait changes $\Delta c_{\text{internal}}$ directly during State Evolution, resolving internal resource depletion cleanly without mutating derived views $\rho_{\text{int}}$ during action selection.
+- `update_W` updates joint beliefs over environment $S$ and peer latent states $\prod_{j \neq i} \Sigma^{(j)}$ (Theory of Mind filtering).
+- `update_G` updates latent utility weights $u_{t+1} = u_t + \varphi_t.\Delta g$. Dynamic probabilities $\pi_{t+1}$ are computed fresh during the next `π_decision` step.
 
 ### 3.5 Potentialities and Willingness as Queries, Not State Updates
 
