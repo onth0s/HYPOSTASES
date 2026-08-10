@@ -1,14 +1,25 @@
+"""HYPOSTASES CLI Utils — Merges specification markdown parts into a single document."""
+
+from __future__ import annotations
+
 import argparse
 import time
 from pathlib import Path
 
+from hypostases.utils.paths import find_project_root
+
 
 def strip_yaml_frontmatter(content: str) -> str:
-    """Strips YAML frontmatter from a markdown string."""
+    """Strips YAML frontmatter from a markdown string, ignoring leading empty lines."""
+    content = content.replace("\r\n", "\n")
     lines = content.split("\n")
-    if lines and lines[0].strip() == "---":
+    start_idx = 0
+    while start_idx < len(lines) and not lines[start_idx].strip():
+        start_idx += 1
+
+    if start_idx < len(lines) and lines[start_idx].strip() == "---":
         try:
-            end_idx = lines.index("---", 1)
+            end_idx = lines.index("---", start_idx + 1)
             # Skip the trailing newline after the frontmatter if present
             stripped = "\n".join(lines[end_idx + 1 :])
             # If the original content had a newline right after ---, avoid leading newline
@@ -20,7 +31,8 @@ def strip_yaml_frontmatter(content: str) -> str:
     return content
 
 
-def main():
+def main(args_list: list[str] | None = None):
+    """Main function to merge HYPOSTASES specification parts."""
     parser = argparse.ArgumentParser(description="Merge HYPOSTASES specification parts.")
     parser.add_argument(
         "--dry-run", action="store_true", help="Show what would be merged without writing."
@@ -32,12 +44,11 @@ def main():
         help="Directory to output the merged file. Defaults to project root.",
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(args_list)
 
-    # Paths
-    project_root = Path(__file__).resolve().parent.parent
+    # Paths — resolve repository root using paths utility
+    project_root = find_project_root()
     spec_dir = project_root / "spec"
-
     output_dir = Path(args.output_dir) if args.output_dir else project_root
 
     if not spec_dir.exists():

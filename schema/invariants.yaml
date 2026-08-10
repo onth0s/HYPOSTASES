@@ -1,10 +1,10 @@
-# Cross-cutting invariants and constraints — HYPOSTASES v3
+# Cross-cutting invariants and constraints — HYPOSTASES v4
 # These hold across ALL schemas and implementations.
 # Spec refs: Part I §2, Part II §3, Part III §5
 
 _meta:
   schema_version: "1.0"
-  spec_version: "v3"
+  spec_version: "v4"
   last_updated: "2026-08-10"
   description: >
     Every invariant listed here is a hard constraint that any conforming
@@ -128,3 +128,35 @@ constraints:
       no less.  This is the concrete payoff of Part I §2.0's revision.
     enforcement: "dataclass definition"
     violation_semantics: "architectural regression to pre-v3"
+
+  # --- Memory decay deferral (Part I §2.2.1, AGENTS.md 004) ---
+  memory_decay_application:
+    spec_ref: "AGENTS.md Directive 004"
+    formal: "c.memory_decay ∈ [0, 1] is declared-but-inert"
+    description: >
+      Memory decay implementation is explicitly deferred until a formal
+      calibration analysis is performed. Premature implementation risks
+      corrupting world model belief variance.
+    enforcement: "AGENTS.md directive"
+    violation_semantics: "uncalibrated belief variance corruption"
+
+  # --- Time budget lifecycle (Part IV §6.6a) ---
+  time_budget_lifecycle:
+    spec_ref: "Part IV §6.6a"
+    formal: "ρ_ext.time_budget_t+1 = max(0, ρ_ext.time_budget_t - 1)"
+    description: >
+      Time budget decrements by 1 unit per Tier-1 tick. Tier-2 epoch reset
+      logic is out of scope for the reference implementation.
+    enforcement: "evolve step decrement"
+    violation_semantics: "infinite time budget per epoch"
+
+  # --- Peer beliefs update (Part I §2.2.1, Part IV §6.3) ---
+  peer_beliefs_update:
+    spec_ref: "Part IV §6.3"
+    formal: "w.peer_beliefs[j] updated via EMA on observed granted draw"
+    description: >
+      Theory of Mind peer belief tracking updates from observed grants
+      emitted during multi-agent step_env execution.
+    enforcement: "feedback delta generator"
+    violation_semantics: "inert theory of mind belief"
+

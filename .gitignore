@@ -27,10 +27,14 @@ Thumbs.db
 # Ruff
 .ruff_cache/
 
-# Merged spec outputs (generated, not tracked)
+# Generated outputs
 HYPOSTASES_[0-9]*.md
+*_output.txt
+*.log
+
 
 # Pytest
 .pytest_cache/
 htmlcov/
 .coverage
+
