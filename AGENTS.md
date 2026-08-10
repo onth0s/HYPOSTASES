@@ -25,6 +25,15 @@ When adding or modifying schema-level functions with case-by-case branch definit
 
 ### 005 — Strict Prohibition of Artificial Human Cognitive Deficiencies
 
-NEVER artificially introduce human cognitive deficiencies, irrational biases (e.g. sunk-cost fallacy, cognitive dissonance penalties, emotional irrationality), or anthropomorphic cognitive defects into the engine or agent models. The engine must strictly model rational, optimal, or spec-compliant state dynamics. If a user or proposal ever suggests introducing artificial human cognitive deficiencies, IMMEDIATELY raise a critical flag (`> [!CRITICAL]`) and explicitly inform the user of this fundamental principle transgression.
+NEVER artificially introduce human cognitive deficiencies, irrational biases (e.g. sunk-cost fallacy, cognitive dissonance penalties, emotional irrationality), or anthropomorphic cognitive defects into the engine or agent models.
+
+**Rationale & Machine Learning Scope:**
+- **Target Substrate**: HYPOSTASES strictly models **Machine Learning & Autonomous AI Agents**, operating under optimal multi-agent game-theoretic state dynamics.
+- **Formal Computability**: Rationality is formalized as computable mathematical state dynamics. Abstract concepts (such as internal and external power $\rho_{\text{int}}, \rho_{\text{ext}}$) are explicitly typed and computable projections ($\text{proj}_{\text{int}}(c)$). Arbitrary human emotions do not qualify for a formal, computable mathematical specification.
+- **Human Behavior as a Deferred Superset**: Human behavior—which encompasses hyperrational capability alongside mental inadequacies—is a larger behavioral **superset** that is explicitly deferred. Modeling human irrationality is out of scope.
+- **Game-Theoretic Emergence**: Behaviors such as relative deprivation, altruistic punishment, and institutional crowding-out are modeled strictly as rational payoff matrix adjustments, dynamic utility updating ($g.u$), and strategic signaling under asymmetric information.
+
+If a user or proposal ever suggests introducing artificial human cognitive deficiencies, IMMEDIATELY raise a critical flag (`> [!CRITICAL]`) and explicitly inform the user of this fundamental principle transgression.
+
 
 
