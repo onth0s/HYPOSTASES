@@ -44,9 +44,16 @@ HYPOSTASES/
 3. **World Model Theory of Mind**: Joint belief distribution over environment state and peer latent states.
 4. **Internal Power**: Read-only derived view $\rho_{\text{int}} = \text{proj}_{\text{int}}(c)$. Depletion integrates directly as $\Delta c_{\text{internal}}$ during State Evolution.
 5. **Tier-0 Continuous Substrate**: Euler-Maruyama SDE integration for continuous substrate drift and continuous reserve decay.
-6. **Strict Cognitive Integrity (Rule 005)**: Strictly forbids artificial human cognitive deficiencies or irrational biases; enforces rational state dynamics.
+6. **Strict Cognitive Integrity (Rule 005)**: Designed strictly to simulate **Machine Learning & Autonomous AI Agents**. Artificially introducing human cognitive deficiencies or irrational biases is strictly prohibited. Human psychological defects are treated as a deferred, constrained subset/superset case.
 
-## Quick Start
+## Machine Learning Agent Modeling & Cognitive Integrity (Rule 005)
+
+HYPOSTASES is fundamentally engineered to model **Machine Learning Agents and Autonomous AI Systems**, operating under spec-compliant, rational, and optimal multi-agent state dynamics.
+
+* **We Are Not Modeling Humans**: Human cognitive flaws, emotional irrationality, sunk-cost fallacies, and anthropomorphic cognitive defects are **strictly prohibited** in the core engine.
+* **Human Psychology as Deferred Subset**: Modeling human irrationality is treated as a specialized/constrained edge case, deferred in favor of foundational optimal multi-agent game theory and mechanism design.
+* **Strict Behavioral Enforcer**: Any proposal or code modification that attempts to inject artificial human cognitive deficiencies into the engine triggers an immediate critical flag (`> [!CRITICAL]`) per Rule 005.
+
 
 ```bash
 # Install package in development mode
