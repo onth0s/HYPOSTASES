@@ -1,0 +1,39 @@
+
+--- Example 1: Recover Agent A (known ground truth) ---
+MAP estimate:      reserve=9.07  mood=0.05  dominant_goal=RELATIONAL
+Kalman summary:    reserve_mean=12.92 (var=16.12)  mood_mean=0.05
+Goal posterior:    SURVIVAL=0.08, ACQUISITION=0.22, RELATIONAL=0.65, STATUS=0.05
+TRUE state:        reserve=11.66  mood=0.09  dominant_goal=RELATIONAL  (g.u=[1.  1.  1.7 0.2] -- near-tie if values are close)
+Reserve error (MAP vs true): 2.59
+Goal match (MAP vs true):    True
+
+--- Example 2: Blind inference on unseen Agent C ---
+MAP estimate:      reserve=19.53  mood=0.00  dominant_goal=SURVIVAL
+Kalman summary:    reserve_mean=15.62 (var=21.68)  mood_mean=0.00
+Goal posterior:    SURVIVAL=0.31, ACQUISITION=0.34, RELATIONAL=0.12, STATUS=0.23
+TRUE state:        reserve=10.00  mood=0.00  dominant_goal=SURVIVAL  (g.u=[1.   1.   0.64 0.9 ] -- near-tie if values are close)
+Reserve error (MAP vs true): 9.53
+Goal match (MAP vs true):    True
+
+--- Example 3a: All-WITHDRAW trace, TRUE reserve LOW (3.0) ---
+MAP estimate:      reserve=18.64  mood=-0.17  dominant_goal=STATUS
+Kalman summary:    reserve_mean=12.11 (var=16.41)  mood_mean=-0.10
+Goal posterior:    SURVIVAL=0.00, ACQUISITION=0.00, RELATIONAL=0.00, STATUS=1.00
+TRUE state:        reserve=3.00  mood=-0.09  dominant_goal=SURVIVAL  (g.u=[1.  1.  1.  0.9] -- near-tie if values are close)
+Reserve error (MAP vs true): 15.64
+Goal match (MAP vs true):    False
+
+--- Example 3b: All-WITHDRAW trace, TRUE reserve HIGH (14.0) ---
+MAP estimate:      reserve=20.03  mood=-0.06  dominant_goal=STATUS
+Kalman summary:    reserve_mean=12.71 (var=22.79)  mood_mean=-0.09
+Goal posterior:    SURVIVAL=0.00, ACQUISITION=0.00, RELATIONAL=0.00, STATUS=1.00
+TRUE state:        reserve=14.00  mood=-0.09  dominant_goal=SURVIVAL  (g.u=[1.  1.  1.  0.9] -- near-tie if values are close)
+Reserve error (MAP vs true): 6.03
+Goal match (MAP vs true):    False
+
+--- Example 3 interpretation ---
+If the fix works, 3a's estimate should be noticeably LOWER than 3b's,
+despite BOTH traces containing only WITHDRAW actions and differing
+only in the agents' true (unobserved) starting reserve.
+3a Kalman reserve_mean: 12.11
+3b Kalman reserve_mean: 12.71

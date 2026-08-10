@@ -1,0 +1,19 @@
+=== PHASE A: Diagnostic sweep (isolating the binding lever) ===
+
+ n_steps  n_particles   median_Z   dir_ok   passed
+      10          300      0.029 3/     5    False
+      50          300      0.100 3/     5    False
+     200          300      0.608 3/     5    False
+
+=== PHASE B: Coupling-strength sweep (holding n=50, N=300 fixed) ===
+
+Testing whether the binding constraint is coupling strength, per Phase A's
+diagnosis (more steps/particles alone did not reliably improve Z).
+
+  coupling   median_Z   dir_ok   passed  degen
+      0.08      0.100 3/     5    False      2
+      0.30     -0.265 1/     5    False      1
+      0.60     -0.204 2/     5    False      0
+      1.00      0.005 3/     5    False      0
+      2.00     -0.012 2/     5    False      0
+      4.00      0.063 4/     5    False      0

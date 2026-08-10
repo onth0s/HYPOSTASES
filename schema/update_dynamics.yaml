@@ -1,0 +1,47 @@
+_meta:
+  schema_version: "1.0"
+  spec_version: "v3"
+  last_updated: "2026-08-10"
+
+dynamics:
+  pi_decision:
+    signature: "(C × W × G × R_ext) × Ξ → Δ(A)"
+    internal_computation:
+      - "ρ_int = proj_int(c)"
+      - "ω = derive_Ω(g, ρ_ext, ρ_int, c)"
+    mechanism: "Softmax over π·ω·u tempered by mean(ξ)"
+    parameter: "ξ is a parameter, not state (semicolon-separated in mathematical notation)"
+    constraint: "cost(a) ≤ (ρ_ext, ρ_int) componentwise"
+
+  step_env:
+    signatures:
+      single_agent: "E × A → E"
+      multi_agent: "E × {a^(i)} → E"
+    obligation: "Concurrency is a schema obligation."
+
+  feedback:
+    signature: "S × S × A × W → Φ"
+    description: "Compares pre/post observations + action + world model to generate feedback tuple."
+    branches:
+      REQUEST:
+        outcome: "granted_amt / mood penalty"
+      SHARE:
+        outcome: "-x / mood boost"
+      WITHDRAW:
+        outcome: "0 / mood penalty (v3 fix)"
+
+  state_evolution:
+    integration:
+      c: "c_{t+1} = c_t + φ.Δc"
+      w: "Bayesian/Kalman update"
+      g: "softmax renorm"
+      ρ_ext: "additive minus cost"
+    rule: "Only primitives are integrated. Derived quantities recomputed fresh."
+
+  computational_modes:
+    - name: "Forward Simulation"
+      description: "Generative process (§3.1)"
+    - name: "State Evolution"
+      description: "Composition of pi_decision, step_env, and feedback (§3.2-3.4)"
+    - name: "Inverse Inference"
+      description: "Posterior over Σ conditioned on trajectory. Uses generative model in reverse."

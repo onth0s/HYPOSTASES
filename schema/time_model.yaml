@@ -1,0 +1,34 @@
+_meta:
+  schema_version: "1.0"
+  spec_version: "v3"
+  last_updated: "2026-08-10"
+
+time_model:
+  tiers:
+    tier_0:
+      name: "Substrate"
+      type: "continuous"
+      domain: "t ∈ ℝ≥0"
+      description: "càdlàg processes. Never simulated. Used for equilibrium analysis."
+    tier_1:
+      name: "Operational"
+      type: "discrete, async"
+      domain: "per-agent event clocks t^(i)_0 < t^(i)_1 < ..."
+      description: "Ground truth for causal ordering. Total order over all (i,k) pairs."
+      variables:
+        - "Δt^(i)_k: variable time step"
+    tier_2:
+      name: "Epochal"
+      type: "discrete, sync"
+      domain: "global barrier at T_0 < T_1 < ..."
+      description: "Snapshots. No causal role."
+
+  reconciliation:
+    tier_2_to_1: "Tier 2 is a special case of Tier 1 (identical Δt)."
+    tier_0_to_1: "Tier 0 is the limit of Tier 1 as max Δt → 0."
+
+  invariants:
+    - "Tier 1 events are strictly increasing per agent."
+    - "Tier 2 snapshots are measurement-only."
+    - "All update equations are Tier 1."
+    - "Cross-agent claims are Tier 2 predicates."

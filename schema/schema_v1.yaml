@@ -1,0 +1,154 @@
+# Schema v1 — Reference schema for social agents sharing a depletable resource pool
+# Spec ref: Part IV §6
+
+_meta:
+  schema_version: "1.0"
+  spec_version: "v3"
+  last_updated: "2026-08-10"
+  description: >
+    Concrete field layouts and formulas for the reference domain.
+    This is ONE legal schema, not THE schema (Part I §2.1).
+
+domain: "social agents sharing a depletable resource pool"
+
+# --- Goal categories (§6.1) ---
+goal_categories:
+  K: ["SURVIVAL", "ACQUISITION", "RELATIONAL", "STATUS"]
+  n_k: 4
+  semantics:
+    SURVIVAL: "maintaining own reserve above subsistence floor"
+    ACQUISITION: "increasing own holdings beyond subsistence"
+    RELATIONAL: "goal-value placed on the other agent's welfare"
+    STATUS: "goal-value placed on relative (not absolute) standing"
+
+# --- Characteristics (§6.2) ---
+characteristics:
+  n_c: 6
+  fields:
+    - idx: 0
+      name: "skill"
+      range: "[0, 1]"
+      meaning: "efficiency multiplier on resource extraction"
+    - idx: 1
+      name: "resilience"
+      range: "[0, 1]"
+      meaning: "dampens negative Feedback magnitude on c"
+    - idx: 2
+      name: "sociality"
+      range: "[0, 1]"
+      meaning: "baseline propensity feeding RELATIONAL utility"
+    - idx: 3
+      name: "memory_decay"
+      range: "[0, 1]"
+      meaning: "per-step decay applied to World Model belief confidence"
+    - idx: 4
+      name: "reserve"
+      range: "ℝ≥0"
+      meaning: "agent's own resource stock (survival-critical; feeds Power_internal)"
+    - idx: 5
+      name: "mood"
+      range: "[-1, 1]"
+      meaning: "emotional baseline; decays toward 0, perturbed by Feedback"
+
+# --- World Model (§6.3) ---
+world_model:
+  S: "ℝ"
+  S_meaning: "agent's estimate of shared pool remaining level"
+  belief:
+    representation: "Gaussian N(μ, σ²)"
+    params: ["μ ∈ ℝ", "σ² ∈ ℝ>0"]
+  f:
+    form: "f(s, a) = s − a.amount_requested + replenish_rate"
+    learned_params: ["replenish_rate_est (scalar, updated from observed pool deltas)"]
+
+# --- Goal Hierarchy (§6.4) ---
+goal_hierarchy:
+  pi: "Δ(K), soft distribution (canonical v3)"
+  u: "ℝ^4 (one utility scalar per K category)"
+
+# --- Power_external (§6.6a, primitive) ---
+power_external:
+  n_r_ext: 2
+  fields:
+    - idx: 0
+      name: "social_capital"
+      range: "ℝ≥0"
+      meaning: "accumulates from cooperative acts, decays otherwise"
+    - idx: 1
+      name: "time_budget"
+      range: "ℝ≥0"
+      meaning: "ticks remaining this Tier-2 epoch before forced pass"
+
+# --- Power_internal (§6.6b, derived) ---
+power_internal:
+  projection: "proj_int(c)"
+  fields:
+    - name: "reserve_capacity"
+      source: "c.reserve"
+      meaning: "internal Power is read directly from Characteristics — no independent storage"
+
+# --- Willingness (§6.5, derived) ---
+willingness:
+  formula: "ω_k = π_k · min(1, ρ_int.reserve_capacity / cost_estimate_k)  for k ∈ K"
+  meaning: "desired-priority scaled down by affordability"
+
+# --- Action space (§6.7) ---
+action_space:
+  type: "discrete"
+  variants:
+    - name: "REQUEST"
+      params: ["amount: ℝ≥0"]
+      cost: "0 (requesting is free; the pool may refuse)"
+    - name: "SHARE"
+      params: ["amount: ℝ≥0"]
+      cost: "x (deducted from c.reserve via ρ_int.reserve_capacity)"
+    - name: "WITHDRAW"
+      params: []
+      cost: "0"
+
+# --- Feedback branches per action (§6.7b, v3 fix) ---
+feedback_branches:
+  REQUEST:
+    delta_c_reserve: "granted_amt"
+    delta_c_mood: "-0.1 · shortfall · (1 − resilience)"
+    delta_rho_ext_social_capital: "-0.02"
+    note: "unchanged from original schema"
+  SHARE:
+    delta_c_reserve: "-x"
+    delta_c_mood: "+0.05 · sociality"
+    delta_rho_ext_social_capital: "+0.3"
+    note: "unchanged from original schema"
+  WITHDRAW:
+    delta_c_reserve: "0"
+    delta_c_mood: "-0.03 · sociality"
+    delta_rho_ext_social_capital: "-0.01"
+    note: >
+      v3 fix (Part III §5.8): abstaining is mildly mood-negative,
+      more so for agents with higher sociality.  Reserve delta
+      remains correctly 0.
+
+# --- Environment (§6.8) ---
+environment:
+  n_e: 1
+  type: "scalar (shared pool level)"
+  observation: "obs^(i)(e) = e + noise^(i),  noise^(i) ~ N(0, obs_noise²)"
+  meaning: "agents observe the true pool imperfectly and independently"
+
+# --- step_env concurrency resolution (§5.6, schema-level) ---
+concurrency_rule:
+  strategy: "shares-apply-first, then pro-rata rationing of requests if oversubscribed"
+  spec_ref: "Part III §5.6 — one legal, declared resolution for this schema"
+
+# --- Index of Exploration (§6.9, policy parameter) ---
+exploration:
+  n_xi: 4
+  meaning: "one per goal category"
+  type: "policy parameter, not state (Part I §2.2.3)"
+
+# --- STATUS reserve sensitivity (§12.5, inference-side fix) ---
+status_reserve_sensitivity:
+  formula: "u_eff[STATUS] = u[STATUS] · (1 + 0.08 · max(0, reserve − 5))"
+  threshold: 5.0
+  coupling: 0.08
+  spec_ref: "Part VII §12.5"
+  note: "declared behavioral assumption — status contests matter more once subsistence is secure"

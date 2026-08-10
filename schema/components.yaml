@@ -1,0 +1,138 @@
+_meta:
+  schema_version: "1.0"
+  spec_version: "v3"
+  last_updated: "2026-08-10"
+
+primitives:
+  characteristics:
+    name: "Characteristics"
+    symbol: "c"
+    space: "C = ℝ^{n_c}"
+    dimension: 6
+    fields:
+      - name: "skill"
+        type: "float"
+        range: "[0, 1]"
+        meaning: "Agent's competency level"
+      - name: "resilience"
+        type: "float"
+        range: "[0, 1]"
+        meaning: "Ability to recover from negative feedback"
+      - name: "sociality"
+        type: "float"
+        range: "[0, 1]"
+        meaning: "Propensity for social interaction"
+      - name: "memory_decay"
+        type: "float"
+        range: "[0, 1]"
+        meaning: "Rate at which past experiences are forgotten"
+      - name: "reserve"
+        type: "float"
+        range: "ℝ≥0"
+        meaning: "Accumulated internal resources"
+      - name: "mood"
+        type: "float"
+        range: "[-1, 1]"
+        meaning: "Current emotional state"
+    invariants:
+      - "reserve >= 0"
+
+  world_model:
+    name: "World Model"
+    symbol: "w"
+    space: "W = Δ(S) × F"
+    dimension: "variable"
+    fields:
+      - name: "belief"
+        type: "Gaussian (μ, σ²)"
+        range: "Δ(S)"
+        meaning: "Probability distribution over state S"
+      - name: "f"
+        type: "function"
+        range: "F"
+        meaning: "Learned replenish rate estimate (scalar)"
+
+  goal_hierarchy:
+    name: "Goal Hierarchy"
+    symbol: "g"
+    space: "G = Δ(K) × ℝ^{n_k}"
+    dimension: 4
+    fields:
+      - name: "pi"
+        type: "distribution"
+        range: "Δ(K)"
+        meaning: "Soft distribution over K={SURVIVAL, ACQUISITION, RELATIONAL, STATUS}"
+      - name: "u"
+        type: "vector"
+        range: "ℝ^{n_k}"
+        meaning: "Utility vector"
+
+  power_external:
+    name: "Power_external"
+    symbol: "ρ_ext"
+    space: "ℝ≥0^{n_r}"
+    dimension: 2
+    fields:
+      - name: "social_capital"
+        type: "float"
+        range: "ℝ≥0"
+        meaning: "Accumulated social standing and relationships"
+      - name: "time_budget"
+        type: "float"
+        range: "ℝ≥0"
+        meaning: "Available time resources"
+
+  action:
+    name: "Action"
+    symbol: "a"
+    space: "A"
+    dimension: "discrete"
+    variants:
+      - "REQUEST(amount)"
+      - "SHARE(amount)"
+      - "WITHDRAW"
+
+  environment:
+    name: "Environment"
+    symbol: "e"
+    space: "ℝ"
+    dimension: 1
+    description: "Single scalar shared pool. obs^(i)(e)=e+noise"
+
+  feedback:
+    name: "Feedback"
+    symbol: "φ"
+    space: "Φ = ΔC × ΔW × ΔG × ΔR_ext"
+    description: "Tuple of deltas updating primitives"
+
+derived:
+  power_internal:
+    name: "Power_internal"
+    symbol: "ρ_int"
+    derivation: "proj_int(c)"
+    fields:
+      - name: "reserve_capacity"
+        derivation: "c.reserve"
+  potentialities:
+    name: "Potentialities"
+    symbol: "P(c)"
+    derivation: "reachable set query on C given budget R"
+  willingness:
+    name: "Willingness"
+    symbol: "ω"
+    derivation: "derive_Ω(g, ρ_ext, ρ_int, c)"
+    formula: "ω_k = π_k · min(1, ρ_int.reserve_capacity / cost_estimate_k)"
+
+policy_parameter:
+  index_of_exploration:
+    name: "Index of Exploration"
+    symbol: "ξ"
+    space: "ℝ≥0^{n_ξ}"
+    dimension: 4
+    description: "Temperature on π_decision. One per goal category."
+
+state:
+  persistent:
+    symbol: "σ"
+    components: ["c", "w", "g", "ρ_ext"]
+    description: "The per-agent persistent state σ = (c, w, g, ρ_ext) — a four-tuple."

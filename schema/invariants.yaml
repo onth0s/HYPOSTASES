@@ -1,0 +1,130 @@
+# Cross-cutting invariants and constraints — HYPOSTASES v3
+# These hold across ALL schemas and implementations.
+# Spec refs: Part I §2, Part II §3, Part III §5
+
+_meta:
+  schema_version: "1.0"
+  spec_version: "v3"
+  last_updated: "2026-08-10"
+  description: >
+    Every invariant listed here is a hard constraint that any conforming
+    implementation must enforce.  Violations indicate a bug, not a
+    legitimate edge case.
+
+constraints:
+
+  # --- Affordability (Part II §3.1) ---
+  affordability:
+    spec_ref: "Part II §3.1, Part I §2.2.1 (Action)"
+    formal: "cost(a_t, ρ_ext_t, ρ_int_t) ≤ (ρ_ext_t, ρ_int_t)  componentwise"
+    description: >
+      An agent cannot take an action it cannot afford, using both Power
+      views.  π_decision must have support only on affordable actions.
+    enforcement: "well-formedness condition on any valid policy"
+    violation_semantics: "undefined behavior — the action is invalid"
+
+  # --- Distribution normalization (Part I §2.2.1) ---
+  pi_normalization:
+    spec_ref: "Part I §2.2.1 (Goal Hierarchy)"
+    formal: "π ∈ Δ(K):  ∀k π_k ≥ 0,  Σ_k π_k = 1"
+    description: >
+      Goal priority distribution is always a valid probability simplex.
+      Strict hierarchy (lexicographic) is recovered only as the one-hot
+      special case.
+    enforcement: "softmax renormalization in update_G (Part II §3.4)"
+    violation_semantics: "ill-typed state"
+
+  belief_validity:
+    spec_ref: "Part I §2.2.1 (World Model)"
+    formal: "belief ∈ Δ(S);  for Gaussian parametric form: σ² > 0"
+    description: >
+      World Model belief must be a valid distribution.  Zero or negative
+      variance is degenerate and breaks the Bayesian update.
+    enforcement: "clamped in update_W"
+    violation_semantics: "division by zero in Kalman gain"
+
+  # --- Non-negativity (Part I §2.2.1) ---
+  reserve_non_negativity:
+    spec_ref: "Part I §2.2.1 (Characteristics, Power_external)"
+    formal: "c.reserve ≥ 0;  ∀j ρ_ext_j ≥ 0"
+    description: >
+      Reserve and all external power fields are non-negative reals.
+      Depletion below zero is physically meaningless.
+    enforcement: "clamped after state evolution"
+    violation_semantics: "nonsensical state"
+
+  # --- Architectural taxonomy (Part I §2.0, §2.2.2, §2.2.3) ---
+  derived_not_stored:
+    spec_ref: "Part I §2.2.2, Part II §3.4, §3.5"
+    formal: "ρ_int, ω, P(c) ∉ σ;  no _{t}→_{t+1} transition equation exists"
+    description: >
+      Derived quantities have no persistent storage.  They are pure
+      functions of current primitive state, recomputed on demand.
+      There must be no backing field in the agent state dataclass.
+    enforcement: "type-level — fields do not exist in AgentState"
+    violation_semantics: "silent state duplication (Part III §5.2 resolution)"
+
+  exploration_not_state:
+    spec_ref: "Part I §2.2.3, Part II §3.1, Part III §5.4"
+    formal: "ξ ∉ σ;  ξ is never a target of state evolution"
+    description: >
+      Index of Exploration is a policy parameter, passed to π_decision
+      via a separate argument (semicolon-separated), never stored on
+      the agent or updated by Feedback.
+    enforcement: "function signature typing — ξ is a parameter, not state"
+    violation_semantics: "overstated architectural weight (Part III §5.4)"
+
+  feedback_targets_primitives_only:
+    spec_ref: "Part I §2.2.1 (Feedback), Part II §3.4"
+    formal: "Φ = ΔC × ΔW × ΔG × ΔR_ext  (no ΔP, no Δω, no Δξ)"
+    description: >
+      Feedback's delta tuple targets only the four primitives.  Derived
+      quantities and the policy parameter are never Feedback targets.
+    enforcement: "Φ type definition"
+    violation_semantics: "writing to a derived quantity"
+
+  # --- Schema versioning (Part I §2.1) ---
+  schema_versioning:
+    spec_ref: "Part I §2.1"
+    formal: >
+      Schema(X, v) fixes dim(X, v);
+      Migrate(X, v→v+1): ℝ^{dim(X,v)} → ℝ^{dim(X,v+1)} is total and declared
+    description: >
+      Dimensionality is fixed within a schema version.  Cross-version
+      changes require an explicit, auditable migration function — you
+      cannot silently redefine a vector's meaning.
+    enforcement: "schema declaration"
+    violation_semantics: "silent reinterpretation of state"
+
+  # --- Emergent systems (Part I §4.4, Part III §5.6) ---
+  emergent_predicates_not_state:
+    spec_ref: "Part III §4.4 (Multi-Agent Composition)"
+    formal: "Φ_emergent: (E_{T_n}, {σ^(i)_{T_n}}) → {0,1}  — Tier-2 predicate"
+    description: >
+      Emergent-system claims (markets, governments, trust) are
+      predicates evaluated at Tier-2 snapshots, never state variables.
+      Nothing in Σ or E encodes social constructs.
+    enforcement: "Design Philosophy IV (Emergence over Enumeration)"
+    violation_semantics: "hardcoded social primitive"
+
+  # --- step_env concurrency (Part III §5.6) ---
+  step_env_concurrency:
+    spec_ref: "Part III §5.6"
+    formal: "step_env: E × {a^(i)}_{i ∈ active(t)} → E"
+    description: >
+      Concurrent-action composition/commutativity rule is a schema-level
+      obligation, not spec-level resolved.  Each schema must declare how
+      simultaneous actions compose (e.g. shares-apply-first, pro-rata
+      rationing).
+    enforcement: "schema declaration obligation"
+    violation_semantics: "undefined environment transition under concurrency"
+
+  # --- Per-agent state tuple (Part I §2.3) ---
+  sigma_is_four_tuple:
+    spec_ref: "Part I §2.3"
+    formal: "σ^(i)_t = (c^(i)_t, w^(i)_t, g^(i)_t, ρ_ext^(i)_t) ∈ C × W × G × R_ext"
+    description: >
+      The persistent per-agent state is exactly a four-tuple.  No more,
+      no less.  This is the concrete payoff of Part I §2.0's revision.
+    enforcement: "dataclass definition"
+    violation_semantics: "architectural regression to pre-v3"
