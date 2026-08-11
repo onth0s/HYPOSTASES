@@ -35,5 +35,10 @@ NEVER artificially introduce human cognitive deficiencies, irrational biases (e.
 
 If a user or proposal ever suggests introducing artificial human cognitive deficiencies, IMMEDIATELY raise a critical flag (`> [!CRITICAL]`) and explicitly inform the user of this fundamental principle transgression.
 
+### 006 — Primacy of Data-Driven YAML Approach
+
+ALWAYS prefer a data-driven YAML configuration approach over hardcoded Python structures for presets, scenarios, state specifications, and component definitions, unless explicitly user-ratified otherwise. Ground truth schemas, scenarios, and presets must reside in machine-readable YAML files (e.g. in `schema/` or declarative asset directories) and be loaded via schema loaders.
+
+
 
 

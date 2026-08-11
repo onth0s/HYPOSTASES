@@ -43,6 +43,8 @@ from hypostases.engine.constants import (
     SURVIVAL_U_GAIN,
     TEMPERATURE_OFFSET,
     UTILITY_DECAY_RATE,
+    WITHDRAW_DEGRADE,
+    WITHDRAW_FEE,
     WITHDRAW_MOOD_PENALTY,
     WITHDRAW_SOCIAL_COST,
     WORLD_MU_GAIN,
@@ -53,7 +55,10 @@ from hypostases.engine.types import (
     Action,
     ActionType,
     AgentState,
+    DeltaCharacteristics,
     DeltaLog,
+    DeltaPowerExternal,
+    DeltaWorldModel,
     FeedbackDelta,
     GoalCategory,
     K,
@@ -163,6 +168,102 @@ def pi_decision(
     return Action(branch.action_type, amount=amt)
 
 
+def _resolve_shares_first(
+    pool_before_adj: float,
+    shares_total: float,
+    requests: list[tuple[str, float]],
+) -> tuple[float, float, dict[str, float]]:
+    """Shares replenish pool first, requests served after."""
+    pool_after_shares = pool_before_adj + shares_total
+    total_requested = sum(amt for _, amt in requests)
+    granted: dict[str, float] = {}
+
+    if total_requested <= 0:
+        return pool_after_shares, pool_after_shares, granted
+    if total_requested <= pool_after_shares:
+        for name, amt in requests:
+            granted[name] = amt
+        return pool_after_shares - total_requested, pool_after_shares, granted
+
+    ration_ratio = pool_after_shares / total_requested
+    for name, amt in requests:
+        granted[name] = amt * ration_ratio
+    return 0.0, pool_after_shares, granted
+
+
+def _resolve_pro_rata(
+    pool_before_adj: float,
+    shares_total: float,
+    requests: list[tuple[str, float]],
+) -> tuple[float, float, dict[str, float]]:
+    """Requests served from pool_before_adj; shares added after requests."""
+    pool_after_shares = pool_before_adj
+    total_requested = sum(amt for _, amt in requests)
+    granted: dict[str, float] = {}
+
+    if total_requested <= 0:
+        return pool_after_shares + shares_total, pool_after_shares, granted
+    if total_requested <= pool_after_shares:
+        for name, amt in requests:
+            granted[name] = amt
+        return pool_after_shares - total_requested + shares_total, pool_after_shares, granted
+
+    ration_ratio = pool_after_shares / total_requested
+    for name, amt in requests:
+        granted[name] = amt * ration_ratio
+    return shares_total, pool_after_shares, granted
+
+
+def _resolve_priority(
+    pool_before_adj: float,
+    shares_total: float,
+    requests: list[tuple[str, float]],
+    priorities: dict[str, float] | None = None,
+) -> tuple[float, float, dict[str, float]]:
+    """Greedy allocation sorted by priorities (highest first)."""
+    pool_after_shares = pool_before_adj + shares_total
+    if priorities is None:
+        sorted_requests = sorted(requests, key=lambda x: x[0])
+    else:
+        sorted_requests = sorted(requests, key=lambda x: priorities.get(x[0], 0.0), reverse=True)
+
+    granted: dict[str, float] = {}
+    pool_temp = pool_after_shares
+    for name, amt in sorted_requests:
+        if amt <= pool_temp:
+            granted[name] = amt
+            pool_temp -= amt
+        else:
+            granted[name] = pool_temp
+            pool_temp = 0.0
+    return pool_temp, pool_after_shares, granted
+
+
+def _resolve_lottery(
+    pool_before_adj: float,
+    shares_total: float,
+    requests: list[tuple[str, float]],
+    rng: np.random.Generator | None = None,
+) -> tuple[float, float, dict[str, float]]:
+    """Greedy allocation in shuffled random order."""
+    if rng is None:
+        rng = np.random.default_rng()
+    pool_after_shares = pool_before_adj + shares_total
+    shuffled_requests = list(requests)
+    rng.shuffle(shuffled_requests)
+
+    granted: dict[str, float] = {}
+    pool_temp = pool_after_shares
+    for name, amt in shuffled_requests:
+        if amt <= pool_temp:
+            granted[name] = amt
+            pool_temp -= amt
+        else:
+            granted[name] = pool_temp
+            pool_temp = 0.0
+    return pool_temp, pool_after_shares, granted
+
+
 def step_env(
     pool_before: float,
     agent_actions: list[tuple[str, Action]],
@@ -186,14 +287,10 @@ def step_env(
 
     withdraw_deductions = 0.0
     if enable_withdraw_fee:
-        from hypostases.engine.constants import WITHDRAW_FEE
-
         # Contention 3: Dynamic governance scaling — fee amplified by defection prevalence
         dynamic_fee = WITHDRAW_FEE * (1.0 + GOVERNANCE_SCALING_LAMBDA * withdraw_prevalence)
         withdraw_deductions += withdraws_count * dynamic_fee
     if enable_withdraw_degrade:
-        from hypostases.engine.constants import WITHDRAW_DEGRADE
-
         withdraw_deductions += withdraws_count * WITHDRAW_DEGRADE
 
     pool_before_adj = max(0.0, pool_before - withdraw_deductions)
@@ -206,72 +303,22 @@ def step_env(
     ]
     total_requested = sum(amt for _, amt in requests)
 
-    granted: dict[str, float] = {}
-
     if concurrency_operator == "shares-first":
-        pool_after_shares = pool_before_adj + shares_total
-        if total_requested <= 0:
-            pool_final = pool_after_shares
-        elif total_requested <= pool_after_shares:
-            for name, amt in requests:
-                granted[name] = amt
-            pool_final = pool_after_shares - total_requested
-        else:
-            ration_ratio = pool_after_shares / total_requested
-            for name, amt in requests:
-                granted[name] = amt * ration_ratio
-            pool_final = 0.0
-
+        pool_final, pool_after_shares, granted = _resolve_shares_first(
+            pool_before_adj, shares_total, requests
+        )
     elif concurrency_operator == "pro-rata":
-        pool_after_shares = pool_before_adj  # requests do not benefit from shares of this step
-        if total_requested <= 0:
-            pool_final = pool_after_shares + shares_total
-        elif total_requested <= pool_after_shares:
-            for name, amt in requests:
-                granted[name] = amt
-            pool_final = pool_after_shares - total_requested + shares_total
-        else:
-            ration_ratio = pool_after_shares / total_requested
-            for name, amt in requests:
-                granted[name] = amt * ration_ratio
-            pool_final = shares_total
-
+        pool_final, pool_after_shares, granted = _resolve_pro_rata(
+            pool_before_adj, shares_total, requests
+        )
     elif concurrency_operator == "priority":
-        pool_after_shares = pool_before_adj + shares_total
-        if priorities is None:
-            sorted_requests = sorted(requests, key=lambda x: x[0])
-        else:
-            sorted_requests = sorted(
-                requests, key=lambda x: priorities.get(x[0], 0.0), reverse=True
-            )
-
-        pool_temp = pool_after_shares
-        for name, amt in sorted_requests:
-            if amt <= pool_temp:
-                granted[name] = amt
-                pool_temp -= amt
-            else:
-                granted[name] = pool_temp
-                pool_temp = 0.0
-        pool_final = pool_temp
-
+        pool_final, pool_after_shares, granted = _resolve_priority(
+            pool_before_adj, shares_total, requests, priorities=priorities
+        )
     elif concurrency_operator == "lottery":
-        if rng is None:
-            rng = np.random.default_rng()
-        pool_after_shares = pool_before_adj + shares_total
-        shuffled_requests = list(requests)
-        rng.shuffle(shuffled_requests)
-
-        pool_temp = pool_after_shares
-        for name, amt in shuffled_requests:
-            if amt <= pool_temp:
-                granted[name] = amt
-                pool_temp -= amt
-            else:
-                granted[name] = pool_temp
-                pool_temp = 0.0
-        pool_final = pool_temp
-
+        pool_final, pool_after_shares, granted = _resolve_lottery(
+            pool_before_adj, shares_total, requests, rng=rng
+        )
     else:
         raise ValueError(f"Unknown concurrency_operator: {concurrency_operator}")
 
@@ -294,6 +341,133 @@ def step_env(
     return pool_final, delta_log
 
 
+def _feedback_request(
+    agent: AgentState,
+    action: Action,
+    delta_log: DeltaLog,
+    agent_name: str,
+) -> tuple[DeltaCharacteristics, np.ndarray, DeltaPowerExternal]:
+    granted_amt = delta_log.get("granted", {}).get(agent_name, 0.0)
+    shortfall = max(0.0, action.amount - granted_amt)
+
+    delta_c: DeltaCharacteristics = {
+        "reserve": granted_amt,
+        "mood": -REQUEST_MOOD_PENALTY * shortfall * (1.0 - agent.c.resilience),
+    }
+    delta_rho_ext: DeltaPowerExternal = {"social_capital": -REQUEST_SOCIAL_COST}
+
+    delta_g = np.zeros(len(K))
+    fill_ratio = granted_amt / (action.amount + 1e-9)
+    delta_g[_SURVIVAL_IDX] = SURVIVAL_U_GAIN * (2.0 * fill_ratio - 1.0)
+    delta_g[_ACQUISITION_IDX] += ACQUISITION_U_GAIN * fill_ratio
+
+    return delta_c, delta_g, delta_rho_ext
+
+
+def _feedback_share(
+    agent: AgentState,
+    action: Action,
+) -> tuple[DeltaCharacteristics, np.ndarray, DeltaPowerExternal]:
+    delta_c: DeltaCharacteristics = {
+        "reserve": -action.amount,
+        "mood": SHARE_MOOD_BONUS * agent.c.sociality,
+    }
+    delta_rho_ext: DeltaPowerExternal = {"social_capital": SHARE_SOCIAL_GAIN}
+    delta_g = np.zeros(len(K))
+    delta_g[_RELATIONAL_IDX] = RELATIONAL_U_GAIN * agent.c.sociality
+    return delta_c, delta_g, delta_rho_ext
+
+
+def _feedback_withdraw(
+    agent: AgentState,
+    action: Action,
+    delta_log: DeltaLog,
+) -> tuple[DeltaCharacteristics, np.ndarray, DeltaPowerExternal]:
+    delta_c: DeltaCharacteristics = {
+        "reserve": 0.0,
+        "mood": -WITHDRAW_MOOD_PENALTY * agent.c.sociality,
+    }
+    delta_rho_ext: DeltaPowerExternal = {"social_capital": -WITHDRAW_SOCIAL_COST}
+    delta_g = np.zeros(len(K))
+
+    status_delta = STATUS_U_GAIN * (1.0 - agent.c.sociality)
+    if delta_log.get("enable_withdraw_fee", False):
+        status_delta = -STATUS_U_GAIN * (1.0 - agent.c.sociality)
+    delta_g[_STATUS_IDX] = status_delta
+    return delta_c, delta_g, delta_rho_ext
+
+
+def _feedback_punish(
+    agent: AgentState,
+    action: Action,
+) -> tuple[DeltaCharacteristics, np.ndarray, DeltaPowerExternal]:
+    delta_c: DeltaCharacteristics = {
+        "reserve": -PUNISH_RESERVE_COST,
+        "mood": PUNISH_MOOD_GAIN * agent.c.sociality,
+    }
+    delta_rho_ext: DeltaPowerExternal = {"social_capital": 0.1}
+    delta_g = np.zeros(len(K))
+    return delta_c, delta_g, delta_rho_ext
+
+
+def _apply_cross_cutting_c(
+    agent: AgentState,
+    agent_name: str,
+    delta_log: DeltaLog,
+    delta_c: DeltaCharacteristics,
+) -> None:
+    if agent_name in delta_log.get("punishments", {}):
+        penalty = delta_log["punishments"][agent_name]
+        delta_c["reserve"] = delta_c.get("reserve", 0.0) - penalty
+
+    if agent.w.peer_beliefs:
+        max_peer_est = max(agent.w.peer_beliefs.values())
+        if max_peer_est > agent.c.reserve:
+            deprivation = max_peer_est - agent.c.reserve
+            delta_c["mood"] = delta_c.get("mood", 0.0) - INEQUITY_AVERSION_GAIN * deprivation
+
+
+def _apply_crowding_out(
+    agent: AgentState,
+    action: Action,
+    delta_log: DeltaLog,
+    delta_g: np.ndarray,
+) -> None:
+    if delta_log.get("enable_withdraw_fee", False) and action.action_type == ActionType.WITHDRAW:
+        shift = CROWDING_OUT_HYSTERESIS_GAIN * (1.0 - agent.c.sociality)
+        delta_g[_ACQUISITION_IDX] += shift
+        delta_g[_RELATIONAL_IDX] -= shift
+
+
+def _compute_world_surprise(
+    agent: AgentState,
+    action: Action,
+    delta_log: DeltaLog,
+    pool_before: float,
+    pool_after: float,
+    agent_name: str,
+) -> DeltaWorldModel:
+    own_impact = 0.0
+    if action.action_type == ActionType.REQUEST:
+        own_impact = -delta_log.get("granted", {}).get(agent_name, 0.0)
+    elif action.action_type == ActionType.SHARE:
+        own_impact = action.amount
+
+    observed_delta = (pool_after - pool_before) - own_impact
+    predicted_delta = agent.w.replenish_rate_est
+    surprise = observed_delta - predicted_delta
+
+    acceleration = abs(surprise - agent.w.last_surprise)
+    regime_expansion = REGIME_SHIFT_GAIN * acceleration
+
+    return {
+        "mu": WORLD_MU_GAIN * surprise,
+        "replenish_rate_est": WORLD_REPLENISH_GAIN * surprise,
+        "sigma2": WORLD_SIGMA2_UPDATE_GAIN * (abs(surprise) - agent.w.sigma2) + regime_expansion,
+        "last_surprise": surprise,
+    }
+
+
 def feedback(
     agent: AgentState,
     pool_before: float,
@@ -310,97 +484,27 @@ def feedback(
       - ActionType.WITHDRAW: State-dependent sociality mood penalty and social capital cost.
       - Peer beliefs: Explicitly tracks observed grant draws per peer agent.
     """
-    delta_c: dict[str, float] = {}
-    delta_w: dict[str, float] = {}
-    delta_g = np.zeros(len(K))
-    delta_rho_ext: dict[str, float] = {}
-    delta_peer_beliefs: dict[str, float] = {}
-
     if action.action_type == ActionType.REQUEST:
-        granted_amt = delta_log.get("granted", {}).get(agent_name, 0.0)
-        shortfall = max(0.0, action.amount - granted_amt)
-
-        delta_c["reserve"] = granted_amt
-        delta_c["mood"] = -REQUEST_MOOD_PENALTY * shortfall * (1.0 - agent.c.resilience)
-        delta_rho_ext["social_capital"] = -REQUEST_SOCIAL_COST
-
-        # SURVIVAL reinforced by grant success; penalised by shortfall
-        fill_ratio = granted_amt / (action.amount + 1e-9)
-        delta_g[_SURVIVAL_IDX] = SURVIVAL_U_GAIN * (2.0 * fill_ratio - 1.0)
-        # ACQUISITION positively reinforced proportional to fill (provisional)
-        delta_g[_ACQUISITION_IDX] += ACQUISITION_U_GAIN * fill_ratio
-
+        delta_c, delta_g, delta_rho_ext = _feedback_request(agent, action, delta_log, agent_name)
     elif action.action_type == ActionType.SHARE:
-        delta_c["reserve"] = -action.amount
-        delta_c["mood"] = SHARE_MOOD_BONUS * agent.c.sociality
-        delta_rho_ext["social_capital"] = SHARE_SOCIAL_GAIN
-        # Relational feedback reinforces RELATIONAL utility weight in u
-        delta_g[_RELATIONAL_IDX] = RELATIONAL_U_GAIN * agent.c.sociality
-
+        delta_c, delta_g, delta_rho_ext = _feedback_share(agent, action)
     elif action.action_type == ActionType.WITHDRAW:
-        delta_c["reserve"] = 0.0
-        delta_c["mood"] = -WITHDRAW_MOOD_PENALTY * agent.c.sociality
-        delta_rho_ext["social_capital"] = -WITHDRAW_SOCIAL_COST
-
-        # STATUS reinforced by autonomous withdrawal; penalized under active governance fee
-        status_delta = STATUS_U_GAIN * (1.0 - agent.c.sociality)
-        if delta_log.get("enable_withdraw_fee", False):
-            status_delta = -STATUS_U_GAIN * (1.0 - agent.c.sociality)
-        delta_g[_STATUS_IDX] = status_delta
-
+        delta_c, delta_g, delta_rho_ext = _feedback_withdraw(agent, action, delta_log)
     elif action.action_type == ActionType.PUNISH:
-        delta_c["reserve"] = -PUNISH_RESERVE_COST
-        delta_c["mood"] = PUNISH_MOOD_GAIN * agent.c.sociality
-        delta_rho_ext["social_capital"] = 0.1
+        delta_c, delta_g, delta_rho_ext = _feedback_punish(agent, action)
+    else:
+        delta_c, delta_g, delta_rho_ext = {}, np.zeros(len(K)), {}
 
-    # Targeted punishment penalty check
-    if agent_name in delta_log.get("punishments", {}):
-        penalty = delta_log["punishments"][agent_name]
-        delta_c["reserve"] = delta_c.get("reserve", 0.0) - penalty
+    _apply_cross_cutting_c(agent, agent_name, delta_log, delta_c)
+    _apply_crowding_out(agent, action, delta_log, delta_g)
+    delta_w = _compute_world_surprise(agent, action, delta_log, pool_before, pool_after, agent_name)
 
-    # Inequity Aversion & Relative Deprivation: mood decay when peer reserves exceed own
-    if agent.w.peer_beliefs:
-        max_peer_est = max(agent.w.peer_beliefs.values())
-        if max_peer_est > agent.c.reserve:
-            deprivation = max_peer_est - agent.c.reserve
-            delta_c["mood"] = delta_c.get("mood", 0.0) - INEQUITY_AVERSION_GAIN * deprivation
-
-    # Institutional Crowding-Out: fee presence shifts latent utilities from RELATIONAL to ACQUISITION
-    if delta_log.get("enable_withdraw_fee", False) and action.action_type == ActionType.WITHDRAW:
-        shift = CROWDING_OUT_HYSTERESIS_GAIN * (1.0 - agent.c.sociality)
-        delta_g[_ACQUISITION_IDX] += shift
-        delta_g[_RELATIONAL_IDX] -= shift
-
-    # World model surprise & variance update (Phase 2.3 surprise fix)
-    own_impact = 0.0
-    if action.action_type == ActionType.REQUEST:
-        own_impact = -delta_log.get("granted", {}).get(agent_name, 0.0)
-    elif action.action_type == ActionType.SHARE:
-        own_impact = action.amount
-
-    observed_delta = (pool_after - pool_before) - own_impact
-    predicted_delta = agent.w.replenish_rate_est
-    surprise = observed_delta - predicted_delta
-
-    # Contention 2: Regime-Shift Adaptive Belief Learning
-    # Expands σ² non-linearly when surprise acceleration is detected (|Δsurprise| > 0)
-    acceleration = abs(surprise - agent.w.last_surprise)
-    regime_expansion = REGIME_SHIFT_GAIN * acceleration
-
-    delta_w["mu"] = WORLD_MU_GAIN * surprise
-    delta_w["replenish_rate_est"] = WORLD_REPLENISH_GAIN * surprise
-    delta_w["sigma2"] = (
-        WORLD_SIGMA2_UPDATE_GAIN * (abs(surprise) - agent.w.sigma2) + regime_expansion
-    )
-    delta_w["last_surprise"] = surprise
-
-    # Theory of Mind: track peer reserve grant draws
+    delta_peer_beliefs: dict[str, float] = {}
     for peer_name, granted_amt in delta_log.get("granted", {}).items():
         if peer_name != agent_name:
             delta_peer_beliefs[peer_name] = granted_amt
 
-    # Softmax Jacobian Attenuation: scale delta_g[k] by marginal policy sensitivity π_k(1 - π_k)
-    # As a dimension dominates (π_k → 1), Δg[k] → 0 naturally, creating a fixed-point attractor.
+    # Softmax Jacobian Attenuation
     u_eff = _effective_utilities(agent)
     pi_current = softmax(u_eff)
     sensitivity = pi_current * (1.0 - pi_current)

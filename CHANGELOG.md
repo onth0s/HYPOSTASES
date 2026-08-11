@@ -5,6 +5,20 @@ All notable changes to the HYPOSTASES framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-08-11
+
+### Refactored & Enhanced
+- **`StrEnum` Standardisation & Typed State Deltas**: Migrated `GoalCategory` and `ActionType` to `enum.StrEnum` (Ruff UP042 clean). Replaced loose `dict[str, float]` state deltas with strongly-typed `DeltaCharacteristics`, `DeltaWorldModel`, `DeltaPowerExternal` `TypedDict` structures within `FeedbackDelta`.
+- **Data-Driven YAML Scenarios (Directive 006)**: Added `schema/scenarios.yaml` and refactored `scenarios.py` to parse ground-truth preset multi-agent scenarios dynamically from YAML via `hypostases.schemas.loader`. Added Directive 006 to `AGENTS.md`.
+- **Concurrency Operator Strategy Pattern**: Decomposed `step_env()` in `dynamics.py` into modular strategy resolver functions (`_resolve_shares_first`, `_resolve_pro_rata`, `_resolve_priority`, `_resolve_lottery`) with dedicated unit tests in `tests/test_concurrency_operators.py`.
+- **Modular Feedback Pipeline**: Refactored monolithic `feedback()` in `dynamics.py` into composable single-responsibility helpers (`_feedback_request`, `_feedback_share`, `_feedback_withdraw`, `_feedback_punish`, `_apply_cross_cutting_c`, `_apply_crowding_out`, `_compute_world_surprise`).
+- **Inference Module Modularisation**: Extracted generic systematic particle resampling into `src/hypostases/inference/resampling.py` and state space prior sampling into `src/hypostases/inference/prior.py`.
+- **Global Constant Immutability**: Frozen numpy array constants `ACTION_COSTS` and `DEFAULT_XI` with `writeable = False` to prevent accidental runtime state mutation.
+- **Pytest Factory Fixture**: Enriched `tests/conftest.py` with `make_state` factory fixture and `default_delta_log` fixture, eliminating inline `AgentState` boilerplate across 15+ test files.
+
+### Verified
+- 169 / 169 tests passing (`pytest -q`), zero `ruff check` errors, `ruff format --check` clean.
+
 ## [0.3.0] - 2026-08-11
 
 ### Added

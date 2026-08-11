@@ -119,7 +119,7 @@ HYPOSTASES is fundamentally engineered to model **Machine Learning Agents and Au
 # Install package in development mode
 pip install -e ".[dev]"
 
-# Run full test suite (158 tests)
+# Run full test suite (169 tests)
 pytest
 
 # Code quality & formatting

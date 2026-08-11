@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from hypostases.engine.constants import LIKELIHOOD_MIN, PUNISH_RESERVE_COST
+from hypostases.engine.constants import LIKELIHOOD_MIN, PUNISH_RESERVE_COST, SOFTMAX_EPSILON
 from hypostases.engine.dynamics import GOAL_SPEC, goal_probs
 from hypostases.engine.types import Action, ActionType, AgentState, GoalCategory, K
 from hypostases.schemas import declared_simplification
@@ -71,6 +71,7 @@ def action_likelihood(
     Phase 2 addition: ``_is_infeasible`` short-circuits to LIKELIHOOD_MIN before the
     Gaussian evaluation when the action is physically impossible for this particle.
     """
+    amount_sd = max(amount_sd, SOFTMAX_EPSILON)
     if _is_infeasible(agent, observed_action, pool_belief):
         return LIKELIHOOD_MIN
     probs = goal_probs(agent, xi, pool_belief=pool_belief)

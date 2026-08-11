@@ -12,7 +12,7 @@ dynamically inside pi_decision / _goal_probs.
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from enum import Enum
+from enum import StrEnum
 from typing import TypedDict
 
 import numpy as np
@@ -20,7 +20,7 @@ import numpy as np
 from hypostases.engine._math import compute_omega, softmax
 
 
-class GoalCategory(str, Enum):
+class GoalCategory(StrEnum):
     SURVIVAL = "SURVIVAL"
     ACQUISITION = "ACQUISITION"
     RELATIONAL = "RELATIONAL"
@@ -31,7 +31,7 @@ K: tuple[GoalCategory, ...] = tuple(GoalCategory)
 N_K: int = len(GoalCategory)
 
 
-class ActionType(str, Enum):
+class ActionType(StrEnum):
     REQUEST = "REQUEST"
     SHARE = "SHARE"
     WITHDRAW = "WITHDRAW"
@@ -137,14 +137,31 @@ class DeltaLog(TypedDict, total=False):
     actions_log: dict[str, Action]
 
 
+class DeltaCharacteristics(TypedDict, total=False):
+    reserve: float
+    mood: float
+
+
+class DeltaWorldModel(TypedDict, total=False):
+    mu: float
+    sigma2: float
+    replenish_rate_est: float
+    last_surprise: float
+
+
+class DeltaPowerExternal(TypedDict, total=False):
+    social_capital: float
+    time_budget: float
+
+
 @dataclass
 class FeedbackDelta:
     """φ ∈ Φ = ΔC × ΔW × ΔG × ΔR_ext (Part I §2.2.1, Part II §3.3)"""
 
-    delta_c: dict[str, float] = field(default_factory=dict)
-    delta_w: dict[str, float] = field(default_factory=dict)
+    delta_c: DeltaCharacteristics = field(default_factory=dict)
+    delta_w: DeltaWorldModel = field(default_factory=dict)
     delta_g: np.ndarray = field(default_factory=lambda: np.zeros(N_K))
-    delta_rho_ext: dict[str, float] = field(default_factory=dict)
+    delta_rho_ext: DeltaPowerExternal = field(default_factory=dict)
     delta_peer_beliefs: dict[str, float] = field(default_factory=dict)
 
 

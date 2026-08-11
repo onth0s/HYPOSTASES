@@ -1,0 +1,103 @@
+# HYPOSTASES Multi-Agent Preset Scenarios Schema
+# Ground truth scenario configurations loaded by hypostases.simulation.scenarios
+
+scenarios:
+  tragedy:
+    description: "Tragedy of the Commons baseline with greedy agents."
+    agents:
+      Greedy_1:
+        c: {reserve: 5.0, sociality: 0.1}
+        w: {mu: 10.0}
+        g: {u: [5.0, 5.0, 0.0, 0.0]}
+      Greedy_2:
+        c: {reserve: 4.0, sociality: 0.2}
+        w: {mu: 10.0}
+        g: {u: [6.0, 4.0, 0.0, 0.0]}
+      Greedy_3:
+        c: {reserve: 6.0, sociality: 0.1}
+        w: {mu: 10.0}
+        g: {u: [4.0, 6.0, 0.0, 0.0]}
+
+  altruism:
+    description: "Cooperative agents with high sociality and relational goals."
+    agents:
+      Coop_1:
+        c: {reserve: 15.0, sociality: 0.9}
+        w: {mu: 10.0}
+        g: {u: [1.0, 1.0, 8.0, 0.0]}
+      Coop_2:
+        c: {reserve: 12.0, sociality: 0.8}
+        w: {mu: 10.0}
+        g: {u: [1.0, 1.0, 7.0, 0.0]}
+      Coop_3:
+        c: {reserve: 14.0, sociality: 0.85}
+        w: {mu: 10.0}
+        g: {u: [1.0, 1.0, 9.0, 0.0]}
+
+  freerider:
+    description: "Cooperative majority paired with a free-riding defector."
+    agents:
+      Coop_A:
+        c: {reserve: 12.0, sociality: 0.8}
+        w: {mu: 10.0}
+        g: {u: [1.0, 1.0, 6.0, 0.0]}
+      Coop_B:
+        c: {reserve: 11.0, sociality: 0.75}
+        w: {mu: 10.0}
+        g: {u: [1.0, 1.0, 5.0, 0.0]}
+      FreeRider:
+        c: {reserve: 8.0, sociality: 0.1}
+        w: {mu: 10.0}
+        g: {u: [2.0, 2.0, 0.0, 8.0]}
+
+  punishment:
+    description: "Altruistic punishment setup with defector, passive cooperator, and vigilante."
+    agents:
+      Defector:
+        c: {reserve: 15.0, sociality: 0.1}
+        w: {mu: 10.0}
+        g: {u: [1.0, 2.0, 0.0, 8.0]}
+      PassiveCoop:
+        c: {reserve: 10.0, sociality: 0.8}
+        w: {mu: 10.0}
+        g: {u: [1.0, 1.0, 6.0, 0.0]}
+      Vigilante:
+        c: {reserve: 12.0, sociality: 0.9, resilience: 0.8}
+        w: {mu: 10.0, peer_beliefs: {Defector: 15.0}}
+        g: {u: [1.0, 1.0, 5.0, 2.0]}
+
+  inequity:
+    description: "Inequity aversion scenario with wealthy and deprived agents."
+    agents:
+      Wealthy:
+        c: {reserve: 25.0, sociality: 0.5}
+        w: {mu: 10.0, peer_beliefs: {Deprived: 3.0}}
+        g: {u: [1.0, 4.0, 2.0, 1.0]}
+      Deprived:
+        c: {reserve: 3.0, sociality: 0.5, mood: 0.0}
+        w: {mu: 10.0, peer_beliefs: {Wealthy: 25.0}}
+        g: {u: [3.0, 3.0, 1.0, 1.0]}
+
+  deceptive:
+    description: "Deceptive signaling scenario with hidden reserve state."
+    agents:
+      DeceptiveAgent:
+        c: {reserve: 18.0, sociality: 0.2}
+        w: {mu: 10.0}
+        g: {u: [6.0, 1.0, 0.0, 0.0]}
+      Observer:
+        c: {reserve: 10.0, sociality: 0.7}
+        w: {mu: 10.0, peer_beliefs: {DeceptiveAgent: 2.0}}
+        g: {u: [1.0, 1.0, 5.0, 0.0]}
+
+  crowding_out:
+    description: "Institutional crowding-out scenario under fine dilemma."
+    agents:
+      Agent_1:
+        c: {reserve: 10.0, sociality: 0.5}
+        w: {mu: 10.0}
+        g: {u: [2.0, 2.0, 4.0, 2.0]}
+      Agent_2:
+        c: {reserve: 10.0, sociality: 0.4}
+        w: {mu: 10.0}
+        g: {u: [2.0, 2.0, 4.0, 2.0]}

@@ -75,7 +75,7 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
 
 
 def main_sweep(args: argparse.Namespace) -> None:
-    res = run_sweep(
+    res = run_sweep_benchmark(
         steps_list=args.steps,
         n_particles=args.particles,
         seeds=args.seeds,

@@ -32,14 +32,9 @@ def test_scarcity_kappa_reads_const_directly(monkeypatch):
     assert high_kappa_costs[0] > base_costs[0]
 
 
-def test_evolve_and_evolve_rb_agree_on_non_world_fields():
+def test_evolve_and_evolve_rb_agree_on_non_world_fields(make_state):
     """S-1 regression: evolve and evolve_rb apply identical updates to c, g, rho_ext, peer_beliefs."""
-    ag1 = AgentState(
-        c=Characteristics(reserve=10.0, mood=0.5),
-        w=WorldModel(),
-        g=GoalHierarchy(u=np.array([1.0, 1.0, 1.0, 1.0])),
-        rho_ext=PowerExternal(social_capital=1.0, time_budget=10.0),
-    )
+    ag1 = make_state(reserve=10.0, mood=0.5, social_capital=1.0, time_budget=10.0)
     ag2 = ag1.clone()
 
     act = Action(ActionType.SHARE, amount=2.0)
@@ -64,14 +59,9 @@ def test_evolve_and_evolve_rb_agree_on_non_world_fields():
     assert ag1.rho_ext.time_budget == pytest.approx(ag2.rho_ext.time_budget)
 
 
-def test_status_withdraw_fee_negated_semantics():
+def test_status_withdraw_fee_negated_semantics(make_state):
     """C-4 verification: WITHDRAW feedback under active fee negates STATUS utility gain."""
-    ag = AgentState(
-        c=Characteristics(sociality=0.2),
-        w=WorldModel(),
-        g=GoalHierarchy(),
-        rho_ext=PowerExternal(),
-    )
+    ag = make_state(sociality=0.2)
     act = Action(ActionType.WITHDRAW)
 
     log_no_fee: DeltaLog = {"enable_withdraw_fee": False}

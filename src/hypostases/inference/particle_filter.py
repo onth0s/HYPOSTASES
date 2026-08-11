@@ -21,17 +21,19 @@ from hypostases.engine import (
     Action,
     ActionType,
     AgentState,
-    Characteristics,
-    GoalHierarchy,
-    PowerExternal,
-    WorldModel,
     action_likelihood,
     evolve,
     evolve_rb,
     feedback,
     step_env,
 )
-from hypostases.engine.constants import ROUGHEN_RESERVE_SD
+from hypostases.inference.prior import sample_prior
+from hypostases.inference.resampling import (
+    resample_joint_particles as _resample_joint,
+)
+from hypostases.inference.resampling import (
+    resample_particles as _resample,
+)
 
 
 def _normalize_and_maybe_resample(
@@ -64,59 +66,6 @@ class Particle:
 
     sigma: AgentState
     weight: float
-
-
-def sample_prior(
-    reserve_range: tuple[float, float] = (1.0, 20.0),
-    prior_type: str = "uniform",
-    goal_bias: dict[str, float] | None = None,
-    rng: np.random.Generator | None = None,
-) -> AgentState:
-    """Declared prior over Σ = C × W × G × R_ext (Part VII §10.2 step 1).
-
-    Uses explicit rng generator parameter.
-
-    Parameters:
-        goal_bias: Optional mapping from GoalCategory name (str) to additive bias
-            applied to the sampled ``u`` vector. Used by ``infer_hierarchical`` to
-            concentrate the micro-pass prior around the macro-pass dominant goal cluster.
-    """
-    if rng is None:
-        rng = np.random.default_rng()
-
-    if prior_type == "truncated_normal":
-        while True:
-            val = rng.normal(loc=10.0, scale=4.0)
-            if reserve_range[0] <= val <= reserve_range[1]:
-                reserve_val = float(val)
-                break
-    elif prior_type == "log_normal":
-        val = rng.lognormal(mean=2.2226, sigma=0.4)
-        reserve_val = float(np.clip(val, reserve_range[0], reserve_range[1]))
-    else:
-        reserve_val = float(rng.uniform(*reserve_range))
-
-    c = Characteristics(
-        sociality=float(rng.uniform(0.0, 1.0)),
-        reserve=reserve_val,
-    )
-    w = WorldModel()
-    u = rng.normal(loc=[1.0, 1.0, 1.0, 1.0], scale=0.8)
-
-    if goal_bias is not None:
-        from hypostases.engine.types import GoalCategory, K
-
-        for k_name, bias_val in goal_bias.items():
-            try:
-                goal_cat = GoalCategory(k_name)
-                idx = list(K).index(goal_cat)
-                u[idx] += bias_val
-            except (ValueError, IndexError):
-                pass  # unknown goal name — silently skip
-
-    g = GoalHierarchy(u=u)
-    rho_ext = PowerExternal()
-    return AgentState(c=c, w=w, g=g, rho_ext=rho_ext)
 
 
 def infer(
@@ -224,37 +173,6 @@ def infer(
     return particles
 
 
-def _resample(
-    particles: list[Particle],
-    n: int,
-    roughen_reserve_sd: float = ROUGHEN_RESERVE_SD,
-    rng: np.random.Generator | None = None,
-) -> list[Particle]:
-    """Part VII §12.7: Systematic resampling with post-resample reserve roughening."""
-    if rng is None:
-        rng = np.random.default_rng()
-
-    reserves = np.array([p.sigma.c.reserve for p in particles])
-    std_reserve = float(np.std(reserves))
-
-    weights = np.array([p.weight for p in particles])
-    cumsum = np.cumsum(weights)
-    u0 = rng.uniform(0.0, 1.0 / n)
-    positions = u0 + np.arange(n) / n
-    idx = np.searchsorted(cumsum, positions)
-    idx = np.clip(idx, 0, len(particles) - 1)
-    resampled = [Particle(sigma=particles[i].sigma.clone(), weight=1.0 / n) for i in idx]
-
-    # Dynamic scaling based on incoming sample spread
-    dynamic_sd = max(0.05, roughen_reserve_sd * std_reserve)
-
-    if dynamic_sd > 0:
-        for p in resampled:
-            p.sigma.c.reserve = max(0.0, p.sigma.c.reserve + float(rng.normal(0, dynamic_sd)))
-
-    return resampled
-
-
 @dataclass
 class JointParticle:
     """Single particle representing joint hypotheses over all agents' primitive states."""
@@ -342,42 +260,6 @@ def infer_joint(
                     evolve(p.sigmas[name], phi)
 
     return particles
-
-
-def _resample_joint(
-    particles: list[JointParticle],
-    n: int,
-    roughen_reserve_sd: float = ROUGHEN_RESERVE_SD,
-    rng: np.random.Generator | None = None,
-) -> list[JointParticle]:
-    """Resamples joint particles and applies adaptive roughening per agent state."""
-    if rng is None:
-        rng = np.random.default_rng()
-
-    weights = np.array([p.weight for p in particles])
-    cumsum = np.cumsum(weights)
-    u0 = rng.uniform(0.0, 1.0 / n)
-    positions = u0 + np.arange(n) / n
-    idx = np.searchsorted(cumsum, positions)
-    idx = np.clip(idx, 0, len(particles) - 1)
-
-    resampled = []
-    for i in idx:
-        sigmas_clone = {name: state.clone() for name, state in particles[i].sigmas.items()}
-        resampled.append(JointParticle(sigmas=sigmas_clone, weight=1.0 / n))
-
-    for name in particles[0].sigmas:
-        reserves = np.array([p.sigmas[name].c.reserve for p in particles])
-        std_reserve = float(np.std(reserves))
-        dynamic_sd = max(0.05, roughen_reserve_sd * std_reserve)
-
-        if dynamic_sd > 0:
-            for p in resampled:
-                p.sigmas[name].c.reserve = max(
-                    0.0, p.sigmas[name].c.reserve + float(rng.normal(0, dynamic_sd))
-                )
-
-    return resampled
 
 
 def infer_mean_field(

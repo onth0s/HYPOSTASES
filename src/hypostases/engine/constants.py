@@ -20,6 +20,7 @@ STATUS_RESERVE_THRESHOLD: Final[float] = 5.0
 
 # --- Action costs (per K goal category: [SURVIVAL, ACQUISITION, RELATIONAL, STATUS]) ---
 ACTION_COSTS: Final[np.ndarray] = np.array([5.0, 5.0, 3.0, 1.0])
+ACTION_COSTS.flags.writeable = False
 
 # --- Feedback coefficients ---
 REQUEST_MOOD_PENALTY: Final[float] = 0.1
@@ -91,6 +92,7 @@ CONTINUOUS_RESERVE_NOISE_SD: Final[float] = 0.05
 
 # --- Defaults & Calibration ---
 DEFAULT_XI: Final[np.ndarray] = np.array([0.2, 0.2, 0.2, 0.2])
+DEFAULT_XI.flags.writeable = False
 DEFAULT_POOL_INIT: Final[float] = 10.0
 MOOD_DECAY_RATE: Final[float] = 0.1
 SIGMA2_MAX: Final[float] = 20.0
