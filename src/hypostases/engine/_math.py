@@ -7,7 +7,6 @@ import numpy as np
 import hypostases.engine.constants as const
 from hypostases.engine.constants import (
     ACTION_COSTS,
-    SCARCITY_COST_KAPPA,
     SOFTMAX_EPSILON,
 )
 
@@ -38,13 +37,7 @@ def dynamic_action_costs(pool_belief: float) -> np.ndarray:
     When pool_belief >= SCARCITY_POOL_THRESHOLD, returns unmodified ACTION_COSTS.
     """
     thresh = globals().get("SCARCITY_POOL_THRESHOLD", const.SCARCITY_POOL_THRESHOLD)
-    kappa = const.SCARCITY_COST_KAPPA
-    # If module-level SCARCITY_COST_KAPPA has been monkeypatched to a different value, respect it
-    if (
-        "SCARCITY_COST_KAPPA" in globals()
-        and globals()["SCARCITY_COST_KAPPA"] != SCARCITY_COST_KAPPA
-    ):
-        kappa = globals()["SCARCITY_COST_KAPPA"]
+    kappa = globals().get("SCARCITY_COST_KAPPA", const.SCARCITY_COST_KAPPA)
 
     scarcity_pressure = max(0.0, thresh - pool_belief) / (pool_belief + SOFTMAX_EPSILON)
     multiplier = 1.0 + kappa * scarcity_pressure
