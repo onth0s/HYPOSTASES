@@ -1,8 +1,8 @@
 # HYPOSTASES — Cognitive Expansion Fronts Index
 
-Spec Ref: `misc/next-steps.md`
+Spec Ref: `misc/next-steps.md` | Ratified Compass: [`docs/roadmap_compass.md`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/roadmap_compass.md)
 
-All 13 cognitive expansion seeds from `misc/next-steps.md` have been spliced into individual, self-contained Front files adhering to project naming conventions (`front_XX_<name>.md`).
+All 14 cognitive expansion specs have been spliced into individual, self-contained Front files adhering to project naming conventions (`front_XX_<name>.md`).
 
 ---
 
