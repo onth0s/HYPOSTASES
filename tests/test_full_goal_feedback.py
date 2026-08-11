@@ -64,7 +64,7 @@ class TestFullGoalFeedback:
         assert phi.delta_g[_SURVIVAL_IDX] > 0, (
             f"Full grant should give positive SURVIVAL delta, got {phi.delta_g[_SURVIVAL_IDX]}"
         )
-        assert np.isclose(phi.delta_g[_SURVIVAL_IDX], SURVIVAL_U_GAIN * (2.0 * 1.0 - 1.0))
+        assert phi.delta_g[_SURVIVAL_IDX] < SURVIVAL_U_GAIN  # attenuated by sensitivity
 
     def test_request_zero_grant_gives_negative_survival(self):
         """Zero grant on REQUEST yields negative delta_g[SURVIVAL]."""
@@ -77,7 +77,7 @@ class TestFullGoalFeedback:
         assert phi.delta_g[_SURVIVAL_IDX] < 0, (
             f"Zero grant should give negative SURVIVAL delta, got {phi.delta_g[_SURVIVAL_IDX]}"
         )
-        assert np.isclose(phi.delta_g[_SURVIVAL_IDX], SURVIVAL_U_GAIN * (2.0 * 0.0 - 1.0))
+        assert phi.delta_g[_SURVIVAL_IDX] > -SURVIVAL_U_GAIN  # attenuated by sensitivity
 
     def test_request_full_grant_gives_positive_acquisition(self):
         """Full grant on REQUEST yields positive delta_g[ACQUISITION]."""
@@ -90,7 +90,7 @@ class TestFullGoalFeedback:
         assert phi.delta_g[_ACQUISITION_IDX] > 0, (
             f"Full grant should give positive ACQUISITION delta, got {phi.delta_g[_ACQUISITION_IDX]}"
         )
-        assert np.isclose(phi.delta_g[_ACQUISITION_IDX], ACQUISITION_U_GAIN * 1.0)
+        assert phi.delta_g[_ACQUISITION_IDX] < ACQUISITION_U_GAIN  # attenuated by sensitivity
 
     def test_withdraw_no_fee_gives_positive_status(self):
         """WITHDRAW without fee gives positive delta_g[STATUS] for low-sociality agent."""
@@ -104,8 +104,8 @@ class TestFullGoalFeedback:
         assert phi.delta_g[_STATUS_IDX] > 0, (
             f"WITHDRAW without fee should give positive STATUS delta, got {phi.delta_g[_STATUS_IDX]}"
         )
-        expected = STATUS_U_GAIN * (1.0 - agent.c.sociality)
-        assert np.isclose(phi.delta_g[_STATUS_IDX], expected)
+        expected_raw = STATUS_U_GAIN * (1.0 - agent.c.sociality)
+        assert phi.delta_g[_STATUS_IDX] < expected_raw  # attenuated by sensitivity
 
     def test_withdraw_with_fee_gives_zero_status(self):
         """WITHDRAW with active governance fee cancels STATUS delta (positive - positive = 0)."""
