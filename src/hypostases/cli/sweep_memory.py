@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 
 from hypostases.engine import Action, ActionType, evolve, feedback
+from hypostases.engine.constants import SIGMA2_MAX, SIGMA2_MIN
 from hypostases.simulation.harness import build_agent
 
 
@@ -59,7 +60,9 @@ def main_sweep_memory(args: argparse.Namespace) -> None:
     modes = ["variance", "precision"]
 
     print("=== HYPOSTASES Memory Decay Stability Sweep ===")
-    print(f"Running for {args.steps} steps. SIGMA2_MAX = 20.0, SIGMA2_MIN = 0.0001\n")
+    print(
+        f"Running for {args.steps} steps. SIGMA2_MAX = {SIGMA2_MAX:.1f}, SIGMA2_MIN = {SIGMA2_MIN}\n"
+    )
 
     for mode in modes:
         print(f"--- Mode: {mode.upper()} ---")

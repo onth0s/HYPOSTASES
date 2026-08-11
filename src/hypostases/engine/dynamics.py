@@ -35,6 +35,7 @@ from hypostases.engine.constants import (
     REQUEST_SOCIAL_COST,
     SHARE_MOOD_BONUS,
     SHARE_SOCIAL_GAIN,
+    SIGMA2_MAX,
     SIGMA2_MIN,
     STATUS_COUPLING,
     STATUS_RESERVE_THRESHOLD,
@@ -341,11 +342,10 @@ def feedback(
         delta_c["mood"] = -WITHDRAW_MOOD_PENALTY * agent.c.sociality
         delta_rho_ext["social_capital"] = -WITHDRAW_SOCIAL_COST
 
-        # STATUS reinforced by autonomous withdrawal; cancelled under active governance fee
-        # (mirrors ACQUISITION crowding-out logic: fee-presence negates the STATUS gain)
+        # STATUS reinforced by autonomous withdrawal; penalized under active governance fee
         status_delta = STATUS_U_GAIN * (1.0 - agent.c.sociality)
         if delta_log.get("enable_withdraw_fee", False):
-            status_delta -= STATUS_U_GAIN * (1.0 - agent.c.sociality)
+            status_delta = -STATUS_U_GAIN * (1.0 - agent.c.sociality)
         delta_g[_STATUS_IDX] = status_delta
 
     elif action.action_type == ActionType.PUNISH:
@@ -415,8 +415,8 @@ def feedback(
     )
 
 
-def evolve(agent: AgentState, phi: FeedbackDelta) -> None:
-    """Part II §3.4: State Evolution Stage integrating deltas into primitives."""
+def _integrate_non_world(agent: AgentState, phi: FeedbackDelta) -> None:
+    """Integrates all primitive state fields EXCEPT the world model (shared by evolve and evolve_rb)."""
     # Integrate Characteristics c
     if "reserve" in phi.delta_c:
         agent.c.reserve = max(0.0, agent.c.reserve + phi.delta_c["reserve"])
@@ -425,30 +425,6 @@ def evolve(agent: AgentState, phi: FeedbackDelta) -> None:
 
     # Baseline mood decay toward zero (Phase 2.4)
     agent.c.mood *= 1.0 - MOOD_DECAY_RATE
-
-    # Integrate World Model w
-    if "mu" in phi.delta_w:
-        agent.w.mu += phi.delta_w["mu"]
-    if "replenish_rate_est" in phi.delta_w:
-        agent.w.replenish_rate_est += phi.delta_w["replenish_rate_est"]
-    if "sigma2" in phi.delta_w:
-        agent.w.sigma2 = max(SIGMA2_MIN, agent.w.sigma2 + phi.delta_w["sigma2"])
-    if "last_surprise" in phi.delta_w:
-        agent.w.last_surprise = phi.delta_w["last_surprise"]
-
-    # Apply memory decay to belief confidence (Phase 2)
-    from hypostases.engine.constants import SIGMA2_MAX
-
-    decay_mode = getattr(agent, "decay_mode", "variance")
-    if decay_mode == "variance":
-        agent.w.sigma2 = agent.w.sigma2 + (SIGMA2_MAX - agent.w.sigma2) * (
-            1.0 - agent.c.memory_decay
-        )
-    elif decay_mode == "precision":
-        tau = 1.0 / max(agent.w.sigma2, 1e-9)
-        tau_min = 1.0 / SIGMA2_MAX
-        tau = tau + (tau_min - tau) * (1.0 - agent.c.memory_decay)
-        agent.w.sigma2 = max(SIGMA2_MIN, 1.0 / max(tau, 1e-9))
 
     # Integrate Peer Beliefs (Theory of Mind)
     for peer_name, val in phi.delta_peer_beliefs.items():
@@ -466,6 +442,33 @@ def evolve(agent: AgentState, phi: FeedbackDelta) -> None:
 
     # Tier-1 tick: decrement time_budget (reset at Tier-2 epoch boundary — declared out of scope)
     agent.rho_ext.time_budget = max(0.0, agent.rho_ext.time_budget - 1.0)
+
+
+def evolve(agent: AgentState, phi: FeedbackDelta) -> None:
+    """Part II §3.4: State Evolution Stage integrating deltas into primitives."""
+    _integrate_non_world(agent, phi)
+
+    # Integrate World Model w
+    if "mu" in phi.delta_w:
+        agent.w.mu += phi.delta_w["mu"]
+    if "replenish_rate_est" in phi.delta_w:
+        agent.w.replenish_rate_est += phi.delta_w["replenish_rate_est"]
+    if "sigma2" in phi.delta_w:
+        agent.w.sigma2 = max(SIGMA2_MIN, agent.w.sigma2 + phi.delta_w["sigma2"])
+    if "last_surprise" in phi.delta_w:
+        agent.w.last_surprise = phi.delta_w["last_surprise"]
+
+    # Apply memory decay to belief confidence (Phase 2)
+    decay_mode = getattr(agent, "decay_mode", "variance")
+    if decay_mode == "variance":
+        agent.w.sigma2 = agent.w.sigma2 + (SIGMA2_MAX - agent.w.sigma2) * (
+            1.0 - agent.c.memory_decay
+        )
+    elif decay_mode == "precision":
+        tau = 1.0 / max(agent.w.sigma2, 1e-9)
+        tau_min = 1.0 / SIGMA2_MAX
+        tau = tau + (tau_min - tau) * (1.0 - agent.c.memory_decay)
+        agent.w.sigma2 = max(SIGMA2_MIN, 1.0 / max(tau, 1e-9))
 
 
 def evolve_rb(
@@ -497,12 +500,7 @@ def evolve_rb(
         process_noise_q: Kalman process noise Q (default: KALMAN_PROCESS_NOISE_Q).
         obs_noise_r: Kalman observation noise R (default: KALMAN_OBS_NOISE_R).
     """
-    # --- Characteristics (identical to evolve) ---
-    if "reserve" in phi.delta_c:
-        agent.c.reserve = max(0.0, agent.c.reserve + phi.delta_c["reserve"])
-    if "mood" in phi.delta_c:
-        agent.c.mood = max(-1.0, min(1.0, agent.c.mood + phi.delta_c["mood"]))
-    agent.c.mood *= 1.0 - MOOD_DECAY_RATE
+    _integrate_non_world(agent, phi)
 
     # --- World Model — Kalman predict-update (replaces EMA) ---
     # Predict
@@ -520,20 +518,3 @@ def evolve_rb(
 
     # Track last_surprise for regime-shift detection (Contention 2)
     agent.w.last_surprise = surprise
-
-    # --- Peer Beliefs (identical to evolve) ---
-    for peer_name, val in phi.delta_peer_beliefs.items():
-        prev = agent.w.peer_beliefs.get(peer_name, val)
-        agent.w.peer_beliefs[peer_name] = PEER_BELIEF_ALPHA * val + (1.0 - PEER_BELIEF_ALPHA) * prev
-
-    # --- Goal Hierarchy (identical to evolve) ---
-    agent.g.u = (1.0 - UTILITY_DECAY_RATE) * agent.g.u + phi.delta_g
-
-    # --- External Power (identical to evolve) ---
-    if "social_capital" in phi.delta_rho_ext:
-        agent.rho_ext.social_capital = max(
-            0.0, agent.rho_ext.social_capital + phi.delta_rho_ext["social_capital"]
-        )
-
-    # Tier-1 tick
-    agent.rho_ext.time_budget = max(0.0, agent.rho_ext.time_budget - 1.0)

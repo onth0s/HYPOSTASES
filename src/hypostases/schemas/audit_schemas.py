@@ -130,7 +130,7 @@ def audit_amount_branches(
     """Audits the goal SPEC amount functions for degenerate state-independent constants."""
     violations = []
     for goal, branch in goal_spec.items():
-        amounts = [branch.amount_fn(state, pool=10.0) for state in states]
+        amounts = [branch.amount_fn(state, 10.0) for state in states]
         if len(set(amounts)) == 1:
             simpl_name = f"amount_{goal.value.lower()}"
             if not is_simplification_declared(simpl_name):

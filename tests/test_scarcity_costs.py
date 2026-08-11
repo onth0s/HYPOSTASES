@@ -48,10 +48,10 @@ class TestDynamicActionCosts:
 
     def test_kappa_zero_yields_base_costs(self, monkeypatch):
         """κ=0 disables scarcity inflation entirely."""
-        import hypostases.engine._math as m
+        import hypostases.engine.constants as const
 
-        monkeypatch.setattr(m, "SCARCITY_COST_KAPPA", 0.0)
-        costs = m.dynamic_action_costs(0.001)
+        monkeypatch.setattr(const, "SCARCITY_COST_KAPPA", 0.0)
+        costs = dynamic_action_costs(0.001)
         np.testing.assert_array_almost_equal(costs, ACTION_COSTS)
 
 

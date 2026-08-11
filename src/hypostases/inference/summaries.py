@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from hypostases.engine import AgentState, K
+from hypostases.engine import AgentState, K, goal_probs
 from hypostases.inference.particle_filter import Particle
 
 
@@ -41,13 +41,21 @@ def summarize_kalman(particles: list[Particle]) -> dict[str, float | list[float]
     }
 
 
-def goal_posterior(particles: list[Particle]) -> dict[str, float]:
+def goal_posterior(
+    particles: list[Particle],
+    xi: np.ndarray | None = None,
+    pool_belief: float = 10.0,
+) -> dict[str, float]:
     """Part VII §10.1: Multimodal goal posterior over category dominant goals.
 
-    In v4, dominant goal is argmax of transient softmax policy allocation pi = softmax(u).
+    Dominant goal is argmax of transient softmax policy allocation computed via goal_probs(sigma, xi, pool_belief).
     """
+    if xi is None:
+        xi = np.array([0.2, 0.2, 0.2, 0.2])
     weights = np.array([p.weight for p in particles])
-    dominant = [K[int(np.argmax(p.sigma.g.pi))].value for p in particles]
+    dominant = [
+        K[int(np.argmax(goal_probs(p.sigma, xi, pool_belief=pool_belief)))].value for p in particles
+    ]
     out = {k.value: 0.0 for k in K}
     for d, w in zip(dominant, weights, strict=True):
         out[d] += w

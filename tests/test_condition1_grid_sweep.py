@@ -50,7 +50,6 @@ def _run_single_trajectory(
     const.UTILITY_DECAY_RATE = decay
     const.SCARCITY_POOL_THRESHOLD = 15.0
 
-
     pool = 3.0  # Initialized below SCARCITY_POOL_THRESHOLD (5.0) to active scarcity cost scaling
 
     try:
@@ -72,7 +71,6 @@ def _run_single_trajectory(
         const.GOVERNANCE_SCALING_LAMBDA = orig_lam
         const.UTILITY_DECAY_RATE = orig_decay
         const.SCARCITY_POOL_THRESHOLD = orig_thresh
-
 
     u_history_arr = np.array(u_history)
     u_0_vec = u_history_arr[0]

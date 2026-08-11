@@ -11,12 +11,15 @@ RNG state is explicitly passed via numpy.random.Generator (no global RNG state).
 from __future__ import annotations
 
 import warnings
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 
 from hypostases.engine import (
     Action,
+    ActionType,
     AgentState,
     Characteristics,
     GoalHierarchy,
@@ -29,6 +32,30 @@ from hypostases.engine import (
     step_env,
 )
 from hypostases.engine.constants import ROUGHEN_RESERVE_SD
+
+
+def _normalize_and_maybe_resample(
+    particles: list[Any],
+    n_particles: int,
+    ess_threshold_ratio: float,
+    collapse_warning_msg: str,
+    resample_fn: Callable,
+    rng: np.random.Generator,
+) -> list[Any]:
+    """Normalizes weights, warns on collapse, and resamples if ESS is below threshold."""
+    total_w = sum(p.weight for p in particles)
+    if total_w <= 0:
+        warnings.warn(collapse_warning_msg, stacklevel=2)
+        for p in particles:
+            p.weight = 1.0 / n_particles
+    else:
+        for p in particles:
+            p.weight /= total_w
+
+    ess = 1.0 / sum(p.weight**2 for p in particles)
+    if ess < ess_threshold_ratio * n_particles:
+        particles = resample_fn(particles, n_particles, rng=rng)
+    return particles
 
 
 @dataclass
@@ -155,22 +182,14 @@ def infer(
             lik = action_likelihood(p.sigma, a_obs, xi, pool_belief=pool_t)
             p.weight *= lik
 
-        total_w = sum(p.weight for p in particles)
-        if total_w <= 0:
-            warnings.warn(
-                "Particle weight collapse detected — resetting to uniform",
-                stacklevel=2,
-            )
-            for p in particles:
-                p.weight = 1.0 / n_particles
-        else:
-            for p in particles:
-                p.weight /= total_w
-
-        # 2. Resample if effective sample size collapsed (§10.2 step 4)
-        ess = 1.0 / sum(p.weight**2 for p in particles)
-        if ess < ess_threshold_ratio * n_particles:
-            particles = _resample(particles, n_particles, rng=rng)
+        particles = _normalize_and_maybe_resample(
+            particles,
+            n_particles,
+            ess_threshold_ratio,
+            "Particle weight collapse detected — resetting to uniform",
+            _resample,
+            rng,
+        )
 
         # 3. Propose (§10.2 step 2): propagate using step_env / feedback / evolve
         _, delta_log = step_env(
@@ -183,7 +202,7 @@ def infer(
         # Surprise is observation-fixed: computed once, shared across all particles
         pool_after = delta_log["pool_after"]
         if use_rao_blackwell:
-            own_impact = a_obs.amount if a_obs.action_type.value == "SHARE" else 0.0
+            own_impact = a_obs.amount if a_obs.action_type == ActionType.SHARE else 0.0
             surprise_val = float((pool_after - pool_t) - own_impact)
 
         for p in particles:
@@ -290,19 +309,14 @@ def infer_joint(
                 lik *= action_likelihood(p.sigmas[name], act, xi, pool_belief=pool_t)
             p.weight *= lik
 
-        total_w = sum(p.weight for p in particles)
-        if total_w <= 0:
-            warnings.warn("Joint particle weight collapse — resetting to uniform", stacklevel=2)
-            for p in particles:
-                p.weight = 1.0 / n_particles
-        else:
-            for p in particles:
-                p.weight /= total_w
-
-        # 2. Resample if ESS collapsed
-        ess = 1.0 / sum(p.weight**2 for p in particles)
-        if ess < ess_threshold_ratio * n_particles:
-            particles = _resample_joint(particles, n_particles, rng=rng)
+        particles = _normalize_and_maybe_resample(
+            particles,
+            n_particles,
+            ess_threshold_ratio,
+            "Joint particle weight collapse — resetting to uniform",
+            _resample_joint,
+            rng,
+        )
 
         # 3. Propagate all particles
         actions_list = list(a_obs_dict.items())
@@ -321,7 +335,7 @@ def infer_joint(
                     agent_name=name,
                 )
                 if use_rao_blackwell:
-                    own_impact = act.amount if act.action_type.value == "SHARE" else 0.0
+                    own_impact = act.amount if act.action_type == ActionType.SHARE else 0.0
                     surprise_val = float((pool_after - pool_t) - own_impact)
                     evolve_rb(p.sigmas[name], phi, surprise=surprise_val)
                 else:
@@ -406,23 +420,16 @@ def infer_mean_field(
     for a_obs_dict, pool_t in zip(observed_actions, observed_pool_trace, strict=True):
         for name in agent_names:
             act = a_obs_dict[name]
-            particles = filters[name]
-            for p in particles:
-                lik = action_likelihood(p.sigma, act, xi, pool_belief=pool_t)
-                p.weight *= lik
-
-            total_w = sum(p.weight for p in particles)
-            if total_w <= 0:
-                warnings.warn(f"Mean-Field particle collapse for {name} — resetting", stacklevel=2)
-                for p in particles:
-                    p.weight = 1.0 / n_particles
-            else:
-                for p in particles:
-                    p.weight /= total_w
-
-            ess = 1.0 / sum(p.weight**2 for p in particles)
-            if ess < ess_threshold_ratio * n_particles:
-                filters[name] = _resample(particles, n_particles, rng=rng)
+            for p in filters[name]:
+                p.weight *= action_likelihood(p.sigma, act, xi, pool_belief=pool_t)
+            filters[name] = _normalize_and_maybe_resample(
+                filters[name],
+                n_particles,
+                ess_threshold_ratio,
+                f"Mean-Field particle collapse for {name} — resetting",
+                _resample,
+                rng,
+            )
 
         actions_list = list(a_obs_dict.items())
         _, delta_log = step_env(pool_t, actions_list, concurrency_operator=concurrency_operator)

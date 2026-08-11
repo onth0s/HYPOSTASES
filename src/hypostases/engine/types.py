@@ -103,7 +103,11 @@ class GoalHierarchy:
 
     @property
     def pi(self) -> np.ndarray:
-        """Dynamic/transient policy allocation π = softmax(u) (v4 read-only helper)."""
+        """Raw, temperature-free policy allocation view π_raw = softmax(u).
+
+        Note: Forward decision dynamics and particle inference readouts use temperature-scaled
+        and affordability-adjusted allocations via ``goal_probs(sigma, xi, pool_belief)``.
+        """
         return softmax(self.u)
 
     def clone(self) -> GoalHierarchy:
