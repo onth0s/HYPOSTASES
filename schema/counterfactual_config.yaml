@@ -1,0 +1,12 @@
+# HYPOSTASES Wave 1 Front 04 — Counterfactual Simulation Configuration Schema
+# Ground truth configuration for multi-future lookahead search and EvoCF rollout parameters.
+
+counterfactual_simulation:
+  enabled: true
+  lookahead_depth: 3            # Horizon K for hypothetical forward rollouts
+  branching_factor: 4           # Number of discrete action trajectory branches B
+  mcts_simulations: 25          # Number of MCTS simulation iterations per decision step
+  discount_factor: 0.95         # Temporal utility discount factor gamma
+  risk_penalty_lambda: 0.1      # Risk aversion variance coefficient lambda
+  c_puct: 1.414                 # UCT exploration constant for Monte Carlo search
+  evocf_mutation_rate: 0.2      # Evolutionary Counterfactual mutation probability
