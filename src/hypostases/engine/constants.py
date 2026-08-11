@@ -67,8 +67,8 @@ INEQUITY_AVERSION_GAIN: Final[float] = 0.05
 CROWDING_OUT_HYSTERESIS_GAIN: Final[float] = 0.05
 
 # --- Latent Utility Regularization ---
-# Leaky integrator decay rate applied to g.u each tick to ensure attractor stationarity
-UTILITY_DECAY_RATE: Final[float] = 0.05
+# Leaky integrator decay rate applied to g.u each tick (0.0 by default to preserve pure dynamics)
+UTILITY_DECAY_RATE: Final[float] = 0.0
 
 
 # --- Rao-Blackwellization: Kalman world-model noise parameters (Phase 4) ---

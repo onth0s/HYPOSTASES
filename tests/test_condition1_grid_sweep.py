@@ -23,17 +23,12 @@ from hypostases.inference import sample_prior
 def _run_single_trajectory(
     kappa: float,
     lam: float,
+    decay: float,
     seed: int,
     n_steps: int = 500,
     n_agents: int = 5,
 ) -> tuple[np.ndarray, float, float]:
-    """Runs a single trajectory for given (kappa, lambda) and seed.
-
-    Returns:
-        displacement_unit_vector: d_hat = (u_500 - u_0) / ||u_500 - u_0||
-        v_initial: velocity in first 100 steps
-        v_final: velocity in final 100 steps
-    """
+    """Runs a single trajectory for given (kappa, lambda, decay) and seed."""
     rng = np.random.default_rng(seed)
     xi = np.array([0.2, 0.2, 0.2, 0.2])
 
@@ -42,14 +37,15 @@ def _run_single_trajectory(
 
     u_history = [u_0.copy()]
 
-    # Set dynamic constants temporarily if needed
     import hypostases.engine.constants as const
 
     orig_kappa = const.SCARCITY_COST_KAPPA
     orig_lam = const.GOVERNANCE_SCALING_LAMBDA
+    orig_decay = const.UTILITY_DECAY_RATE
 
     const.SCARCITY_COST_KAPPA = kappa
     const.GOVERNANCE_SCALING_LAMBDA = lam
+    const.UTILITY_DECAY_RATE = decay
 
     pool = 10.0
     try:
@@ -69,8 +65,9 @@ def _run_single_trajectory(
     finally:
         const.SCARCITY_COST_KAPPA = orig_kappa
         const.GOVERNANCE_SCALING_LAMBDA = orig_lam
+        const.UTILITY_DECAY_RATE = orig_decay
 
-    u_history_arr = np.array(u_history)  # shape (501, 4)
+    u_history_arr = np.array(u_history)
     u_0_vec = u_history_arr[0]
     u_100_vec = u_history_arr[100]
     u_400_vec = u_history_arr[400]
@@ -89,15 +86,16 @@ def _run_single_trajectory(
 def evaluate_grid_cell(
     kappa: float,
     lam: float,
+    decay: float,
     seeds: list[int],
-) -> dict[str, float | str | list[float]]:
-    """Evaluates 10 seeds for a single (kappa, lambda) cell."""
+) -> dict[str, float | str]:
+    """Evaluates 10 seeds for a single (kappa, lambda, decay) cell."""
     displacements = []
     v_initials = []
     v_finals = []
 
     for s in seeds:
-        disp_unit, v_init, v_fin = _run_single_trajectory(kappa, lam, seed=s)
+        disp_unit, v_init, v_fin = _run_single_trajectory(kappa, lam, decay, seed=s)
         displacements.append(disp_unit)
         v_initials.append(v_init)
         v_finals.append(v_fin)
@@ -106,7 +104,6 @@ def evaluate_grid_cell(
     mean_v_fin = float(np.mean(v_finals))
     stationarity_ratio = mean_v_fin / (mean_v_init + 1e-9)
 
-    # Compute mean pairwise cosine similarity of displacements across seeds
     n_seeds = len(seeds)
     cos_sims = []
     for i in range(n_seeds):
@@ -116,7 +113,6 @@ def evaluate_grid_cell(
 
     mean_cos_sim = float(np.mean(cos_sims))
 
-    # Pre-registered classification check
     is_stationary = stationarity_ratio < 0.20
     is_clustered = mean_cos_sim > 0.70
 
@@ -128,6 +124,7 @@ def evaluate_grid_cell(
     return {
         "kappa": kappa,
         "lambda": lam,
+        "decay": decay,
         "stationarity_ratio": stationarity_ratio,
         "mean_cos_sim": mean_cos_sim,
         "classification": classification,
@@ -135,30 +132,35 @@ def evaluate_grid_cell(
 
 
 class TestCondition1PreRegisteredGrid:
-    def test_pre_registered_3x3_grid_sweep(self):
-        """Executes the pre-registered 3x3 grid sweep and logs exact pre-registered metrics."""
+    def test_side_by_side_grid_sweep(self):
+        """Executes side-by-side comparison between decay=0.0 (pure dynamics) and decay=0.05 (decay regularized)."""
         kappas = [0.0, 0.5, 1.0]
         lambdas = [0.0, 1.0, 2.0]
-        seeds = list(range(100, 110))  # 10 seeds
+        seeds = list(range(100, 110))
 
-        results = []
-        for k in kappas:
-            for l_val in lambdas:
-                res = evaluate_grid_cell(k, l_val, seeds)
-                results.append(res)
+        no_decay_results = [
+            evaluate_grid_cell(k, l_val, 0.0, seeds) for k in kappas for l_val in lambdas
+        ]
+        decay_results = [
+            evaluate_grid_cell(k, l_val, 0.05, seeds) for k in kappas for l_val in lambdas
+        ]
 
-        # Print clean pre-registered Markdown table for log inspection
-        print("\n=== PRE-REGISTERED 3x3 GRID SWEEP RESULTS ===")
-        print(
-            "| Kappa | Lambda | Stationarity Ratio (<0.20) | Mean Cos Sim (>0.70) | Pre-Registered Classification |"
-        )
-        print(
-            "|-------|--------|--------------------------|---------------------|-------------------------------|"
-        )
-        for r in results:
+        print("\n=== SIDE-BY-SIDE GRID SWEEP COMPARISON ===")
+        print("\n--- RUN A: PURE DYNAMICS (UTILITY_DECAY_RATE = 0.0) ---")
+        print("| Kappa | Lambda | Ratio (<0.20) | Cos Sim (>0.70) | Classification |")
+        print("|-------|--------|---------------|-----------------|----------------|")
+        for r in no_decay_results:
             print(
-                f"| {r['kappa']:.1f}   | {r['lambda']:.1f}    | {r['stationarity_ratio']:.4f}                   | {r['mean_cos_sim']:.4f}              | {r['classification']} |"
+                f"| {r['kappa']:.1f}   | {r['lambda']:.1f}    | {r['stationarity_ratio']:.4f}        | {r['mean_cos_sim']:.4f}          | {r['classification']} |"
             )
 
-        # Assert that execution completes cleanly and produces numeric outputs
-        assert len(results) == 9
+        print("\n--- RUN B: LEAKY DECAY REGULARIZED (UTILITY_DECAY_RATE = 0.05) ---")
+        print("| Kappa | Lambda | Ratio (<0.20) | Cos Sim (>0.70) | Classification |")
+        print("|-------|--------|---------------|-----------------|----------------|")
+        for r in decay_results:
+            print(
+                f"| {r['kappa']:.1f}   | {r['lambda']:.1f}    | {r['stationarity_ratio']:.4f}        | {r['mean_cos_sim']:.4f}          | {r['classification']} |"
+            )
+
+        assert len(no_decay_results) == 9
+        assert len(decay_results) == 9
