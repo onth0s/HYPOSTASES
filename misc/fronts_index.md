@@ -22,6 +22,8 @@ All 13 cognitive expansion seeds from `misc/next-steps.md` have been spliced int
 | **Front 10** | Mechanism Search | Section X | Optimization over the space of institutional designs and governance rules | [front_10_mechanism_search.md](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/misc/front_10_mechanism_search.md) |
 | **Front 11** | Abductive Reasoning & Hypotheses | Sections XI & XII | Explanations as explicit Hypothesis objects ($H_1, H_2, \dots$) and abductive inference | [front_11_abductive_reasoning_hypothesis_objects.md](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/misc/front_11_abductive_reasoning_hypothesis_objects.md) |
 | **Front 12** | Scientific Discovery Loop | Section XIII | Iterative hypothesis generation, experimental design, and empirical model refinement | [front_12_scientific_discovery_loop.md](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/misc/front_12_scientific_discovery_loop.md) |
+| **Front 13** | Evolutionary Algorithm Discovery | AlphaEvolve Spec | Mutating and evolving code/heuristics evaluated against multi-agent equilibrium & game-theoretic oracles | [front_13_evolutionary_algorithm_discovery_alphaevolve.md](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/misc/front_13_evolutionary_algorithm_discovery_alphaevolve.md) |
+| **Front 14** | Natural Language & Symbolic Compression | Epistemic Symbol Spec | Natural language as a lossy compression operator over high-dimensional continuous state $\sigma \in \mathbb{R}^d$ | [front_14_natural_language_symbolic_compression.md](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/misc/front_14_natural_language_symbolic_compression.md) |
 
 ---
 
