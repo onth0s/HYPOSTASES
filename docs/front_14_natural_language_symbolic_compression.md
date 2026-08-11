@@ -21,7 +21,7 @@ Continuous State Space σ ∈ ℝᵈ (High Dimension, High Compute)
 ## Key Capabilities
 - **Tractable Communication**: Compresses high-dimensional state vectors into symbolic messages, bypassing NP-hard bandwidth/compute scaling in large swarms.
 - **Symbolic Abduction (Front 11)**: Represents hypothesis objects ($H_1, H_2, \dots$) as natural language descriptions evaluated by LLM sub-symbolic reasoning engines.
-- **Natural Language Governance**: Formalizes institutional treaties, rules, and protocols as executable text specifications within Front 05.
+- **Natural Language Governance**: Formalizes institutional treaties, rules and protocols as executable text specifications within Front 05.
 
 ## Core State Constraint
 Text token likelihoods directly update $w$ (`WorldModel`) and $g$ (`GoalHierarchy`) within the primitive state tuple $\sigma = (c, w, g, \rho_{\text{ext}})$.
