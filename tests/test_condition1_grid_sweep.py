@@ -43,11 +43,16 @@ def _run_single_trajectory(
     orig_lam = const.GOVERNANCE_SCALING_LAMBDA
     orig_decay = const.UTILITY_DECAY_RATE
 
+    orig_thresh = const.SCARCITY_POOL_THRESHOLD
+
     const.SCARCITY_COST_KAPPA = kappa
     const.GOVERNANCE_SCALING_LAMBDA = lam
     const.UTILITY_DECAY_RATE = decay
+    const.SCARCITY_POOL_THRESHOLD = 15.0
 
-    pool = 10.0
+
+    pool = 3.0  # Initialized below SCARCITY_POOL_THRESHOLD (5.0) to active scarcity cost scaling
+
     try:
         for _step in range(n_steps):
             agent_actions = [
@@ -66,6 +71,8 @@ def _run_single_trajectory(
         const.SCARCITY_COST_KAPPA = orig_kappa
         const.GOVERNANCE_SCALING_LAMBDA = orig_lam
         const.UTILITY_DECAY_RATE = orig_decay
+        const.SCARCITY_POOL_THRESHOLD = orig_thresh
+
 
     u_history_arr = np.array(u_history)
     u_0_vec = u_history_arr[0]

@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import numpy as np
 
+import hypostases.engine.constants as const
 from hypostases.engine.constants import (
     ACTION_COSTS,
     SCARCITY_COST_KAPPA,
     SCARCITY_POOL_THRESHOLD,
     SOFTMAX_EPSILON,
 )
+
 
 
 def softmax(x: np.ndarray) -> np.ndarray:
@@ -40,7 +42,7 @@ def dynamic_action_costs(pool_belief: float) -> np.ndarray:
     scarcity_pressure = max(0.0, SCARCITY_POOL_THRESHOLD - pool_belief) / (
         pool_belief + SOFTMAX_EPSILON
     )
-    multiplier = 1.0 + SCARCITY_COST_KAPPA * scarcity_pressure
+    multiplier = 1.0 + const.SCARCITY_COST_KAPPA * scarcity_pressure
     return ACTION_COSTS * multiplier
 
 
