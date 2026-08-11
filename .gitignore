@@ -39,5 +39,5 @@ htmlcov/
 .coverage
 
 
-docs/
+docs/*
 !docs/*.md
