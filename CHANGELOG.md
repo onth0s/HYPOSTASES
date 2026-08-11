@@ -5,6 +5,21 @@ All notable changes to the HYPOSTASES framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-08-11
+
+### Added
+- **Full 4D Goal-Hierarchy Feedback Coverage**: `feedback()` now emits nonzero `delta_g` updates across all four `GoalCategory` dimensions (`SURVIVAL`, `ACQUISITION`, `RELATIONAL`, `STATUS`) based on action semantics. Previously only `RELATIONAL` and `ACQUISITION` (partially) were wired, causing `g.u` to collapse onto a 1D invariant subspace and producing `cos-sim=1.0` across distinct random priors.
+- **Softmax Jacobian Attenuation**: `feedback()` scales each `delta_g[k]` by the marginal policy sensitivity $\pi_k(1-\pi_k)$ before emitting `FeedbackDelta`. As utility dimension $k$ dominates ($\pi_k \to 1$), $\Delta g[k] \to 0$ naturally, yielding a pure un-regularized fixed-point attractor without any artificial decay term (`UTILITY_DECAY_RATE = 0.0`).
+- **Pre-Registered 3×3 Scarcity-Governance Grid Sweep**: `tests/test_condition1_grid_sweep.py` exercises $(\kappa, \lambda) \in \{0.0, 0.5, 1.0\} \times \{0.0, 1.0, 2.0\}$ under persistent scarcity pressure ($S_{\text{thresh}} = 15.0$), demonstrating parameter-dependent regime transitions (Fixed-Point at $\kappa=0.0$; High-Pressure Adaptive Drift at $\kappa=1.0$).
+- **Gate Unit Tests**: `tests/test_full_goal_feedback.py` and `tests/test_jacobian_attenuation.py` verify the direction and attenuation of all new `delta_g` branches.
+- **Diagnostic Scripts**: `scripts/diag_prior_seeding.py` and `scripts/diag_delta_g_growth.py` for tracing per-seed trajectory uniqueness and `‖Δg‖` growth characterization.
+
+### Fixed
+- **Dynamic `SCARCITY_COST_KAPPA` Binding (`_math.py`)**: `dynamic_action_costs()` previously imported `SCARCITY_COST_KAPPA` as a static module-level float via `from constants import`. Runtime overrides of `const.SCARCITY_COST_KAPPA` during parameter sweeps were silently ignored. Fixed via module-level `SCARCITY_COST_KAPPA` alias and `globals().get()` resolution that supports both `monkeypatch.setattr(m, ...)` in tests and `const.SCARCITY_COST_KAPPA = k` sweep overrides.
+
+### Verified
+- 158 / 158 tests passing (`pytest -q`), `ruff check` and `ruff format --check` clean.
+
 ## [0.2.0] - 2026-08-11
 
 ### Added

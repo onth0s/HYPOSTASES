@@ -19,18 +19,24 @@ This document describes the core update loop of the HYPOSTASES project, formaliz
 ### 3. Feedback ($\phi$)
 *   **Signature**: $S \times S \times A \times W \rightarrow \Phi$
 *   **Description**: Evaluates pre/post environment observations alongside the chosen action and the internal world model to generate a feedback delta tuple $\phi$.
-*   **Action Branches**:
-    *   `REQUEST`: Results in either granted amount or a mood penalty.
-    *   `SHARE`: Results in resource loss ($-x$) and a mood boost.
-    *   `WITHDRAW`: Results in $0$ change and a mood penalty (fixed in v3).
+*   **Full 4D Goal-Hierarchy Action Branches**:
+    *   `REQUEST` (granted): $\Delta g[\text{SURVIVAL}] = G_{\text{surv}} \cdot (2r - 1)$, $\Delta g[\text{ACQUISITION}] = G_{\text{acq}} \cdot r$ where $r = \text{granted}/\text{amount}$.
+    *   `REQUEST` (shortfall): $\Delta g[\text{SURVIVAL}] < 0$ (same formula, $r < 0.5$). Mood penalised proportional to shortfall and $(1 - \text{resilience})$.
+    *   `SHARE`: $\Delta g[\text{RELATIONAL}] = G_{\text{rel}} \cdot c.\text{sociality}$. Reserve decremented, mood boosted.
+    *   `WITHDRAW` (no active fee): $\Delta g[\text{STATUS}] = G_{\text{stat}} \cdot (1 - c.\text{sociality})$.
+    *   `WITHDRAW` (active governance fee): STATUS positive and negative terms cancel ($\Delta g[\text{STATUS}] \approx 0$). Crowding-out shifts $\Delta g[\text{ACQUISITION}] \uparrow$, $\Delta g[\text{RELATIONAL}] \downarrow$.
+*   **Softmax Jacobian Attenuation**: All $\Delta g[k]$ are scaled by $\pi_k(1 - \pi_k)$ (diagonal of the softmax Jacobian) before emission:
+    $$\Delta g[k] \leftarrow \Delta g[k] \cdot \pi_k (1 - \pi_k)$$
+    This yields a pure un-regularized fixed-point attractor from intrinsic dynamics alone; no external decay term is required.
 
 ### 4. State Evolution
 The evolution of the persistent state components $\sigma$ from $t$ to $t+1$:
 *   $c_{t+1} = c_t + \phi.\Delta c$
 *   $w_{t+1}$: via Bayesian/Kalman update on the new observation.
-*   $g_{t+1}$: via softmax renormalization based on feedback.
+*   $g_{t+1}$: $u_{t+1} = u_t + \phi.\Delta g$ (additive integration of Jacobian-attenuated deltas; $\pi_{t+1}$ recomputed fresh next tick).
 *   $\rho_{ext, t+1}$: updated additively minus the action cost.
 *   **Rule**: *Only primitives are integrated over time.* Derived quantities are recomputed fresh.
+
 
 ## Computational Modes
 1.  **Forward Simulation (§3.1)**: Generative forward stepping.

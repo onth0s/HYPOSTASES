@@ -32,7 +32,7 @@ HYPOSTASES/
 │   ├── cli/                       # Command-line architecture (main, trace, infer, sweep, spec, sweep-memory)
 │   └── utils/                     # Package utilities (spec merging)
 │
-├── tests/                     # Test suite (148 tests covering engine, dynamics, inference, scenarios, CLI)
+├── tests/                     # Test suite (158 tests covering engine, dynamics, inference, scenarios, CLI)
 │
 └── misc/                      # Auxiliary documents and notes
 ```
@@ -60,7 +60,7 @@ HYPOSTASES is fundamentally engineered to model **Machine Learning Agents and Au
 # Install package in development mode
 pip install -e ".[dev]"
 
-# Run full test suite (148 tests)
+# Run full test suite (158 tests)
 pytest
 
 # Code quality & formatting
@@ -101,6 +101,26 @@ hypostases sweep-memory --steps 20 --decay 0.9 --mode variance
 
 3. **Dynamic Supervisory Governance Scaling ($\lambda$)**:
    Supervisory withdrawal fees scale dynamically based on recent defection prevalence ($n_{\text{withdraw}} / n_{\text{agents}}$), curbing cascading defection spirals.
+
+4. **Full 4D Goal-Hierarchy Feedback ($\Delta g$)**:
+   `feedback()` emits nonzero utility deltas across **all four** goal-hierarchy dimensions on every action:
+   - `REQUEST` (success) → $\Delta g[\text{SURVIVAL}] > 0$, $\Delta g[\text{ACQUISITION}] > 0$
+   - `REQUEST` (shortfall) → $\Delta g[\text{SURVIVAL}] < 0$
+   - `SHARE` → $\Delta g[\text{RELATIONAL}] > 0$
+   - `WITHDRAW` (no governance fee) → $\Delta g[\text{STATUS}] > 0$; cancelled under active fee
+
+   This prevents latent utility $g.u$ from collapsing onto a lower-dimensional invariant subspace.
+
+5. **Softmax Jacobian Attenuation (Pure Fixed-Point Attractor)**:
+   Before emitting $\Phi$, `feedback()` scales each $\Delta g[k]$ by the marginal policy sensitivity $\pi_k(1-\pi_k)$ — the diagonal of the softmax Jacobian:
+   $$\Delta g[k] \leftarrow \Delta g[k] \cdot \pi_k (1 - \pi_k)$$
+   As dimension $k$ dominates ($\pi_k \to 1$), $\Delta g[k] \to 0$ naturally. This yields **pure un-regularized fixed-point attractors** (`UTILITY_DECAY_RATE = 0.0`) without any artificial restoring force. Empirically verified across a $3 \times 3$ $\{\kappa, \lambda\}$ grid sweep:
+
+   | $\kappa$ (Scarcity) | $\lambda$ (Governance) | Stationarity Ratio | Classification |
+   |---|---|---|---|
+   | `0.0` | `0.0–2.0` | **0.160–0.179** | Fixed-Point Attractor |
+   | `0.5` | `0.0–2.0` | **0.347–0.377** | Transition Regime |
+   | `1.0` | `0.0–2.0` | **0.554–0.652** | High-Pressure Adaptive Drift |
 
 ## Multi-Agent Preset Scenarios (`scenarios.py`)
 

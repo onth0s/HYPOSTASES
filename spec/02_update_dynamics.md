@@ -53,6 +53,22 @@ feedback : S × S × A × W → Φ
 
 Feedback emits deltas for persistent primitive states $\Phi = \Delta C \times \Delta W \times \Delta G \times \Delta R_{\text{ext}}$, where $\Delta C$ explicitly includes internal resource consumption deltas $\Delta c_{\text{internal}} = \text{cost\_int}(a_t, \rho_{\text{ext}}, \rho_{\text{int}})$.
 
+**Full 4D Goal-Hierarchy Feedback ($\Delta g$):** All four `GoalCategory` dimensions receive nonzero $\Delta g$ updates from their canonical action branches:
+
+| Action | Dimension | Rule |
+|--------|-----------|------|
+| `REQUEST` (full grant) | `SURVIVAL` $\uparrow$, `ACQUISITION` $\uparrow$ | $\Delta g[\text{SURVIVAL}] = G_{\text{surv}} \cdot (2 r - 1)$ where $r = \text{granted} / \text{amount}$ |
+| `REQUEST` (shortfall) | `SURVIVAL` $\downarrow$ | Negative $\Delta g[\text{SURVIVAL}]$ when $r < 0.5$ |
+| `SHARE` | `RELATIONAL` $\uparrow$ | $\Delta g[\text{RELATIONAL}] = G_{\text{rel}} \cdot c.\text{sociality}$ |
+| `WITHDRAW` (no fee) | `STATUS` $\uparrow$ | $\Delta g[\text{STATUS}] = G_{\text{stat}} \cdot (1 - c.\text{sociality})$ |
+| `WITHDRAW` (active governance fee) | `STATUS` $\approx 0$ | Positive and negative STATUS terms cancel |
+| `WITHDRAW` (active fee) | `ACQUISITION` $\uparrow$, `RELATIONAL` $\downarrow$ | Institutional crowding-out hysteresis |
+
+**Softmax Jacobian Attenuation:** Before returning $\Phi$, `feedback()` scales each $\Delta g[k]$ by the marginal policy sensitivity $\pi_k (1 - \pi_k)$ — the diagonal of the softmax Jacobian evaluated at the current $u_{\text{eff}}$:
+$$\Delta g[k] \leftarrow \Delta g[k] \cdot \pi_k (1 - \pi_k)$$
+As dimension $k$ dominates ($\pi_k \to 1$), its update attenuates toward zero, yielding a **pure un-regularized fixed-point attractor** from intrinsic dynamics alone (`UTILITY_DECAY_RATE = 0.0`). Under high scarcity pressure ($\kappa$ large), continuous action-cost inflation prevents stationarity, producing parameter-dependent regime transitions.
+
+
 ### 3.4 State Evolution Stage
 
 Only primitive states (Part I §2.2.1, §2.3) are integrated across steps:
@@ -60,14 +76,14 @@ Only primitive states (Part I §2.2.1, §2.3) are integrated across steps:
 ```
 c_{t+1}       = c_t       + φ_t.Δc          (incorporates Δc_internal)
 w_{t+1}       = update_W(w_t, φ_t.Δw)       (updates joint env & peer belief distributions)
-g_{t+1}       = update_G(g_t, φ_t.Δg)       (updates latent utility weights u)
+g_{t+1}       = update_G(g_t, φ_t.Δg)       (updates latent utility weights u: u_{t+1} = u_t + Δg)
 ρ_ext,{t+1}   = ρ_ext,t   + φ_t.Δρ_ext  −  cost_ext(a_t, ρ_ext,t, ρ_int,t)
 ```
 
 Notes:
 - `c_{t+1}` integrates physical/internal trait changes $\Delta c_{\text{internal}}$ directly during State Evolution, resolving internal resource depletion cleanly without mutating derived views $\rho_{\text{int}}$ during action selection.
 - `update_W` updates joint beliefs over environment $S$ and peer latent states $\prod_{j \neq i} \Sigma^{(j)}$ (Theory of Mind filtering).
-- `update_G` updates latent utility weights $u_{t+1} = u_t + \varphi_t.\Delta g$. Dynamic probabilities $\pi_{t+1}$ are computed fresh during the next `π_decision` step.
+- `update_G` updates latent utility weights: $u_{t+1} = u_t + \varphi_t.\Delta g$, where $\Delta g$ carries the Softmax Jacobian Attenuation applied in the Feedback Stage (§3.3). Dynamic probabilities $\pi_{t+1}$ are computed fresh during the next `π_decision` step.
 
 ### 3.5 Potentialities and Willingness as Queries, Not State Updates
 
