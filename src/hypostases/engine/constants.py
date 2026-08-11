@@ -29,6 +29,12 @@ SHARE_SOCIAL_GAIN: Final[float] = 0.3
 REQUEST_SOCIAL_COST: Final[float] = 0.02
 WITHDRAW_SOCIAL_COST: Final[float] = 0.01
 RELATIONAL_U_GAIN: Final[float] = 0.1
+# Provisional gain constants for SURVIVAL, STATUS, ACQUISITION delta_g feedback.
+# Magnitude matched to RELATIONAL_U_GAIN order-of-magnitude — not spec-derived.
+# Grid sweep with these values tests "4D collapse prevention," not "true attractor structure."
+SURVIVAL_U_GAIN: Final[float] = 0.1
+STATUS_U_GAIN: Final[float] = 0.05
+ACQUISITION_U_GAIN: Final[float] = 0.05
 
 # --- World Model updates ---
 WORLD_MU_GAIN: Final[float] = 0.2

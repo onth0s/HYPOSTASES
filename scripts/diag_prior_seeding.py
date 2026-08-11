@@ -7,10 +7,12 @@ trajectories from distinct priors merge.
 NOT a test — pure logging diagnostic. Run with:
     python scripts/diag_prior_seeding.py
 """
+
 from __future__ import annotations
 
 import numpy as np
 
+import hypostases.engine.constants as const
 from hypostases.engine.dynamics import evolve, feedback, pi_decision, step_env
 from hypostases.inference import sample_prior
 
@@ -19,8 +21,6 @@ KAPPA = 0.0
 LAMBDA = 0.0
 N_STEPS = 500
 CHECKPOINTS = {0, 10, 50, 100, 500}
-
-import hypostases.engine.constants as const
 
 const.SCARCITY_COST_KAPPA = KAPPA
 const.GOVERNANCE_SCALING_LAMBDA = LAMBDA
@@ -44,8 +44,7 @@ for s in SEEDS:
 
     for step in range(1, N_STEPS + 1):
         agent_actions = [
-            (name, pi_decision(ag, pool_belief=pool, xi=xi, rng=rng))
-            for name, ag in agents.items()
+            (name, pi_decision(ag, pool_belief=pool, xi=xi, rng=rng)) for name, ag in agents.items()
         ]
         pool, delta_log = step_env(pool, agent_actions, enable_withdraw_fee=(LAMBDA > 0))
         for name, ag in agents.items():

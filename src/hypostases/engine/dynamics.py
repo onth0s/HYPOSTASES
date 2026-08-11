@@ -18,6 +18,7 @@ import numpy as np
 
 from hypostases.engine._math import compute_temperature, softmax
 from hypostases.engine.constants import (
+    ACQUISITION_U_GAIN,
     CROWDING_OUT_HYSTERESIS_GAIN,
     GOVERNANCE_SCALING_LAMBDA,
     INEQUITY_AVERSION_GAIN,
@@ -37,6 +38,8 @@ from hypostases.engine.constants import (
     SIGMA2_MIN,
     STATUS_COUPLING,
     STATUS_RESERVE_THRESHOLD,
+    STATUS_U_GAIN,
+    SURVIVAL_U_GAIN,
     TEMPERATURE_OFFSET,
     UTILITY_DECAY_RATE,
     WITHDRAW_MOOD_PENALTY,
@@ -96,6 +99,7 @@ GOAL_SPEC: dict[GoalCategory, GoalBranch] = {
 _STATUS_IDX: Final[int] = K.index(GoalCategory.STATUS)
 _RELATIONAL_IDX: Final[int] = K.index(GoalCategory.RELATIONAL)
 _ACQUISITION_IDX: Final[int] = K.index(GoalCategory.ACQUISITION)
+_SURVIVAL_IDX: Final[int] = K.index(GoalCategory.SURVIVAL)
 
 
 def _effective_utilities(agent: AgentState, coupling: float = STATUS_COUPLING) -> np.ndarray:
@@ -319,6 +323,12 @@ def feedback(
         delta_c["mood"] = -REQUEST_MOOD_PENALTY * shortfall * (1.0 - agent.c.resilience)
         delta_rho_ext["social_capital"] = -REQUEST_SOCIAL_COST
 
+        # SURVIVAL reinforced by grant success; penalised by shortfall
+        fill_ratio = granted_amt / (action.amount + 1e-9)
+        delta_g[_SURVIVAL_IDX] = SURVIVAL_U_GAIN * (2.0 * fill_ratio - 1.0)
+        # ACQUISITION positively reinforced proportional to fill (provisional)
+        delta_g[_ACQUISITION_IDX] += ACQUISITION_U_GAIN * fill_ratio
+
     elif action.action_type == ActionType.SHARE:
         delta_c["reserve"] = -action.amount
         delta_c["mood"] = SHARE_MOOD_BONUS * agent.c.sociality
@@ -330,6 +340,13 @@ def feedback(
         delta_c["reserve"] = 0.0
         delta_c["mood"] = -WITHDRAW_MOOD_PENALTY * agent.c.sociality
         delta_rho_ext["social_capital"] = -WITHDRAW_SOCIAL_COST
+
+        # STATUS reinforced by autonomous withdrawal; cancelled under active governance fee
+        # (mirrors ACQUISITION crowding-out logic: fee-presence negates the STATUS gain)
+        status_delta = STATUS_U_GAIN * (1.0 - agent.c.sociality)
+        if delta_log.get("enable_withdraw_fee", False):
+            status_delta -= STATUS_U_GAIN * (1.0 - agent.c.sociality)
+        delta_g[_STATUS_IDX] = status_delta
 
     elif action.action_type == ActionType.PUNISH:
         delta_c["reserve"] = -PUNISH_RESERVE_COST
