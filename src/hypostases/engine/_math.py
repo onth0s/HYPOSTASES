@@ -10,6 +10,9 @@ from hypostases.engine.constants import (
     SOFTMAX_EPSILON,
 )
 
+_DEFAULT_KAPPA: float = const.SCARCITY_COST_KAPPA
+SCARCITY_COST_KAPPA: float = _DEFAULT_KAPPA
+
 
 def softmax(x: np.ndarray) -> np.ndarray:
     """Numerically stable softmax operator over 1D vector x."""
@@ -36,8 +39,9 @@ def dynamic_action_costs(pool_belief: float) -> np.ndarray:
 
     When pool_belief >= SCARCITY_POOL_THRESHOLD, returns unmodified ACTION_COSTS.
     """
-    thresh = globals().get("SCARCITY_POOL_THRESHOLD", const.SCARCITY_POOL_THRESHOLD)
-    kappa = globals().get("SCARCITY_COST_KAPPA", const.SCARCITY_COST_KAPPA)
+    thresh = const.SCARCITY_POOL_THRESHOLD
+    current_m_kappa = globals().get("SCARCITY_COST_KAPPA", _DEFAULT_KAPPA)
+    kappa = current_m_kappa if current_m_kappa != _DEFAULT_KAPPA else const.SCARCITY_COST_KAPPA
 
     scarcity_pressure = max(0.0, thresh - pool_belief) / (pool_belief + SOFTMAX_EPSILON)
     multiplier = 1.0 + kappa * scarcity_pressure
