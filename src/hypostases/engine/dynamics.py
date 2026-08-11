@@ -574,6 +574,49 @@ def evolve(agent: AgentState, phi: FeedbackDelta) -> None:
         tau = tau + (tau_min - tau) * (1.0 - agent.c.memory_decay)
         agent.w.sigma2 = max(SIGMA2_MIN, 1.0 / max(tau, 1e-9))
 
+    _record_memory_event(agent, phi)
+
+
+def _record_memory_event(agent: AgentState, phi: FeedbackDelta) -> None:
+    """Record transition event into Front 03 memory sub-systems if present on agent.w."""
+    if agent.w.m_ep is None:
+        return
+
+    from hypostases.engine.memory import EpisodicEvent
+
+    surprise = float(phi.delta_w.get("last_surprise", 0.0))
+    utility_impact = float(np.linalg.norm(phi.delta_g))
+    urgency = float(1.0 / max(1.0, agent.c.reserve))
+    trust = float(sum(phi.delta_peer_beliefs.values())) if phi.delta_peer_beliefs else 0.5
+    info_gain = float(abs(phi.delta_w.get("sigma2", 0.0)))
+    novelty = float(abs(phi.delta_w.get("mu", 0.0)) * 0.05)
+
+    gateway = agent.w.thalamic_gateway
+    if gateway is not None:
+        salience = gateway.compute_salience(
+            surprise, info_gain, utility_impact, urgency, trust, novelty
+        )
+    else:
+        salience = 0.5 * (abs(surprise) + utility_impact)
+
+    event = EpisodicEvent(
+        tick=0,
+        state_snapshot={"reserve": agent.c.reserve, "mu": agent.w.mu},
+        action=Action(action_type=ActionType.REQUEST, amount=0.0),
+        surprise=surprise,
+        utility_delta=utility_impact,
+        next_state_snapshot={"reserve": agent.c.reserve, "mu": agent.w.mu},
+        salience_score=salience,
+    )
+    agent.w.m_ep.add_event(event)
+
+    if (
+        agent.w.m_work is not None
+        and gateway is not None
+        and gateway.should_gate_to_working_memory(salience)
+    ):
+        agent.w.m_work.recent_events.append(event)
+
 
 def evolve_rb(
     agent: AgentState,

@@ -1,0 +1,61 @@
+# HYPOSTASES — SkillArtifact Data Schema (Rule 006 Data-Driven Compliance)
+# Spec Ref: Front 03 Memory Architecture & Voyager Macro-Action Skill Library
+
+version: "1.0"
+description: "Declarative schema for reusable macro-action SkillArtifacts"
+
+fields:
+  skill_id:
+    type: "string"
+    required: true
+    description: "Unique string identifier for the skill macro"
+  
+  description:
+    type: "string"
+    required: true
+    description: "Semantic summary of skill purpose and preconditions"
+
+  preconditions:
+    type: "object"
+    required: true
+    properties:
+      min_reserve:
+        type: "float"
+        default: 0.0
+      min_world_mu:
+        type: "float"
+        default: 0.0
+      min_social_capital:
+        type: "float"
+        default: 0.0
+      required_goal:
+        type: "string"
+        enum: ["SURVIVAL", "ACQUISITION", "RELATIONAL", "STATUS"]
+
+  macro_policy:
+    type: "array"
+    required: true
+    items:
+      type: "object"
+      properties:
+        action_type:
+          type: "string"
+          enum: ["REQUEST", "SHARE", "WITHDRAW", "PUNISH"]
+        amount_factor:
+          type: "float"
+          default: 1.0
+        target_rule:
+          type: "string"
+          enum: ["SELF", "HIGHEST_RESERVE_PEER", "LOWEST_RESERVE_PEER", "BROADCAST"]
+
+  expected_utility_gain:
+    type: "array"
+    items: "float"
+    length: 4
+    default: [0.0, 0.0, 0.0, 0.0]
+
+  confidence:
+    type: "float"
+    min: 0.0
+    max: 1.0
+    default: 0.5

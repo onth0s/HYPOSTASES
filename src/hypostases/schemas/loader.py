@@ -60,3 +60,13 @@ def load_time_model() -> dict:
 def load_update_dynamics() -> dict:
     """Loads update dynamics definitions from update_dynamics.yaml."""
     return load_yaml("update_dynamics.yaml")
+
+
+def load_memory_preset(preset_filename: str = "memory/memory_preset.yaml") -> dict:
+    """Loads memory architecture configuration preset."""
+    return load_yaml(preset_filename)
+
+
+def load_skill_artifact_schema(schema_filename: str = "memory/skill_artifact_schema.yaml") -> dict:
+    """Loads skill artifact schema definition."""
+    return load_yaml(schema_filename)

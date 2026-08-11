@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
-from typing import TypedDict
+from typing import Any, TypedDict
 
 import numpy as np
 
@@ -72,7 +72,8 @@ class WorldModel:
     """w ∈ W = Δ(S × ∏_{j≠i} Σ^{(j)}) × F (Part I §2.2.1, Part IV §6.3)
 
     Parametric Gaussian belief N(μ, σ²) over environment state, paired
-    with a learned replenish rate estimate and peer latent belief tracking.
+    with a learned replenish rate estimate, peer latent belief tracking,
+    and Front 03 Memory Architecture sub-systems (M_ep, M_sem, M_proc, M_work).
     """
 
     mu: float = 10.0
@@ -80,9 +81,33 @@ class WorldModel:
     replenish_rate_est: float = 1.0
     peer_beliefs: dict[str, float] = field(default_factory=dict)
     last_surprise: float = 0.0  # Contention 2: tracks previous surprise for regime-shift detection
+    m_ep: Any = field(default=None)  # EpisodicMemory instance
+    m_sem: Any = field(default=None)  # SemanticMemory instance
+    m_proc: Any = field(default=None)  # ProceduralMemory instance
+    m_work: Any = field(default=None)  # WorkingMemory instance
+    thalamic_gateway: Any = field(default=None)  # ThalamicGateway instance
 
     def clone(self) -> WorldModel:
-        return replace(self, peer_beliefs=self.peer_beliefs.copy())
+        return replace(
+            self,
+            peer_beliefs=self.peer_beliefs.copy(),
+            m_ep=self.m_ep.clone()
+            if self.m_ep is not None and hasattr(self.m_ep, "clone")
+            else self.m_ep,
+            m_sem=self.m_sem.clone()
+            if self.m_sem is not None and hasattr(self.m_sem, "clone")
+            else self.m_sem,
+            m_proc=self.m_proc.clone()
+            if self.m_proc is not None and hasattr(self.m_proc, "clone")
+            else self.m_proc,
+            m_work=self.m_work.clone()
+            if self.m_work is not None and hasattr(self.m_work, "clone")
+            else self.m_work,
+            thalamic_gateway=replace(self.thalamic_gateway)
+            if self.thalamic_gateway is not None
+            and hasattr(self.thalamic_gateway, "__dataclass_fields__")
+            else self.thalamic_gateway,
+        )
 
 
 @dataclass

@@ -1,0 +1,34 @@
+# HYPOSTASES — Memory Architecture Configuration Preset (Rule 006 Data-Driven Compliance)
+# Spec Ref: Front 03 Memory Architecture & ICLR 2026 Lifelong Memory
+
+version: "1.0"
+preset_name: "default_memory_preset"
+
+working_memory:
+  capacity_limit: 8
+  topological_drift_rate: 0.05
+  displacement_mode: "lowest_salience"
+
+thalamic_gateway:
+  weights:
+    w_surp: 0.35   # |delta_TD| temporal difference error
+    w_info: 0.20   # Delta H information gain
+    w_util: 0.20   # |Delta g| utility impact
+    w_urg: 0.10    # kappa scarcity urgency
+    w_trust: 0.10  # Peer trust R_peer
+    w_nov: 0.05    # Novelty scalar
+  gating_threshold: 0.40
+  channel_independence: true
+
+semantic_memory:
+  spreading_activation_decay: 0.70
+  max_activation_depth: 3
+  precision_min_threshold: 0.15
+
+catharsis_engine:
+  tau_catharsis: 0.65  # Threshold for empirical mismatch to trigger belief update
+  reconsolidation_lability_window: 5 # Ticks
+
+skill_library:
+  auto_consolidation_min_occurrences: 3
+  auto_consolidation_min_precision: 0.75
