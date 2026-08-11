@@ -41,3 +41,5 @@ htmlcov/
 
 docs/*
 !docs/*.md
+
+scratch/

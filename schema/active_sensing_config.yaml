@@ -1,0 +1,70 @@
+# Active Sensing & Epistemic Information Gathering Configuration
+# Spec Ref: Front 09 (Wave 1) — Active Perception & Information Theory Dynamics
+
+epistemic_weight: 0.3 # Default beta weighting: U_total = (1-beta)*U_pragmatic + beta*U_epistemic
+min_variance_threshold: 0.05 # Minimum variance to trigger epistemic actions
+
+epistemic_actions:
+  INSPECT:
+    cost_reserve: 0.2
+    cost_time: 0.5
+    observation_variance: 0.25
+    target_property: "environment_mu"
+    base_entropy_reduction: 0.40
+    description: "Low-cost inspection of physical environment state mu."
+
+  PROBE:
+    cost_reserve: 0.5
+    cost_time: 1.0
+    observation_variance: 0.10
+    target_property: "replenish_rate"
+    base_entropy_reduction: 0.65
+    description: "Active probing of environmental replenishment rates."
+
+  MONITOR:
+    cost_reserve: 0.1
+    cost_time: 0.2
+    observation_variance: 0.50
+    target_property: "environment_mu"
+    base_entropy_reduction: 0.20
+    description: "Passive, continuous monitoring of environmental state."
+
+  QUERY:
+    cost_reserve: 0.1
+    cost_time: 0.3
+    observation_variance: 0.30
+    target_property: "peer_belief"
+    base_entropy_reduction: 0.35
+    description: "Direct epistemic query to peer agents regarding their internal beliefs."
+
+  EXPERIMENT:
+    cost_reserve: 1.2
+    cost_time: 2.0
+    observation_variance: 0.05
+    target_property: "replenish_rate"
+    base_entropy_reduction: 0.85
+    description: "High-cost controlled experiment yielding high precision observation."
+
+  VERIFY:
+    cost_reserve: 0.3
+    cost_time: 0.4
+    observation_variance: 0.15
+    target_property: "environment_mu"
+    base_entropy_reduction: 0.50
+    description: "Targeted verification check to confirm prior state estimate."
+
+  OBSERVE:
+    cost_reserve: 0.05
+    cost_time: 0.1
+    observation_variance: 0.60
+    target_property: "environment_mu"
+    base_entropy_reduction: 0.15
+    description: "Baseline ambient observation with higher noise."
+
+  SPY:
+    cost_reserve: 0.8
+    cost_time: 1.5
+    observation_variance: 0.20
+    target_property: "peer_reserve"
+    base_entropy_reduction: 0.55
+    description: "Covert observation of peer internal state parameters."

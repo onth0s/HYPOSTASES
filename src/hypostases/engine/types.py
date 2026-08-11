@@ -36,6 +36,26 @@ class ActionType(StrEnum):
     SHARE = "SHARE"
     WITHDRAW = "WITHDRAW"
     PUNISH = "PUNISH"
+    INSPECT = "INSPECT"
+    PROBE = "PROBE"
+    MONITOR = "MONITOR"
+    QUERY = "QUERY"
+    EXPERIMENT = "EXPERIMENT"
+    VERIFY = "VERIFY"
+    OBSERVE = "OBSERVE"
+    SPY = "SPY"
+
+
+EPISTEMIC_ACTION_TYPES: set[ActionType] = {
+    ActionType.INSPECT,
+    ActionType.PROBE,
+    ActionType.MONITOR,
+    ActionType.QUERY,
+    ActionType.EXPERIMENT,
+    ActionType.VERIFY,
+    ActionType.OBSERVE,
+    ActionType.SPY,
+}
 
 
 @dataclass(frozen=True)
@@ -49,6 +69,9 @@ class Action:
             return "WITHDRAW"
         if self.action_type == ActionType.PUNISH:
             return f"PUNISH({self.target})"
+        if self.action_type in EPISTEMIC_ACTION_TYPES:
+            target_str = f", target='{self.target}'" if self.target else ""
+            return f"{self.action_type.value}({target_str})"
         return f"{self.action_type.value}({self.amount:.2f})"
 
 

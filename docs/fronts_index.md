@@ -10,7 +10,7 @@ All 14 cognitive expansion specs have been spliced into individual, self-contain
 
 | Front ID | Title | Source Sections | Key Concept | Document Link |
 |---|---|---|---|---|
-| **Front 01** | Hierarchical World Models | Section I | Multi-level semantic world representation layers (Env → Objects → Relations → Institutions → Norms) | [front_01_hierarchical_world_models.md](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_01_hierarchical_world_models.md) |
+| **Front 01** | Hierarchical World Models | Section I | Multi-level semantic representations, Gärdenfors Conceptual Spaces & TEM grid-cell factorizations | [front_01_hierarchical_world_models.md](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_01_hierarchical_world_models.md) |
 | **Front 02** | Explicit Planning Layer | Section II | Reusable strategies, plans as first-class objects, plan repair & interruption | [front_02_explicit_planning_layer.md](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_02_explicit_planning_layer.md) |
 | **Front 03** | Memory Architecture | Section III | Working, Episodic, Semantic, Procedural memory separation and consolidation | [front_03_memory_architecture.md](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_03_memory_architecture.md) |
 | **Front 04** | Counterfactual Simulation | Section IV | Internal multi-future hypothetical simulations & Monte Carlo search evaluation | [front_04_counterfactual_simulation.md](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_04_counterfactual_simulation.md) |
@@ -23,7 +23,7 @@ All 14 cognitive expansion specs have been spliced into individual, self-contain
 | **Front 11** | Abductive Reasoning & Hypotheses | Sections XI & XII | Explanations as explicit Hypothesis objects ($H_1, H_2, \dots$) and abductive inference | [front_11_abductive_reasoning_hypothesis_objects.md](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_11_abductive_reasoning_hypothesis_objects.md) |
 | **Front 12** | Scientific Discovery Loop | Section XIII | Iterative hypothesis generation, experimental design, and empirical model refinement | [front_12_scientific_discovery_loop.md](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_12_scientific_discovery_loop.md) |
 | **Front 13** | Evolutionary Algorithm Discovery | AlphaEvolve Spec | Mutating and evolving code/heuristics evaluated against multi-agent equilibrium & game-theoretic oracles | [front_13_evolutionary_algorithm_discovery_alphaevolve.md](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_13_evolutionary_algorithm_discovery_alphaevolve.md) |
-| **Front 14** | Natural Language & Symbolic Compression | Epistemic Symbol Spec | Natural language as a lossy compression operator over high-dimensional continuous state $\sigma \in \mathbb{R}^d$ | [front_14_natural_language_symbolic_compression.md](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_14_natural_language_symbolic_compression.md) |
+| **Front 14** | Natural Language & Symbolic Compression | Epistemic Symbol Spec | Visual-Epistemic Duality: Natural language & symbols as lossy compression of spatial state $\sigma \in \mathbb{R}^d$ | [front_14_natural_language_symbolic_compression.md](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_14_natural_language_symbolic_compression.md) |
 
 ---
 

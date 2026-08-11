@@ -15,22 +15,32 @@ import numpy as np
 
 from hypostases.engine.constants import LIKELIHOOD_MIN, PUNISH_RESERVE_COST, SOFTMAX_EPSILON
 from hypostases.engine.dynamics import GOAL_SPEC, goal_probs
-from hypostases.engine.types import Action, ActionType, AgentState, GoalCategory, K
+from hypostases.engine.types import (
+    EPISTEMIC_ACTION_TYPES,
+    Action,
+    ActionType,
+    AgentState,
+    GoalCategory,
+    K,
+)
 from hypostases.schemas import declared_simplification
 
 
-def _is_infeasible(agent: AgentState, action: Action, pool_belief: float) -> bool:
-    """Fast feasibility gate: returns True when the observed action is physically
-    impossible for a particle in state ``agent`` given ``pool_belief``.
+def _is_infeasible(agent: AgentState, action: Action, pool_belief: float = 10.0) -> bool:
+    """Part II §3.2, Part VII §10.2: Checks physical feasibility of action.
 
-    Rules (conservative — only prune clear physical violations):
-      - REQUEST: infeasible when pool_belief is too small to plausibly grant anything
-        meaningful (pool < 10% of requested amount).
-      - SHARE: infeasible when agent.c.reserve < action.amount (can't give what you
-        don't have).
+    Returns True if the action is physically impossible given agent state/pool.
+    Infeasible actions receive LIKELIHOOD_MIN in particle weight calculations.
+
+    Directive 003 Branch Audit (Part III §5.8):
+      - REQUEST: infeasible when pool_belief < action.amount * 0.1 (pool dry).
+      - SHARE: infeasible when agent.c.reserve < action.amount (resource agent doesn't have).
       - PUNISH: infeasible when agent.c.reserve < PUNISH_RESERVE_COST.
       - WITHDRAW: always feasible (zero-amount status signal; spec §5.8).
+      - EPISTEMIC ACTIONS: infeasible when reserve is insufficient (< 0.1).
     """
+    if action.action_type in EPISTEMIC_ACTION_TYPES:
+        return agent.c.reserve < 0.1
     if action.action_type == ActionType.REQUEST:
         return pool_belief < action.amount * 0.1
     if action.action_type == ActionType.SHARE:
@@ -74,6 +84,11 @@ def action_likelihood(
     amount_sd = max(amount_sd, SOFTMAX_EPSILON)
     if _is_infeasible(agent, observed_action, pool_belief):
         return LIKELIHOOD_MIN
+
+    if observed_action.action_type in EPISTEMIC_ACTION_TYPES:
+        epistemic_lik = float(np.tanh(agent.w.sigma2)) * (agent.c.reserve / (agent.c.reserve + 1.0))
+        return float(max(epistemic_lik, LIKELIHOOD_MIN))
+
     probs = goal_probs(agent, xi, pool_belief=pool_belief)
     total_lik = 0.0
 

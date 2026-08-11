@@ -52,6 +52,7 @@ from hypostases.engine.constants import (
     WORLD_SIGMA2_UPDATE_GAIN,
 )
 from hypostases.engine.types import (
+    EPISTEMIC_ACTION_TYPES,
     Action,
     ActionType,
     AgentState,
@@ -484,6 +485,11 @@ def feedback(
       - ActionType.WITHDRAW: State-dependent sociality mood penalty and social capital cost.
       - Peer beliefs: Explicitly tracks observed grant draws per peer agent.
     """
+    if action.action_type in EPISTEMIC_ACTION_TYPES:
+        from hypostases.active_perception import execute_epistemic_action
+
+        return execute_epistemic_action(agent, action, ground_truth_val=pool_after)
+
     if action.action_type == ActionType.REQUEST:
         delta_c, delta_g, delta_rho_ext = _feedback_request(agent, action, delta_log, agent_name)
     elif action.action_type == ActionType.SHARE:
