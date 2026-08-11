@@ -399,6 +399,13 @@ def feedback(
         if peer_name != agent_name:
             delta_peer_beliefs[peer_name] = granted_amt
 
+    # Softmax Jacobian Attenuation: scale delta_g[k] by marginal policy sensitivity π_k(1 - π_k)
+    # As a dimension dominates (π_k → 1), Δg[k] → 0 naturally, creating a fixed-point attractor.
+    u_eff = _effective_utilities(agent)
+    pi_current = softmax(u_eff)
+    sensitivity = pi_current * (1.0 - pi_current)
+    delta_g = delta_g * sensitivity
+
     return FeedbackDelta(
         delta_c=delta_c,
         delta_w=delta_w,
