@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from src.hypostases.institutions.types import (
+from hypostases.institutions.types import (
     ADICORule,
     DeonticModality,
     SanctionRecord,

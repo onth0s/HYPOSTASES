@@ -2,8 +2,8 @@
 
 from typing import Any
 
-from src.hypostases.institutions.adico_engine import ADICOEngine
-from src.hypostases.institutions.types import (
+from hypostases.institutions.adico_engine import ADICOEngine
+from hypostases.institutions.types import (
     ADICORule,
     DisputeCase,
     InstitutionalRole,
@@ -72,15 +72,20 @@ class InstitutionAgent:
                     enforcer_id=self.state.institution_id,
                     timestamp=timestamp,
                 )
+                # Resource feasibility check: enforce non-negative institutional capital pool
+                actual_enforcer_cost = min(
+                    sanction.cost_to_enforcer, max(0.0, self.state.resources)
+                )
+                sanction.cost_to_enforcer = actual_enforcer_cost
                 self.state.sanctions_history.append(sanction)
-                self.state.resources -= sanction.cost_to_enforcer
+                self.state.resources = max(0.0, self.state.resources - actual_enforcer_cost)
                 sanctions_issued.append(sanction)
 
         return sanctions_issued
 
     def collect_tax_or_dues(self, agent_id: str, amount: float) -> float:
         """Collect taxes or membership dues from an agent."""
-        if agent_id in self.state.members:
+        if agent_id in self.state.members and amount > 0.0:
             self.state.resources += amount
             return amount
         return 0.0
@@ -89,12 +94,13 @@ class InstitutionAgent:
         self, recipient_ids: list[str], total_amount: float
     ) -> dict[str, float]:
         """Allocate resources from public capital pool to member agents."""
-        if self.state.resources < total_amount or not recipient_ids:
+        valid_recipients = [rid for rid in set(recipient_ids) if rid in self.state.members]
+        if self.state.resources < total_amount or total_amount <= 0.0 or not valid_recipients:
             return {}
 
-        per_agent = total_amount / len(recipient_ids)
+        per_agent = total_amount / len(valid_recipients)
         self.state.resources -= total_amount
-        return {agent_id: per_agent for agent_id in recipient_ids}
+        return {agent_id: per_agent for agent_id in valid_recipients}
 
     def resolve_dispute(
         self,

@@ -2,7 +2,7 @@
 
 Agent-based modeling framework — formal specification (v4 Target), reference implementation, continuous substrate integration, vanguard game-theoretic mechanism design, cognitive expansion research fronts, and inverse inference engine.
 
-**Current Version**: `v0.4.0` | **Status**: 290/290 tests passing · `ruff` clean · Fully audited and refactored
+**Current Version**: `v0.4.0` | **Status**: 359/359 tests passing · `ruff` clean · Fully audited and refactored
 
 ## Project Structure
 
@@ -129,7 +129,7 @@ HYPOSTASES is fundamentally engineered to model **Machine Learning Agents and Au
 # Install package in development mode
 pip install -e ".[dev]"
 
-# Run full test suite (169 tests)
+# Run full test suite (359 tests)
 pytest
 
 # Code quality & formatting

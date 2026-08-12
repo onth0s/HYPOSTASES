@@ -2,8 +2,8 @@
 
 from typing import Any
 
-from src.hypostases.institutions.institution_agent import InstitutionAgent
-from src.hypostases.institutions.types import (
+from hypostases.institutions.institution_agent import InstitutionAgent
+from hypostases.institutions.types import (
     ADICORule,
     DeonticModality,
     InstitutionArchetype,

@@ -5,7 +5,7 @@ import os
 import pytest
 import yaml
 
-from src.hypostases.institutions import (
+from hypostases.institutions import (
     ADICOEngine,
     ADICORule,
     DeonticModality,

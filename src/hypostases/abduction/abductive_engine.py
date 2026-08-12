@@ -156,7 +156,15 @@ class AbductiveEngine:
                 h.confidence = h.posterior
 
     def _prune_hypotheses(self) -> None:
-        """Prunes hypotheses whose posterior falls below pruning_threshold."""
+        """Prunes hypotheses whose posterior falls below pruning_threshold.
+
+        Ensures pruning cannot remove every hypothesis without an explicit fallback / highest-posterior retention.
+        """
         prune_keys = [k for k, h in self.hypotheses.items() if h.posterior < self.pruning_threshold]
+        if len(prune_keys) == len(self.hypotheses) and self.hypotheses:
+            # Fallback: retain highest posterior hypothesis to prevent empty pool
+            best_key = max(self.hypotheses.items(), key=lambda item: item[1].posterior)[0]
+            prune_keys.remove(best_key)
+
         for k in prune_keys:
             del self.hypotheses[k]
