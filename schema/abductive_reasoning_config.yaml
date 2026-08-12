@@ -1,0 +1,16 @@
+# schema/abductive_reasoning_config.yaml
+# Data-driven configuration for Wave 3 Front 11: Abductive Reasoning & Hypothesis Objects
+# Rule 006 Compliance: Ground truth configuration loaded dynamically via schema loaders.
+
+abductive_reasoning:
+  enabled: true
+  max_hypothesis_pool_size: 16
+  surprise_threshold: 1.5  # Tau_surprise: Friston Free Energy bound F(q, o) = Complexity - Accuracy
+  complexity_penalty_lambda: 0.2  # Lambda_MDL: MacKay Occam factor penalty weight
+  pruning_threshold: 0.05  # Epsilon_prune: Evict hypotheses with posterior < epsilon
+  evidence_window_length: 20  # Timestamps window W_evidence for observation trajectory evaluation
+  consolidation_confidence_threshold: 0.85  # Posterior threshold to consolidate hypothesis into Semantic Memory
+  generation_modalities:
+    environment_anomalies: true  # Hidden resource decay / state parameter shifts
+    peer_intent_anomalies: true  # Peer goal utility weight / preference shifts (Front 06 uRSA)
+    causal_structural_mutations: true  # SCM causal edge mutations (Pearl 2000 / Front 08)

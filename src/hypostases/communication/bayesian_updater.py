@@ -96,6 +96,14 @@ class BayesianCommunicationEngine:
         updated_h_post = DiscreteHypothesisPosterior(hypothesis_probabilities=new_h_probs)
         updated_h_post.normalize()
 
+        # Front 11 AbductiveEngine integration hook
+        if hasattr(agent.w, "abductive_engine") and agent.w.abductive_engine is not None:
+            agent.w.abductive_engine.update_from_peer_message(
+                message_content=str(message.payload),
+                sender_id=message.sender_id,
+                trust_score=expected_honesty,
+            )
+
         belief_state = BayesianBeliefState(
             state_means=state_means,
             state_variances=state_variances,

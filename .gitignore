@@ -39,7 +39,8 @@ htmlcov/
 .coverage
 
 
-docs/*
-!docs/*.md
+*.pdf
+**/papers/
+!docs/**/*.md
 
 scratch/
