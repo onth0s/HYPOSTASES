@@ -1,9 +1,9 @@
-# State Vectors to Natural Language Text Generation — Working Architecture Specification & Plan (v4.1)
+# State Vectors to Natural Language Text Generation — Working Architecture Specification & Plan (v4.2 - RATIFIED)
 
 **Spec Ref**: Wave 5 Front 14 (`docs/WAVES_AND_FRONTS/WAVE_5_FRONT_14/front_14_natural_language_symbolic_compression_spec.md`)  
 **Target Substrate**: HYPOSTASES Engine v0.4.0 ($\sigma = (c, w, g, \rho_{\text{ext}})$)  
-**Status**: IMPLEMENTATION-READY WORKING ARCHITECTURE SPECIFICATION  
-**Rule 005 Compliance**: Task-Loss Calibrated Weights & Cold-Start Seed Corpus Disclosure  
+**Status**: RATIFIED IMPLEMENTATION-READY SPECIFICATION & PLAN  
+**Rule 005 Compliance**: Regularized Weight Calibration & Cold-Start Seed Corpus Disclosure  
 **Rule 006 Compliance**: Primacy of Data-Driven YAML Configuration (`schema/nlp_decoder_config.yaml`)  
 **Rule 009 Compliance**: Default Friston Expected Free Energy (EFE) Active Sensing Integration (`efe_mode: true`)  
 **Rule 011 Compliance**: Dual Persistence for Lexicon Mappers, PCFG Rules, Meta-Parameters, and Snapshots  
@@ -11,16 +11,16 @@
 
 ---
 
-## 1. Architectural Audit & Final Refinements (Pass 4)
+## 1. Architectural Audit & Final Refinements (Pass 5 - Ratification)
 
-Following final architectural review, two localized mathematical refinements have been incorporated to make the plan fully implementation-ready:
+Following final mathematical audit, the weight optimization identifiability gap has been closed:
 
-1. **Hungarian Algorithm Vertex Cardinality Mismatch & Dummy Node Padding**:  
-   Handled graph size mismatches ($|V_1| \neq |V_2|$) in Hungarian Bipartite Structural Assignment GED approximation $d_w(w, w')$ by padding the smaller adjacency matrix with $\Delta V = ||V_1| - |V_2||$ dummy isolated vertices, incurring a constant deletion/insertion penalty cost $c_{\text{dummy}} > 0$.
-2. **Task-Loss Joint Weight Calibration (Replaces IVW)**:  
-   Replaced Inverse-Variance Weighting (which assumes homogeneous estimators) with **Downstream Task-Loss Joint Calibration**. Weights $\mathbf{w} = (w_c, w_w, w_g, w_\rho)$ are calibrated using the same optimization pipeline as Step 4 thresholds $(\tau_1, \tau_2)$ over trace corpus $\mathcal{D}_{\text{traces}}$.
-3. **Diagram Alignment**:  
-   Updated Step 4 diagram label to "Calibrated Fano Uncertainty Router" to match the continuous minimization objective.
+1. **Non-Degenerate Regularized Weight Calibration**:  
+   Prevented weight collapse ($w_i \to 0$ for high-variance components like $d_w$) by enforcing a minimum weight floor $w_i \ge w_{\min} = 0.10$ and adding an entropy penalty $-\lambda_H H(\mathbf{w})$ to the calibration objective.
+2. **Held-Out Split Verification (Rule 012 Compliance)**:  
+   Calibration of $\mathbf{w}$ and $\boldsymbol{\tau}$ is performed on training split $\mathcal{D}_{\text{train}}$, while final Rule 012 round-trip verification metrics are reported exclusively on an independent **held-out evaluation split $\mathcal{D}_{\text{eval}}$**.
+3. **YAML Constant Disclosure**:  
+   Explicitly declared $c_{\text{dummy}} = 1.0$ (insertion/deletion penalty for Hungarian GED padding) as a YAML-configured parameter in `schema/nlp_decoder_config.yaml` (Rule 006).
 
 ---
 
@@ -46,12 +46,12 @@ Continuous State σ = (c, w, g, ρ_ext)
                     │
                     ▼
 ┌─────────────────────────────────────────┐
-│ Step 4: Calibrated Fano Uncertainty     │  <-- Task-loss calibrated Fano token budget policy
+│ Step 4: Calibrated Fano Uncertainty     │  <-- Regularized Fano token budget policy
 └───────────────────┬─────────────────────┘
                     │
                     ▼
 ┌─────────────────────────────────────────┐
-│ Step 5: Offline Formal Verification     │  <-- Offline Round-Trip Metric Loss & Fuzzing Corpus
+│ Step 5: Held-Out Offline Verification   │  <-- Held-Out Split D_eval Metric Loss & Fuzzing Corpus
 └─────────────────────────────────────────┘
 ```
 
@@ -97,21 +97,22 @@ Continuous State σ = (c, w, g, ρ_ext)
 
 ---
 
-### Step 4: Calibrated Fano Uncertainty Router (`src/hypostases/nlp/clsr_text_router.py`)
+### Step 4: Regularized Calibrated Fano Uncertainty Router (`src/hypostases/nlp/clsr_text_router.py`)
 
 * **Theoretical Bound**: Grounded in Fano's Inequality and Shannon Rate-Distortion Theory:
   $$\mathbb{E}[N_{\text{tokens}}] \ge \frac{H(Y \mid X) - h_2(P_{\text{error}})}{\kappa_{\text{active}}}$$
-* **Joint Task-Loss Calibration Objective Function**:
-  Thresholds $(\tau_1, \tau_2)$ and component weights $\mathbf{w} = (w_c, w_w, w_g, w_\rho)$ are jointly calibrated over trace corpus $\mathcal{D}_{\text{traces}}$ by solving:
-  $$\min_{\mathbf{w}, \tau_1, \tau_2} \mathbb{E}_{\mathcal{D}_{\text{traces}}}\left[ \text{TokenCost}(N_{\text{tokens}}) + \lambda_{\text{task}} \mathcal{L}_{\text{roundtrip}}(\sigma, \sigma'; \mathbf{w}) \right] \quad \text{s.t.} \quad P_{\text{error}} \le \delta_{\text{max}}, \quad \sum w_i = 1, \quad w_i \ge 0$$
+* **Non-Degenerate Regularized Calibration Objective**:
+  On training split $\mathcal{D}_{\text{train}}$, optimize thresholds $(\tau_1, \tau_2)$ and component weights $\mathbf{w} = (w_c, w_w, w_g, w_\rho)$ by solving:
+  $$\min_{\mathbf{w}, \tau_1, \tau_2} \mathbb{E}_{\mathcal{D}_{\text{train}}}\left[ \text{TokenCost}(N_{\text{tokens}}) + \lambda_{\text{task}} \mathcal{L}_{\text{roundtrip}}(\sigma, \sigma'; \mathbf{w}) - \lambda_H H(\mathbf{w}) \right]$$
+  $$\text{s.t.} \quad P_{\text{error}} \le \delta_{\text{max}}, \quad \sum_{i} w_i = 1, \quad w_i \ge w_{\min} = 0.10$$
 
 ---
 
-### Step 5: Offline Formal Verification (`tests/formal_math/test_nlp_generation_formal.py`)
+### Step 5: Held-Out Offline Formal Verification (`tests/formal_math/test_nlp_generation_formal.py`)
 
 * **Rule 012 Compliance**: Executed **offline at test/calibration time** (never on the $<5\text{ms}$ hot path):
-  1. **Polynomial Component-Wise Round-Trip Distance**:
-     Evaluate $\mathcal{L}_{\text{roundtrip}}(\sigma, \sigma'; \mathbf{w}) = \sum w_i d_i(\sigma_i, \sigma_i')$ using Hungarian Bipartite Structural Assignment GED ($d_w$) with dummy-node padding penalty $c_{\text{dummy}}$, and Zhang-Shasha Tree Edit ($d_g$).
+  1. **Held-Out Component-Wise Round-Trip Distance**:
+     Evaluate $\mathcal{L}_{\text{roundtrip}}(\sigma, \sigma'; \mathbf{w}) = \sum w_i d_i(\sigma_i, \sigma_i')$ on **held-out evaluation split $\mathcal{D}_{\text{eval}}$** using Hungarian GED ($d_w$, $c_{\text{dummy}} = 1.0$) and Zhang-Shasha Tree Edit ($d_g$).
   2. **Fano Bound Rate Minimization**:
      Empirically verify word allocation bounds across varying state entropy levels.
   3. **Adversarial Fuzzing Test Corpus**:
@@ -123,4 +124,4 @@ Continuous State σ = (c, w, g, ρ_ext)
 
 1. **Step 1 & Step 2 Implementation**: Build `lexicon_mapper.py` (with Stage 0 cold-start seed handling) and priority waterfall `generative_decoder.py`.
 2. **Step 3 Implementation**: Build `text_belief_updater.py` with Front 06/08 multi-criteria sanitizer and $g.u$ evaluation.
-3. **Step 4 & Step 5 Implementation**: Build calibrated `clsr_text_router.py` and run offline formal test suite `test_nlp_generation_formal.py`.
+3. **Step 4 & Step 5 Implementation**: Build regularized `clsr_text_router.py` and run offline held-out test suite `test_nlp_generation_formal.py`.
