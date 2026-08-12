@@ -1,9 +1,9 @@
-# State Vectors to Natural Language Text Generation — Working Architecture Specification & Plan (v4.0)
+# State Vectors to Natural Language Text Generation — Working Architecture Specification & Plan (v4.1)
 
 **Spec Ref**: Wave 5 Front 14 (`docs/WAVES_AND_FRONTS/WAVE_5_FRONT_14/front_14_natural_language_symbolic_compression_spec.md`)  
 **Target Substrate**: HYPOSTASES Engine v0.4.0 ($\sigma = (c, w, g, \rho_{\text{ext}})$)  
-**Status**: WORKING ARCHITECTURE SPECIFICATION (PENDING IMPLEMENTATION BINDINGS)  
-**Rule 005 Compliance**: Inverse-Variance Weighting & Cold-Start Seed Corpus Disclosure  
+**Status**: IMPLEMENTATION-READY WORKING ARCHITECTURE SPECIFICATION  
+**Rule 005 Compliance**: Task-Loss Calibrated Weights & Cold-Start Seed Corpus Disclosure  
 **Rule 006 Compliance**: Primacy of Data-Driven YAML Configuration (`schema/nlp_decoder_config.yaml`)  
 **Rule 009 Compliance**: Default Friston Expected Free Energy (EFE) Active Sensing Integration (`efe_mode: true`)  
 **Rule 011 Compliance**: Dual Persistence for Lexicon Mappers, PCFG Rules, Meta-Parameters, and Snapshots  
@@ -11,27 +11,16 @@
 
 ---
 
-## 1. Architectural Audit & Critical Corrections (Pass 3)
+## 1. Architectural Audit & Final Refinements (Pass 4)
 
-Following tertiary technical review, five second-order mathematical and operational gaps have been explicitly resolved:
+Following final architectural review, two localized mathematical refinements have been incorporated to make the plan fully implementation-ready:
 
-1. **Polynomial-Time Component Metric Definitions**:  
-   Replaced generic NP-hard Graph Edit Distance with polynomial-time algorithms:
-   - SCM distance $d_w(w, w')$ uses **Bipartite Assignment GED Approximation (Hungarian Algorithm $O(V^3)$)** + Adjacency Matrix Frobenius Norm $\|A_w - A_{w'}\|_F$.
-   - Goal Tree distance $d_g(g, g')$ uses **Zhang-Shasha Tree Edit Distance** ($O(|V_1||V_2| \cdot \text{depth} \cdot \text{leaves})$).
-2. **Data-Driven Weight Calibration Procedure (Inverse Variance)**:  
-   Eliminated hand-tuned weight bias by defining weight assignment via normalized **Inverse-Variance Information Weighting**:
-   $$w_i = \frac{1 / \text{Var}(d_i)}{\sum_{j \in \{c, w, g, \rho\}} 1 / \text{Var}(d_j)}$$
-   where variances are computed over baseline simulation trace rollouts $\mathcal{D}_{\text{baseline}}$.
-3. **Formal Definition of Expected Utility Gain $\Delta U_{\text{expected}}$**:  
-   Explicitly defined evaluation using the receiving agent's endogenous Goal Hierarchy $g.u$ evaluated *after* passing the Front 08 Causal SCM Audit:
-   $$\Delta U_{\text{expected}} = \mathbb{E}_{\sigma_{\text{sandbox}}}[g.u(\sigma_{\text{sandbox}})] - \mathbb{E}_{\sigma}[g.u(\sigma)]$$
-4. **Explicit Cold-Start Vocabulary Bootstrapping Procedure**:  
-   Acknowledged a 2-stage vocabulary initialization:
-   - **Stage 0 (Cold-Start Seed Corpus)**: Initialized from a domain-general token frequency list (WordNet / Universal Dependencies).
-   - **Stage 1+ (Data-Driven Refinement)**: Dynamically refined as simulation traces accumulate via VQ cluster outcome mapping.
-5. **Execution Latency Scoping**:  
-   Explicitly scoped $\mathcal{L}_{\text{roundtrip}}$ as an **offline test-time / calibration-time evaluation metric**, keeping it completely off the $<5\text{ms}$ real-time inference hot path.
+1. **Hungarian Algorithm Vertex Cardinality Mismatch & Dummy Node Padding**:  
+   Handled graph size mismatches ($|V_1| \neq |V_2|$) in Hungarian Bipartite Structural Assignment GED approximation $d_w(w, w')$ by padding the smaller adjacency matrix with $\Delta V = ||V_1| - |V_2||$ dummy isolated vertices, incurring a constant deletion/insertion penalty cost $c_{\text{dummy}} > 0$.
+2. **Task-Loss Joint Weight Calibration (Replaces IVW)**:  
+   Replaced Inverse-Variance Weighting (which assumes homogeneous estimators) with **Downstream Task-Loss Joint Calibration**. Weights $\mathbf{w} = (w_c, w_w, w_g, w_\rho)$ are calibrated using the same optimization pipeline as Step 4 thresholds $(\tau_1, \tau_2)$ over trace corpus $\mathcal{D}_{\text{traces}}$.
+3. **Diagram Alignment**:  
+   Updated Step 4 diagram label to "Calibrated Fano Uncertainty Router" to match the continuous minimization objective.
 
 ---
 
@@ -57,7 +46,7 @@ Continuous State σ = (c, w, g, ρ_ext)
                     │
                     ▼
 ┌─────────────────────────────────────────┐
-│ Step 4: Calibrated Fano Uncertainty     │  <-- Grid-search tuned Fano token budget policy
+│ Step 4: Calibrated Fano Uncertainty     │  <-- Task-loss calibrated Fano token budget policy
 └───────────────────┬─────────────────────┘
                     │
                     ▼
@@ -112,9 +101,9 @@ Continuous State σ = (c, w, g, ρ_ext)
 
 * **Theoretical Bound**: Grounded in Fano's Inequality and Shannon Rate-Distortion Theory:
   $$\mathbb{E}[N_{\text{tokens}}] \ge \frac{H(Y \mid X) - h_2(P_{\text{error}})}{\kappa_{\text{active}}}$$
-* **Calibration Objective Function**:
-  Thresholds $(\tau_1, \tau_2)$ are calibrated over trace corpus $\mathcal{D}_{\text{traces}}$ by minimizing:
-  $$\min_{\tau_1, \tau_2} \mathbb{E}_{\mathcal{D}_{\text{traces}}}\left[ \text{TokenCost}(N_{\text{tokens}}) + \lambda_{\text{task}} \mathcal{L}_{\text{roundtrip}}(\sigma, \sigma') \right] \quad \text{s.t.} \quad P_{\text{error}} \le \delta_{\text{max}}$$
+* **Joint Task-Loss Calibration Objective Function**:
+  Thresholds $(\tau_1, \tau_2)$ and component weights $\mathbf{w} = (w_c, w_w, w_g, w_\rho)$ are jointly calibrated over trace corpus $\mathcal{D}_{\text{traces}}$ by solving:
+  $$\min_{\mathbf{w}, \tau_1, \tau_2} \mathbb{E}_{\mathcal{D}_{\text{traces}}}\left[ \text{TokenCost}(N_{\text{tokens}}) + \lambda_{\text{task}} \mathcal{L}_{\text{roundtrip}}(\sigma, \sigma'; \mathbf{w}) \right] \quad \text{s.t.} \quad P_{\text{error}} \le \delta_{\text{max}}, \quad \sum w_i = 1, \quad w_i \ge 0$$
 
 ---
 
@@ -122,7 +111,7 @@ Continuous State σ = (c, w, g, ρ_ext)
 
 * **Rule 012 Compliance**: Executed **offline at test/calibration time** (never on the $<5\text{ms}$ hot path):
   1. **Polynomial Component-Wise Round-Trip Distance**:
-     Evaluate $\mathcal{L}_{\text{roundtrip}}(\sigma, \sigma') = \sum w_i d_i(\sigma_i, \sigma_i')$ using Hungarian GED ($d_w$) and Zhang-Shasha Tree Edit ($d_g$), with inverse-variance weights $w_i = \frac{1/\text{Var}(d_i)}{\sum 1/\text{Var}(d_j)}$.
+     Evaluate $\mathcal{L}_{\text{roundtrip}}(\sigma, \sigma'; \mathbf{w}) = \sum w_i d_i(\sigma_i, \sigma_i')$ using Hungarian Bipartite Structural Assignment GED ($d_w$) with dummy-node padding penalty $c_{\text{dummy}}$, and Zhang-Shasha Tree Edit ($d_g$).
   2. **Fano Bound Rate Minimization**:
      Empirically verify word allocation bounds across varying state entropy levels.
   3. **Adversarial Fuzzing Test Corpus**:
