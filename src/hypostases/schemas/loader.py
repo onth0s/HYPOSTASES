@@ -82,3 +82,10 @@ def load_hierarchical_world_model_config(
 ) -> dict:
     """Loads hierarchical world model and conceptual spaces configuration."""
     return load_yaml(config_filename)
+
+
+def load_bayesian_communication_config(
+    config_filename: str = "bayesian_communication_config.yaml",
+) -> dict:
+    """Loads Communication as Bayesian Evidence configuration preset."""
+    return load_yaml(config_filename)

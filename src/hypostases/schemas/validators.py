@@ -68,6 +68,16 @@ def validate_agent_state(agent: AgentState) -> list[str]:
     return violations
 
 
+def validate_subjective_opinion(b: float, d: float, u: float) -> list[str]:
+    """Validates Subjective Logic opinion normalization b + d + u = 1."""
+    violations: list[str] = []
+    if b < 0.0 or d < 0.0 or u < 0.0:
+        violations.append(f"Opinion parameters must be non-negative, got b={b}, d={d}, u={u}")
+    if abs((b + d + u) - 1.0) > 1e-4:
+        violations.append(f"Opinion b + d + u must equal 1.0, got {b + d + u}")
+    return violations
+
+
 def assert_invariants(agent: AgentState) -> None:
     """Raises InvariantViolationError if any invariants are violated."""
     violations = validate_agent_state(agent)

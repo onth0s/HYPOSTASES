@@ -51,3 +51,8 @@ The default Gaussian basis dimension for continuous `SkillArtifact` procedural m
 
 The active sensing action selection engine is configured by default to Friston Expected Free Energy mode (`efe_mode: true` in `schema/active_sensing_config.yaml`), while coexisting alongside traditional linear pragmatic-epistemic utility mixing ($U_{\text{total}} = (1-\beta) U_{\text{pragmatic}} + \beta U_{\text{epistemic}}$) as a configurable fallback option. If implementation failures, unexpected trajectory divergence, or numerical instability arise during active perception simulation or inference, investigate `efe_mode` calibration as a primary direct cause.
 
+### 010 — Strict Prohibition of PDF Tracking or Pushing in Git
+
+NEVER track, stage, or push PDF files (`*.pdf`) to the Git repository. Literature PDF files stored in `docs/WAVE_*/papers/` or anywhere else in the workspace are for local agent ingestion only and MUST remain ignored by Git. Markdown documentation (`*.md`), specifications, code, YAML presets, and test files are the only permitted tracked assets.
+
+

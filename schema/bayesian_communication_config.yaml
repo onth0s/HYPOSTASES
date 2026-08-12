@@ -1,0 +1,31 @@
+# Wave 3 Front 06: Communication as Bayesian Evidence Configuration
+# Enforces Rule 006 (Data-Driven YAML Configuration)
+
+trust_defaults:
+  alpha_0: 2.0               # Prior positive evidence count (Beta prior)
+  beta_0: 1.0                # Prior negative evidence count (Beta prior)
+  competence_sigma2_0: 0.1   # Prior competence variance
+  trust_decay_rate: 0.05     # Epoch decay rate for peer trust memory
+  base_rate_a0: 0.5          # Default base rate for Subjective Logic opinions
+
+cheap_talk_config:
+  bias_tolerance: 0.05       # Preference misalignment threshold before partition coarsening
+  max_partitions: 10         # Upper limit on Crawford-Sobel partition resolution N(b)
+  base_noise_std: 0.05       # Base observation noise standard deviation
+  persuasion_alpha: 1.0      # RSA speaker rationality parameter alpha
+
+deduplication_config:
+  provenance_window: 20      # History window length for Acemoglu message deduplication
+  similarity_threshold: 0.9  # Redundancy correlation threshold
+
+hypothesis_space:
+  default_hypotheses:
+    - id: "H1"
+      name: "Resource Abundance"
+      prior: 0.3333333333333333
+    - id: "H2"
+      name: "Resource Scarcity"
+      prior: 0.3333333333333333
+    - id: "H3"
+      name: "Institutional Drift"
+      prior: 0.3333333333333333
