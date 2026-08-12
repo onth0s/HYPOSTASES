@@ -1,0 +1,33 @@
+# Wave 2 Front 02 — Explicit Planning Layer Configuration Schema
+# Synthesizes parameters from AdaPlanner, GOAP, HTN, RAP, LATS, and Voyager
+
+max_planning_horizon: 20
+max_repair_attempts: 3
+deviation_threshold_epsilon: 0.15
+
+# Strategy Library Settings (Voyager & AdaPlanner Synthesis)
+library:
+  storage_directory: "schema/plans"
+  enable_skill_discovery: true
+  min_utility_gain_threshold: 0.2
+  max_archived_templates: 100
+  decay_rate: 0.05
+
+# Closed-Loop Execution Monitoring (AdaPlanner & GOAP 2006)
+executor:
+  verify_preconditions_every_tick: true
+  verify_global_invariants_every_tick: true
+  allow_in_plan_refinement: true
+
+# Plan Repair Oracle Settings (RAP MCTS & Counterfactual Rollouts)
+repair_engine:
+  use_counterfactual_rollouts: true
+  mcts_max_iterations: 15
+  c_puct: 1.414
+  exploration_weight: 1.0
+  self_consistency_weight: 0.5
+  prefer_local_patch_over_full_replan: true
+
+# Rule 007 Performance Assessment Settings
+performance_monitoring:
+  warn_if_yaml_latency_ms_exceeds: 50.0

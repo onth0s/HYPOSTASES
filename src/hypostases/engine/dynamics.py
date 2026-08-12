@@ -421,8 +421,9 @@ def _apply_cross_cutting_c(
         penalty = delta_log["punishments"][agent_name]
         delta_c["reserve"] = delta_c.get("reserve", 0.0) - penalty
 
-    if agent.w.peer_beliefs:
-        max_peer_est = max(agent.w.peer_beliefs.values())
+    numeric_beliefs = [val for val in agent.w.peer_beliefs.values() if isinstance(val, int | float)]
+    if numeric_beliefs:
+        max_peer_est = max(numeric_beliefs)
         if max_peer_est > agent.c.reserve:
             deprivation = max_peer_est - agent.c.reserve
             delta_c["mood"] = delta_c.get("mood", 0.0) - INEQUITY_AVERSION_GAIN * deprivation

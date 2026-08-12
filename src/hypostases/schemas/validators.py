@@ -55,7 +55,7 @@ def validate_agent_state(agent: AgentState) -> list[str]:
         violations.append(f"w.replenish_rate_est must be finite, got {agent.w.replenish_rate_est}")
 
     for peer_name, p_val in agent.w.peer_beliefs.items():
-        if p_val < 0:
+        if isinstance(p_val, int | float) and p_val < 0:
             violations.append(f"w.peer_beliefs['{peer_name}'] must be non-negative, got {p_val}")
 
     # Goal hierarchy dimensionality & validity

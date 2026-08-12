@@ -70,3 +70,8 @@ def load_memory_preset(preset_filename: str = "memory/memory_preset.yaml") -> di
 def load_skill_artifact_schema(schema_filename: str = "memory/skill_artifact_schema.yaml") -> dict:
     """Loads skill artifact schema definition."""
     return load_yaml(schema_filename)
+
+
+def load_planning_config(config_filename: str = "planning_config.yaml") -> dict:
+    """Loads explicit planning layer configuration."""
+    return load_yaml(config_filename)

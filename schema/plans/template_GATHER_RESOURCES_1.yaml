@@ -1,0 +1,37 @@
+template_id: template_GATHER_RESOURCES_1
+goal_name: GATHER_RESOURCES
+prerequisite_state:
+  location: base
+expected_effects:
+  location: base
+node_specs:
+- node_id: node_1
+  action_name: GOTO_LOCATION
+  action_params:
+    target: resource_zone
+  preconditions:
+    location: base
+  effects:
+    location: resource_zone
+  expected_utility_delta: 1.0
+- node_id: node_2
+  action_name: ACQUIRE_ITEM
+  action_params:
+    item: mineral_1
+  preconditions:
+    location: resource_zone
+  effects:
+    has_item: true
+  expected_utility_delta: 2.5
+- node_id: node_3
+  action_name: RETURN_BASE
+  action_params:
+    target: base
+  preconditions:
+    has_item: true
+  effects:
+    location: base
+  expected_utility_delta: 1.5
+average_utility_gain: 1.5
+times_used: 1
+metadata: {}
