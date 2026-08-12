@@ -44,4 +44,5 @@ htmlcov/
 !docs/**/*.md
 
 scratch/
-exports/
+exports/
+schema/plans/

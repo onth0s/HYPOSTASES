@@ -1,0 +1,52 @@
+# Locked verification fixture for Front 08 NOTEARS discovery-quality acceptance.
+# This file is evaluation-owned: changes require explicit reviewer ratification
+# and a new fixture_id; they must not be made while tuning the optimizer.
+version: "1.0"
+fixture_id: "front08-linear-sem-equal-noise-v1"
+owner: "verification"
+approval_required_for_changes: true
+
+data_generating_process:
+  variable_order: [X, Y, Z, Q]
+  sample_count: 2000
+  seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+  # Independent equal-variance exogenous noise makes the linear SEM directionally
+  # identifiable for the intended NOTEARS/equal-noise evaluation setting.
+  exogenous_noise:
+    distribution: "normal"
+    mean: 0.0
+    standard_deviation: 1.0
+    independent: true
+  structural_equations:
+    X: "U_X"
+    Y: "1.20 * X + U_Y"
+    Z: "-0.90 * X + U_Z"
+    Q: "0.80 * Y - 0.70 * Z + U_Q"
+  ground_truth_edges:
+    - [X, Y]
+    - [X, Z]
+    - [Y, Q]
+    - [Z, Q]
+
+acceptance_thresholds:
+  # Single fixed seed is the reproducible formal theorem case.
+  pinned_seed: 7
+  pinned_seed_min_recall: 1.0
+  pinned_seed_min_precision: 0.80
+  pinned_seed_max_shd: 1
+  # These are a stability probe, not parameters to be tuned after observations.
+  multi_seed_min_recall: 0.75
+  multi_seed_min_precision: 0.75
+  multi_seed_mean_recall: 0.90
+  multi_seed_mean_precision: 0.85
+  multi_seed_max_h: 1.0e-8
+  multi_seed_min_nonempty_graph_fraction: 1.0
+  barely_cleared_headroom_epsilon: 0.02
+
+optimizer_health_gates:
+  # Values below these floors are suspicious: they can signal the former
+  # immediate h(0)=0 exit even if the returned graph is acyclic.
+  min_outer_iterations: 3
+  min_total_inner_iterations: 30
+  min_regularized_fit_improvement_fraction: 0.05
+  max_final_h: 1.0e-8

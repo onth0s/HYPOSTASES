@@ -40,7 +40,7 @@ def test_myerson_revenue_equivalence_invariant():
 
     # Monte Carlo simulation of valuations V_i ~ U[0, 10]
     np.random.seed(42)
-    n_samples = 1000
+    n_samples = 5000
     revenues = []
     state = {}
 
@@ -53,7 +53,7 @@ def test_myerson_revenue_equivalence_invariant():
 
     mean_revenue = np.mean(revenues)
     # Theoretical Myerson expected revenue ~ 4.167
-    assert mean_revenue == pytest.approx(4.167, abs=0.4)
+    assert mean_revenue == pytest.approx(4.167, abs=0.15)
 
 
 def test_vcg_and_clarke_dsic_invariants():
@@ -101,12 +101,16 @@ def test_simplex_projection_budget_conservation():
 
 
 def test_bilevel_monotonic_convergence_invariant():
-    """Verify that bi-level mechanism search runner monotonically improves candidate fitness."""
+    """Verify best-seen bi-level fitness is non-decreasing across 20 generations."""
     runner = MechanismSearchRunner(
         optimizer_type="evolutionary", aggregator_type="productivity_gini"
     )
-    cand = runner.search_optimal_mechanism(n_agents=4, ticks=10)
+    runner.optimizer.n_iterations = 20
+    cand = runner.search_optimal_mechanism(n_agents=4, ticks=20)
 
     assert cand is not None
     assert cand.meta_parameters["efe_mode"] is True
     assert cand.meta_parameters["aggregator_type"] == "productivity_gini"
+    trajectory = runner.optimizer.best_fitness_history
+    assert len(trajectory) == 20
+    assert np.all(np.diff(trajectory) >= -1e-12), trajectory

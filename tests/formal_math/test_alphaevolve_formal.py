@@ -138,3 +138,17 @@ def test_formal_state_invariant_preservation_and_rule_005() -> None:
     assert skill.confidence >= 0.1 and skill.confidence <= 0.99
     # Verify Rule 008 Gaussian basis dimension K=4
     assert len(skill.gaussian_weights) == 4
+
+
+def test_formal_multi_generation_fitness_non_regression() -> None:
+    """Theorem 13.7: the MAP-Elites best elite cannot regress over generations."""
+    engine = AlphaEvolveEngine(seed=42)
+    best_scores = []
+
+    for _ in range(20):
+        engine.step_generation()
+        best_scores.append(
+            max(solution["score"] for solution in engine.qd_archive.solutions.values())
+        )
+
+    assert np.all(np.diff(best_scores) >= -1e-12), best_scores

@@ -42,6 +42,8 @@ from hypostases.engine.constants import (
 )
 from hypostases.engine.state_transitions import (
     _integrate_non_world as _integrate_non_world,
+)
+from hypostases.engine.state_transitions import (
     evolve as evolve,
 )
 from hypostases.engine.types import (

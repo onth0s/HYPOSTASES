@@ -213,3 +213,19 @@ def test_rule_005_pure_rationality_pipeline_integration():
     snapshot_yaml = pipeline.export_snapshot_yaml()
     assert "scientific_discovery_snapshot" in snapshot_yaml
     assert "hypotheses" in snapshot_yaml
+
+
+def test_posterior_entropy_monotone_decrease_over_pipeline_ticks():
+    """Theorem 12.6: repeated true-generating evidence does not raise entropy."""
+    pipeline = ScientificDiscoveryPipeline(config=ScientificDiscoveryConfig(efe_mode=True))
+    entropies = []
+    observation = {"signal": 10.0}
+
+    for _ in range(10):
+        pipeline.step(observation=observation, candidate_designs=None)
+        probabilities = np.array(
+            [h.posterior_probability for h in pipeline.hypothesis_manager.hypotheses]
+        )
+        entropies.append(-float(np.sum(probabilities * np.log(probabilities + 1e-15))))
+
+    assert np.all(np.diff(entropies) <= 1e-12), entropies

@@ -155,3 +155,8 @@ def load_meta_parameters_preset(config_filename: str = "meta_parameters_preset.y
 def load_scenarios(config_filename: str = "scenarios.yaml") -> dict:
     """Loads multi-agent scenario definitions."""
     return load_yaml(config_filename)
+
+
+def load_nlp_decoder_config(config_filename: str = "nlp_decoder_config.yaml") -> dict:
+    """Loads Wave 5 Front 14 NLP decoder configuration."""
+    return load_yaml(config_filename)

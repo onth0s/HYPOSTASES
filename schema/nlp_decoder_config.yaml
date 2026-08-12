@@ -1,0 +1,58 @@
+# Schema Configuration: Wave 5 Front 14 State Vectors to Natural Language NLP Decoder
+# Substrate: HYPOSTASES Engine v0.4.0 (sigma = (c, w, g, rho_ext))
+# Compliance: Rule 005, Rule 006, Rule 009 (efe_mode: true), Rule 011
+
+version: "1.0"
+front: "Wave 5 Front 14 - State Vectors to Natural Language Text Generation"
+
+# Friston Expected Free Energy (EFE) Integration (Rule 009)
+efe_mode: true
+beta_efe: 0.25
+
+# Lexicon Mapper Configuration (Step 1)
+lexicon_config:
+  seed_vocab_size: 256
+  codebook_size: 128
+  outcome_correlation_threshold: 0.15
+
+# Decoder Configuration & Waterfall Arbitration (Step 2)
+decoder_config:
+  latency_bound_ms: 5.0
+  bandwidth_threshold_tau: 64.0
+  uncertainty_threshold_tau: 1.5
+  fallback_mode: "MODE_A_PCFG"
+
+# Multi-Criteria Sanitizer & Belief Updater Configuration (Step 3)
+sanitizer_config:
+  tau_causal: 0.25
+  tau_promotion: 0.10
+  scm_audit_enabled: true
+
+# Calibrated Fano Uncertainty Router Configuration (Step 4)
+router_config:
+  w_min: 0.10
+  lambda_H: 0.05
+  lambda_task: 1.0
+  c_dummy: 1.0  # Insertion/deletion penalty for Hungarian GED padding (Rule 006)
+  delta_max: 0.05
+  kappa_active: 1.2
+
+# Evaluation & Verification Metrics Configuration (Rule 012)
+eval_config:
+  epsilon_roundtrip: 0.15  # Explicit provisional conservative ceiling, to be tightened post-baseline
+  d_train_samples: 700
+  d_eval_samples: 300
+  fuzzing_sample_count: 100000  # Full 10^5 fuzzing corpus
+
+# Mode B SLM Generator Configuration
+mode_b_config:
+  default_backend: "MarkovNGramBackend"  # Default zero-dependency Markov generator
+  ollama_url: null  # Optional local HTTP SLM endpoint (e.g. "http://localhost:11434/api/generate")
+  model_name: "phi3"
+
+# Persistence Configuration (Rule 011)
+persistence_config:
+  enable_yaml_snapshot: true
+  snapshot_dir: "schema/snapshots/nlp_decoder"
+  meta_param_tuple: ["w_min", "c_dummy", "tau_causal", "beta_efe"]
+

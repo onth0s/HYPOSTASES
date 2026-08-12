@@ -40,6 +40,23 @@ class DoCalculusEngine:
                 continue
             new_edges.append(e)
         sub_scm.edges = new_edges
+        # Structural equations are the parent source of truth for graph
+        # traversal, so graph surgery must update them as well as ``edges``.
+        retained_parents: dict[str, set[str]] = {}
+        for edge in new_edges:
+            retained_parents.setdefault(edge.target, set()).add(edge.source)
+        for target, equation in sub_scm.equations.items():
+            if target not in retained_parents:
+                equation.parent_vars = []
+                equation.coefficients = {}
+                continue
+            allowed = retained_parents[target]
+            equation.parent_vars = [parent for parent in equation.parent_vars if parent in allowed]
+            equation.coefficients = {
+                parent: weight
+                for parent, weight in equation.coefficients.items()
+                if parent in allowed
+            }
         return sub_scm
 
     def check_rule_1(self, y: set[str], x: set[str], z: set[str], w: set[str]) -> bool:
@@ -111,11 +128,22 @@ class DoCalculusEngine:
             # Fallback to direct model evaluation
             return self.scm.evaluate_intervention(Intervention({x_var: x_val})).get(y_var, 0.0)
 
-        # Stratified empirical estimator
-        matching_samples = [s for s in samples if abs(s.get(x_var, 0.0) - x_val) < 1e-3]
-        if not matching_samples:
-            return float(np.mean([s.get(y_var, 0.0) for s in samples]))
-        return float(np.mean([s.get(y_var, 0.0) for s in matching_samples]))
+        # Estimate E[Y | X, Z] by least squares, then standardize over the
+        # empirical backdoor distribution: mean_z E[Y | X=x, Z=z].  This is
+        # the numerical form of Pearl's adjustment formula and avoids the
+        # degenerate exact-match estimator for continuous treatments.
+        z_set = self.find_backdoor_admissible_set(x_var, y_var)
+        regressors = [x_var, *z_set]
+        design = np.array(
+            [[1.0, *(sample.get(var, 0.0) for var in regressors)] for sample in samples],
+            dtype=float,
+        )
+        outcomes = np.array([sample.get(y_var, 0.0) for sample in samples], dtype=float)
+        coefficients, *_ = np.linalg.lstsq(design, outcomes, rcond=None)
+
+        standardized_design = design.copy()
+        standardized_design[:, 1] = x_val
+        return float(np.mean(standardized_design @ coefficients))
 
     def check_transportability(
         self, target_domain_s_nodes: list[str], y_var: str, x_var: str

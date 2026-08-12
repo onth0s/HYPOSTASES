@@ -32,6 +32,7 @@ class MechanismOptimizer(ABC):
         self.n_iterations = n_iterations
         self.best_candidate: MechanismCandidate = self.space.sample_candidate("init_best")
         self.history: list[tuple[MechanismCandidate, float]] = []
+        self.best_fitness_history: list[float] = []
 
     @abstractmethod
     def optimize(
@@ -140,6 +141,7 @@ class EvolutionaryMechanismSearcher(MechanismOptimizer):
 
             if population[0].fitness_score > self.best_candidate.fitness_score:
                 self.best_candidate = copy.deepcopy(population[0])
+            self.best_fitness_history.append(self.best_candidate.fitness_score)
 
             # Selection and reproduction (top 50% survive)
             survivors = population[: max(2, self.population_size // 2)]
