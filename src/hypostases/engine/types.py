@@ -12,7 +12,17 @@ dynamically inside pi_decision / _goal_probs.
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from enum import StrEnum
+
+try:
+    from enum import StrEnum
+except ImportError:
+    from enum import Enum
+
+    class StrEnum(str, Enum):
+        def __str__(self) -> str:
+            return str(self.value)
+
+
 from typing import Any, TypedDict
 
 import numpy as np

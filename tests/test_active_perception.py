@@ -12,6 +12,7 @@ import pytest
 
 from hypostases.active_perception import (
     execute_epistemic_action,
+    execute_multivariate_epistemic_action,
     load_active_sensing_config,
 )
 from hypostases.engine.dynamics import feedback
@@ -28,8 +29,12 @@ from hypostases.engine.types import (
 )
 from hypostases.epistemic_utility import (
     compute_epistemic_utility,
+    compute_expected_free_energy,
     compute_expected_information_gain,
     compute_kl_divergence_gaussian,
+    compute_learning_progress,
+    compute_multivariate_information_gain,
+    compute_multivariate_shannon_entropy,
     compute_shannon_entropy,
     compute_variational_free_energy,
 )
@@ -87,10 +92,13 @@ def test_expected_information_gain():
 def test_epistemic_utility_balancing():
     state = make_test_state(sigma2=2.0)
     act = Action(ActionType.INSPECT)
-    u_pure_pragmatic = compute_epistemic_utility(act, state, pragmatic_utility=5.0, beta=0.0)
+    cfg = {"efe_mode": False}
+    u_pure_pragmatic = compute_epistemic_utility(
+        act, state, pragmatic_utility=5.0, beta=0.0, config=cfg
+    )
     assert abs(u_pure_pragmatic - 5.0) < 1e-6
 
-    u_balanced = compute_epistemic_utility(act, state, pragmatic_utility=5.0, beta=0.5)
+    u_balanced = compute_epistemic_utility(act, state, pragmatic_utility=5.0, beta=0.5, config=cfg)
     assert u_balanced != u_pure_pragmatic
 
 
@@ -153,3 +161,73 @@ def test_variational_free_energy():
         q_mu=10.0, q_sigma2=1.0, p_mu=10.0, p_sigma2=1.0, log_likelihood=-0.5
     )
     assert f_val == 0.5  # D_KL = 0.0, F = 0.0 - (-0.5) = 0.5
+
+
+def test_expected_free_energy_and_efe_mode():
+    """Verifies Friston Expected Free Energy (EFE) calculation and efe_mode routing (AGENTS.md Rule 009)."""
+    state = make_test_state()
+    act = Action(ActionType.INSPECT, target="env")
+
+    # Test explicit compute_expected_free_energy
+    efe_u = compute_expected_free_energy(act, state, pragmatic_utility=1.0)
+    assert efe_u > 1.0  # Pragmatic 1.0 + positive information gain
+
+    # Test routing via compute_epistemic_utility with efe_mode=True
+    u_efe = compute_epistemic_utility(act, state, pragmatic_utility=1.0, config={"efe_mode": True})
+    assert u_efe == efe_u
+
+    # Test routing via compute_epistemic_utility with efe_mode=False (linear weighted mixing)
+    u_linear = compute_epistemic_utility(
+        act, state, pragmatic_utility=1.0, beta=0.3, config={"efe_mode": False}
+    )
+    assert u_linear != u_efe
+
+
+def test_multivariate_shannon_entropy_and_information_gain():
+    """Verifies MacKay (1992) multivariate covariance entropy and log-det information gain."""
+    prior_cov = np.diag([1.0, 2.0])
+    obs_cov = np.diag([0.2, 0.2])
+
+    h_val = compute_multivariate_shannon_entropy(prior_cov)
+    assert isinstance(h_val, float)
+    assert h_val > 0.0
+
+    ig_val = compute_multivariate_information_gain(prior_cov, obs_cov)
+    assert ig_val > 0.0
+
+
+def test_learning_progress_iac():
+    """Verifies Oudeyer et al. (2007) Intelligent Adaptive Curiosity (IAC) learning progress."""
+    lp_val = compute_learning_progress(prev_errors=[2.5, 2.0], current_error=0.5)
+    assert lp_val == 2.0  # 2.5 - 0.5 = 2.0 error reduction
+
+
+def test_morphological_distance_cost():
+    """Verifies Dodig-Crnkovic (2022) morphological spatial distance energy drain."""
+    state = make_test_state()
+    act = Action(ActionType.INSPECT, target="env")
+
+    # Direct observation without distance
+    delta_no_dist = execute_epistemic_action(state, act)
+
+    # Observation with target_pos at distance 10.0 from (0,0)
+    delta_dist = execute_epistemic_action(state, act, target_pos=(10.0, 0.0), agent_pos=(0.0, 0.0))
+
+    # Reserve cost with distance drain should be strictly greater (more negative delta_c)
+    assert delta_dist.delta_c["reserve"] < delta_no_dist.delta_c["reserve"]
+
+
+def test_execute_multivariate_epistemic_action_option_a():
+    """Verifies Option A full joint covariance precision matrix update."""
+    prior_mean = np.array([5.0, 10.0])
+    prior_cov = np.array([[1.0, 0.5], [0.5, 2.0]])
+    obs = np.array([5.5, 10.2])
+    obs_cov = np.array([[0.2, 0.0], [0.0, 0.2]])
+
+    mu_post, cov_post, delta_h = execute_multivariate_epistemic_action(
+        prior_mean, prior_cov, obs, obs_cov
+    )
+
+    assert mu_post.shape == (2,)
+    assert cov_post.shape == (2, 2)
+    assert delta_h > 0.0  # Variance reduced

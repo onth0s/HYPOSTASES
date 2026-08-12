@@ -1,6 +1,6 @@
 # Front 09 — Active Information Gathering & Active Perception
 
-Spec Ref: `misc/next-steps.md` Section IX | Epistemic Action Integration
+Master Spec Ref: [`docs/WAVE_1_FRONT_09/front_09_active_information_gathering_spec.md`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_1_FRONT_09/front_09_active_information_gathering_spec.md) | Ingested Literature: [`docs/WAVE_1_FRONT_09/papers/`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_1_FRONT_09/papers/)
 
 ## Overview
 Observation becomes an intentional, goal-directed action. Agents deliberately trade immediate utility for uncertainty reduction — epistemic utility enters the decision calculus alongside material utility.

@@ -2,7 +2,7 @@
 
 Agent-based modeling framework — formal specification (v4 Target), reference implementation, continuous substrate integration, vanguard game-theoretic mechanism design, cognitive expansion research fronts, and inverse inference engine.
 
-**Current Version**: `v0.4.0` | **Status**: 215/215 tests passing · `ruff` clean · Fully audited and refactored
+**Current Version**: `v0.4.0` | **Status**: 225/225 tests passing · `ruff` clean · Fully audited and refactored
 
 ## Project Structure
 
@@ -29,6 +29,7 @@ HYPOSTASES/
 ├── src/hypostases/            # Core package
 │   ├── engine/                    # v4 Core simulation engine (types, dynamics, likelihood, memory, _math)
 │   ├── world_model/               # Hierarchical world models, conceptual spaces, TEM & CAN grid attractors
+│   ├── causal/                    # Structural Causal Models, do-calculus, NOTEARS discovery, RSCMs & policy planning
 │   ├── planning/                  # Explicit plan executor, plan library, plan repair
 │   ├── active_perception.py       # Active sensing & variational free energy dynamics
 │   ├── counterfactual.py          # Multi-future rollouts & Dubins PDE reachability
@@ -39,7 +40,7 @@ HYPOSTASES/
 │   ├── cli/                       # Command-line architecture (main, trace, infer, sweep, spec, sweep-memory)
 │   └── utils/                     # Package utilities (spec merging)
 │
-├── tests/                     # Test suite (215 tests covering engine, dynamics, planning, memory, inference)
+├── tests/                     # Test suite (225 tests covering engine, dynamics, planning, memory, causal models, inference)
 │
 ├── docs/                      # Cognitive Expansion Fronts & Compass Architecture
 │   ├── roadmap_compass.md         # Ratified High-Level Specification and Strategic Compass
@@ -96,7 +97,7 @@ All 14 cognitive expansion fronts maintain the core state invariant: $\sigma = (
 - **[Front 05: Institution Layer](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_05_institution_layer.md)** `[PARTIAL]`: First-class institutional entities operating as agents with governance rules and authority.
 - **[Front 06: Communication as Bayesian Evidence](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_06_communication_bayesian_evidence.md)** `[PARTIAL]`: Messages as probabilistic likelihood evidence for belief posterior updates.
 - **[Front 07: Meta-Learning](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_07_meta_learning.md)** `[DEFERRED]`: Self-adaptation of internal exploration heuristics ($\xi$), search depths, and learning parameters.
-- **[Front 08: Causal World Models](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_08_causal_world_models.md)** `[DEFERRED]`: Structural Causal Models (SCMs) and intervention ($do$-calculus) in $w$.
+- **[Front 08: Causal World Models](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_08_causal_world_models.md)** `[IMPLEMENTED]`: Structural Causal Models (SCMs), Pearl's 3-rung hierarchy, symbolic $do$-calculus engine (Rules 1-3), 3-step counterfactual cycle (Abduction, Action, Prediction), NOTEARS continuous DAG optimization ($h(W) = \text{tr}(e^{W \circ W}) - d = 0$), cost-optimal interventional planner ($X^* = \arg\min \text{Cost}(X)$), and Relational SCMs (RSCMs) zero-shot cross-skeleton transfer.
 - **[Front 09: Active Information Gathering](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_09_active_information_gathering.md)** `[IMPLEMENTED]`: Epistemic actions (`INSPECT`, `PROBE`, `MONITOR`) trading material utility for variance reduction ($\Delta \sigma^2$) and Dodig-Crnkovic (2022) Variational Free Energy active inference.
 - **[Front 10: Mechanism Search](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_10_mechanism_search.md)** `[DEFERRED]`: Optimization over institutional rule spaces using the simulation harness as an oracle.
 - **[Front 11: Abductive Reasoning & Hypotheses](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_11_abductive_reasoning_hypothesis_objects.md)** `[DEFERRED]`: Explanations as explicit `Hypothesis` objects ($H_1, H_2, \dots$) and abductive inference.

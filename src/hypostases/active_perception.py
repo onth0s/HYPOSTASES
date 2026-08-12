@@ -8,6 +8,7 @@ updates over w, and allocating epistemic costs across primitive state variables.
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import Any
 
@@ -97,6 +98,8 @@ def execute_epistemic_action(
     ground_truth_val: float = 10.0,
     config: dict[str, Any] | None = None,
     rng: np.random.Generator | None = None,
+    target_pos: tuple[float, float] | None = None,
+    agent_pos: tuple[float, float] = (0.0, 0.0),
 ) -> FeedbackDelta:
     """Executes an active sensing action, calculating Bayesian updates and state costs.
 
@@ -106,6 +109,8 @@ def execute_epistemic_action(
         ground_truth_val: Physical true state value being observed.
         config: Loaded active sensing config dict.
         rng: Optional random generator for noisy observation sampling.
+        target_pos: Optional spatial location (x, y) of target for Dodig-Crnkovic distance cost.
+        agent_pos: Spatial location (x, y) of sensing agent.
 
     Returns:
         FeedbackDelta containing delta_c, delta_w, delta_rho_ext, etc.
@@ -121,10 +126,19 @@ def execute_epistemic_action(
     base_cost_time = float(act_spec.get("cost_time", 0.5))
     obs_variance = float(act_spec.get("observation_variance", 0.25))
     target_prop = str(act_spec.get("target_property", "environment_mu"))
+    kappa = float(cfg.get("distance_cost_coefficient", 0.1))
+
+    # Dodig-Crnkovic (2022) Morphological Spatial Distance Cost
+    dist_cost = 0.0
+    if target_pos is not None:
+        dx = float(target_pos[0] - agent_pos[0])
+        dy = float(target_pos[1] - agent_pos[1])
+        distance = math.sqrt(dx * dx + dy * dy)
+        dist_cost = kappa * distance
 
     # State-dependent efficiency scaling: higher resilience reduces reserve cost
     resilience_factor = max(0.1, agent.c.resilience)
-    actual_reserve_cost = base_cost_reserve / (0.5 + 0.5 * resilience_factor)
+    actual_reserve_cost = (base_cost_reserve + dist_cost) / (0.5 + 0.5 * resilience_factor)
 
     delta_c: DeltaCharacteristics = {"reserve": -actual_reserve_cost}
     delta_rho_ext: DeltaPowerExternal = {"time_budget": -base_cost_time}
@@ -171,3 +185,42 @@ def execute_epistemic_action(
         delta_rho_ext=delta_rho_ext,
         delta_peer_beliefs=delta_peer_beliefs,
     )
+
+
+def execute_multivariate_epistemic_action(
+    prior_mean: np.ndarray,
+    prior_cov: np.ndarray,
+    observation: np.ndarray,
+    obs_cov: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, float]:
+    """Executes Option A Full Joint Covariance Matrix Precision Update (MacKay 1992).
+
+    Lambda_post = Lambda_prior + Lambda_obs
+    Sigma_post = Lambda_post^-1
+    mu_post = Sigma_post * ( Lambda_prior * mu_prior + Lambda_obs * observation )
+
+    Returns:
+        tuple (mu_post, Sigma_post, delta_H_logdet)
+    """
+    mu_p = np.asarray(prior_mean, dtype=float)
+    sigma_p = np.asarray(prior_cov, dtype=float)
+    obs = np.asarray(observation, dtype=float)
+    sigma_o = np.asarray(obs_cov, dtype=float)
+
+    d = mu_p.shape[0]
+    reg = np.eye(d) * 1e-8
+
+    lambda_p = np.linalg.inv(sigma_p + reg)
+    lambda_o = np.linalg.inv(sigma_o + reg)
+
+    lambda_post = lambda_p + lambda_o
+    sigma_post = np.linalg.inv(lambda_post)
+
+    mu_post = sigma_post @ (lambda_p @ mu_p + lambda_o @ obs)
+
+    # Log-det Shannon entropy reduction
+    det_prior = max(float(np.linalg.det(sigma_p + reg)), 1e-12)
+    det_post = max(float(np.linalg.det(sigma_post + reg)), 1e-12)
+    delta_h = 0.5 * float(np.log(det_prior / det_post))
+
+    return mu_post, sigma_post, delta_h

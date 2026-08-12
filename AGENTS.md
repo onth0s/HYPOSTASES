@@ -47,3 +47,7 @@ Ratify that YAML serialization of the Plan Storage Persistence Format is not sig
 
 The default Gaussian basis dimension for continuous `SkillArtifact` procedural memory is configured to $K=4$ for optimal performance during Monte Carlo counterfactual rollouts. If test precision failures occur or if higher trajectory expressiveness is required for performance/competence trade-offs, evaluate and benchmark $K=8$ as an alternative configuration.
 
+### 009 — Default Configuration of Friston Expected Free Energy (EFE) Action Selection Mode
+
+The active sensing action selection engine is configured by default to Friston Expected Free Energy mode (`efe_mode: true` in `schema/active_sensing_config.yaml`), while coexisting alongside traditional linear pragmatic-epistemic utility mixing ($U_{\text{total}} = (1-\beta) U_{\text{pragmatic}} + \beta U_{\text{epistemic}}$) as a configurable fallback option. If implementation failures, unexpected trajectory divergence, or numerical instability arise during active perception simulation or inference, investigate `efe_mode` calibration as a primary direct cause.
+

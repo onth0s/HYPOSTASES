@@ -1,8 +1,11 @@
 # Active Sensing & Epistemic Information Gathering Configuration
 # Spec Ref: Front 09 (Wave 1) — Active Perception & Information Theory Dynamics
 
-epistemic_weight: 0.3 # Default beta weighting: U_total = (1-beta)*U_pragmatic + beta*U_epistemic
+efe_mode: true # AGENTS.md Rule 009: Default Friston Expected Free Energy action selection
+epistemic_weight: 0.3 # Default beta weighting when efe_mode is false: U_total = (1-beta)*U_pragmatic + beta*U_epistemic
 min_variance_threshold: 0.05 # Minimum variance to trigger epistemic actions
+learning_progress_decay: 0.1 # Oudeyer (2007) IAC rate of decay for belief error tracking
+distance_cost_coefficient: 0.1 # Dodig-Crnkovic (2022) morphological distance cost drain kappa
 
 epistemic_actions:
   INSPECT:

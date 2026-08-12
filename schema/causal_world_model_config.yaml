@@ -1,0 +1,63 @@
+# HYPOSTASES — Causal World Model Ground-Truth Declarative Schema
+# Spec Ref: docs/WAVE_2_FRONT_08/front_08_causal_world_models_spec.md
+# Rule 006 Compliant
+
+version: "1.0-CausalWorldModel"
+front: "Front 08 — Causal World Models"
+
+default_scm:
+  name: "environment_causal_graph"
+  nodes:
+    - name: "resource_scarcity"
+      type: "endogenous"
+      domain_min: 0.0
+      domain_max: 1.0
+      exogenous_mean: 0.2
+      exogenous_std: 0.05
+    - name: "agent_effort"
+      type: "endogenous"
+      domain_min: 0.0
+      domain_max: 10.0
+      exogenous_mean: 1.0
+      exogenous_std: 0.2
+    - name: "institutional_penalty"
+      type: "endogenous"
+      domain_min: 0.0
+      domain_max: 5.0
+      exogenous_mean: 0.0
+      exogenous_std: 0.1
+    - name: "reward_payoff"
+      type: "endogenous"
+      domain_min: -10.0
+      domain_max: 100.0
+      exogenous_mean: 0.0
+      exogenous_std: 0.5
+
+  edges:
+    - source: "resource_scarcity"
+      target: "reward_payoff"
+      weight: -2.5
+      mechanism: "linear"
+    - source: "agent_effort"
+      target: "reward_payoff"
+      weight: 4.0
+      mechanism: "linear"
+    - source: "institutional_penalty"
+      target: "reward_payoff"
+      weight: -3.0
+      mechanism: "linear"
+
+notears_config:
+  lambda_l1: 0.1
+  max_iter: 100
+  rho_max: 1e16
+  w_threshold: 0.3
+
+pc_config:
+  alpha_pval: 0.05
+
+cost_optimal_planner_config:
+  max_budget: 10.0
+  action_costs:
+    agent_effort: 1.0
+    institutional_penalty: 2.5
