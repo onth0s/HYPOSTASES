@@ -6,6 +6,7 @@ under Rule 006 (YAML-driven) and Rule 011 (Dual persistence).
 
 import math
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 import yaml
@@ -214,11 +215,18 @@ class MechanismCandidate:
 class MechanismSpace:
     """Defines and samples candidate mechanisms within search domain M."""
 
-    def __init__(self, config_path: str = "schema/mechanism_search_config.yaml"):
+    def __init__(self, config_path: str | Path | None = None):
         self.config_path = config_path
         self.config = self._load_config()
 
     def _load_config(self) -> dict[str, Any]:
+        if self.config_path is None:
+            try:
+                from hypostases.schemas.loader import load_mechanism_search_config
+
+                return load_mechanism_search_config()
+            except Exception:
+                return {}
         try:
             with open(self.config_path, encoding="utf-8") as f:
                 return yaml.safe_load(f)

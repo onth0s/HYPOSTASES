@@ -90,11 +90,13 @@ class AlphaEvolveEngine:
 
     def _load_config(self, config_path: str | Path | None) -> dict[str, Any]:
         if config_path is None:
-            config_path = (
-                Path(__file__).resolve().parent.parent.parent.parent
-                / "schema"
-                / "alphaevolve_config.yaml"
-            )
+            try:
+                from hypostases.schemas.loader import load_alphaevolve_config
+
+                data = load_alphaevolve_config()
+                return data.get("alphaevolve", {}) if isinstance(data, dict) else {}
+            except Exception:
+                return {}
 
         if Path(config_path).exists():
             with open(config_path, encoding="utf-8") as f:

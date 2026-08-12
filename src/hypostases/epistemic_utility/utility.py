@@ -1,9 +1,4 @@
-"""HYPOSTASES Engine — Epistemic Utility & Information Gain Dynamics.
-
-Spec Ref: Front 09 (Wave 1) — Active Information Gathering.
-Quantifies epistemic utility via Shannon Entropy reduction, Gaussian KL-Divergence,
-and Bayesian Mutual Information over state uncertainty in w.
-"""
+"""HYPOSTASES Engine — Epistemic Utility & Information Gain Dynamics."""
 
 from __future__ import annotations
 

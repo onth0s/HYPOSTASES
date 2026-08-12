@@ -97,3 +97,61 @@ def load_natural_language_compression_config(
     """Loads Wave 5 Front 14 Natural Language Symbolic Compression configuration."""
     return load_yaml(config_filename)
 
+
+def load_active_sensing_config(config_filename: str = "active_sensing_config.yaml") -> dict:
+    """Loads Wave 1 Front 09 Active Information Gathering configuration."""
+    return load_yaml(config_filename)
+
+
+def load_alphaevolve_config(config_filename: str = "alphaevolve_config.yaml") -> dict:
+    """Loads Wave 5 Front 13 AlphaEvolve discovery engine configuration."""
+    return load_yaml(config_filename)
+
+
+def load_causal_world_model_config(config_filename: str = "causal_world_model_config.yaml") -> dict:
+    """Loads Wave 2 Front 08 Causal World Models configuration."""
+    return load_yaml(config_filename)
+
+
+def load_institution_layer_config(config_filename: str = "institution_layer_config.yaml") -> dict:
+    """Loads Wave 3 Front 05 Institution Layer configuration."""
+    return load_yaml(config_filename)
+
+
+def load_mechanism_search_config(config_filename: str = "mechanism_search_config.yaml") -> dict:
+    """Loads Wave 4 Front 10 Mechanism Search configuration."""
+    return load_yaml(config_filename)
+
+
+def load_meta_learning_config(config_filename: str = "meta_learning_config.yaml") -> dict:
+    """Loads Wave 4 Front 07 Meta-Learning configuration."""
+    return load_yaml(config_filename)
+
+
+def load_abductive_reasoning_config(
+    config_filename: str = "abductive_reasoning_config.yaml",
+) -> dict:
+    """Loads Wave 3 Front 11 Abductive Reasoning configuration."""
+    return load_yaml(config_filename)
+
+
+def load_scientific_discovery_config(
+    config_filename: str = "scientific_discovery_config.yaml",
+) -> dict:
+    """Loads Wave 4 Front 12 Scientific Discovery Loop configuration."""
+    return load_yaml(config_filename)
+
+
+def load_counterfactual_config(config_filename: str = "counterfactual_config.yaml") -> dict:
+    """Loads Wave 1 Front 04 Counterfactual Simulation configuration."""
+    return load_yaml(config_filename)
+
+
+def load_meta_parameters_preset(config_filename: str = "meta_parameters_preset.yaml") -> dict:
+    """Loads theta_meta meta-parameters preset configuration."""
+    return load_yaml(config_filename)
+
+
+def load_scenarios(config_filename: str = "scenarios.yaml") -> dict:
+    """Loads multi-agent scenario definitions."""
+    return load_yaml(config_filename)

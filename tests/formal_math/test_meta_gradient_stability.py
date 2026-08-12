@@ -15,8 +15,8 @@ def test_theorem10_laplace_kfac_logdet_curvature_stability():
     dim = 5
 
     # Generate ill-conditioned Hessian matrix with tiny eigenvalues
-    A = np.random.randn(dim, dim)
-    H_ill_conditioned = A.T @ A * 1e-6 + np.eye(dim) * 1e-4
+    A = np.random.randn(dim, dim)  # noqa: N806
+    H_ill_conditioned = A.T @ A * 1e-6 + np.eye(dim) * 1e-4  # noqa: N806
 
     # Log-determinant with log-sum-exp numerical stabilization
     sign, logdet = np.linalg.slogdet(H_ill_conditioned)

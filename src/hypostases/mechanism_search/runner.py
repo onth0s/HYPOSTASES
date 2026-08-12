@@ -5,6 +5,7 @@ with inner-loop multi-agent simulation harness oracle under Rule 009 (efe_mode)
 and Rule 011 (Dual Persistence).
 """
 
+from pathlib import Path
 from typing import Any
 
 from hypostases.mechanism_search.evaluator import MechanismEvaluator
@@ -22,7 +23,7 @@ class MechanismSearchRunner:
 
     def __init__(
         self,
-        config_path: str = "schema/mechanism_search_config.yaml",
+        config_path: str | Path | None = None,
         optimizer_type: str = "bayesian",
         aggregator_type: str = "productivity_gini",
         efe_mode: bool = True,  # Rule 009

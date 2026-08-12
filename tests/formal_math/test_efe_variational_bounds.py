@@ -16,7 +16,7 @@ def test_theorem1_efe_roa_igpv_equivalence():
     num_obs, num_states = 4, 4
 
     # Random likelihood matrix A: P(o|s)
-    A = np.random.dirichlet(np.ones(num_obs), size=num_states).T  # (num_obs, num_states)
+    A = np.random.dirichlet(np.ones(num_obs), size=num_states).T  # noqa: N806 (num_obs, num_states)
 
     # State prior Q(s)
     qs = np.array([0.4, 0.3, 0.2, 0.1])
@@ -53,7 +53,7 @@ def test_theorem1_efe_roa_igpv_equivalence():
 def test_theorem2_state_risk_upper_bound():
     """Empirically proves C_ROA <= C_RSA (State-Risk Upper Bound)."""
     np.random.seed(42)
-    A = np.eye(3)  # Identity likelihood (perfect observation)
+    A = np.eye(3)  # noqa: N806
     qs = np.array([0.5, 0.3, 0.2])
 
     cs = np.array([0.8, 0.1, 0.1])  # Target state preference
@@ -70,7 +70,7 @@ def test_theorem2_state_risk_upper_bound():
     assert np.isclose(c_roa, c_rsa, atol=1e-5)
 
     # Under noisy likelihood A, C_ROA <= C_RSA
-    A_noisy = np.array([[0.8, 0.1, 0.1], [0.1, 0.8, 0.1], [0.1, 0.1, 0.8]])
+    A_noisy = np.array([[0.8, 0.1, 0.1], [0.1, 0.8, 0.1], [0.1, 0.1, 0.8]])  # noqa: N806
     fo_noisy = A_noisy @ qs
     co_noisy = A_noisy @ cs
 
@@ -90,7 +90,7 @@ def test_invariant3_preference_simplex_linear_compatibility():
 
     # Valid state preference on 1-simplex
     cs = [0.6, 0.3, 0.1]
-    A = [[0.9, 0.05, 0.05], [0.05, 0.9, 0.05], [0.05, 0.05, 0.9]]
+    A = [[0.9, 0.05, 0.05], [0.05, 0.9, 0.05], [0.05, 0.05, 0.9]]  # noqa: N806
 
     co = learner.enforce_preference_compatibility(cs, A)
 

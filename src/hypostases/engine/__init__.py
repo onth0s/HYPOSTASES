@@ -12,6 +12,11 @@ from hypostases.engine.dynamics import (
     step_env,
 )
 from hypostases.engine.likelihood import action_likelihood, expected_action_type, predict_amount
+from hypostases.engine.power_dynamics import (
+    compute_external_power_projection,
+    compute_internal_power_projection,
+    compute_total_power,
+)
 from hypostases.engine.types import (
     N_K,
     Action,
@@ -43,6 +48,9 @@ __all__ = [
     "PowerExternal",
     "WorldModel",
     "action_likelihood",
+    "compute_external_power_projection",
+    "compute_internal_power_projection",
+    "compute_total_power",
     "constants",
     "dynamic_action_costs",
     "evolve",

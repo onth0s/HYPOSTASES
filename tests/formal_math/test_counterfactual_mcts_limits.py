@@ -20,7 +20,7 @@ def test_theorem4_asymptotic_mcts_policy_convergence():
     sample_sizes = [50, 500, 5000]
     errors = []
 
-    for N in sample_sizes:
+    for N in sample_sizes:  # noqa: N806
         counts = np.zeros(3)
         for _ in range(N):
             # Monte Carlo Gumbel-max or softmax sampling
@@ -46,10 +46,10 @@ def test_invariant5_kmp_basis_dimension_approximation_error():
     # Synthetic continuous trajectory with high frequency oscillations
     trajectory = np.sin(2 * np.pi * t) + 0.5 * np.sin(6 * np.pi * t)
 
-    def fit_gaussian_kmp(t_vec, traj, K):
+    def fit_gaussian_kmp(t_vec, traj, K):  # noqa: N803
         centers = np.linspace(0, 1, K)
         width = 1.0 / K
-        Phi = np.zeros((len(t_vec), K))
+        Phi = np.zeros((len(t_vec), K))  # noqa: N806
         for k in range(K):
             Phi[:, k] = np.exp(-((t_vec - centers[k]) ** 2) / (2 * width**2))
 

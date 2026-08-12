@@ -1,11 +1,4 @@
-"""HYPOSTASES Engine — v4 Counterfactual Simulation & Multi-Future Lookahead.
-
-Spec Ref: Wave 1 Front 04 (docs/WAVE_1_FRONT_04/front_04_counterfactual_simulation_spec.md).
-SOTA Ref: ICML/ICLR 2026 EvoCF (Evolutionary Counterfactual Planning).
-
-Provides multi-future lookahead search, ephemeral sandbox cloning, MCTS tree evaluation,
-and evolutionary plan mutation over agent primitive state tuple σ = (c, w, g, ρ_ext).
-"""
+"""HYPOSTASES Engine — v4 Counterfactual Simulation & Multi-Future Lookahead."""
 
 from __future__ import annotations
 

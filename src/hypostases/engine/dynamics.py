@@ -10,13 +10,9 @@ Implements the core loop stages:
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass
-from typing import Final
-
 import numpy as np
 
-from hypostases.engine._math import compute_temperature, softmax
+from hypostases.engine._math import softmax
 from hypostases.engine.constants import (
     ACQUISITION_U_GAIN,
     CROWDING_OUT_HYSTERESIS_GAIN,
@@ -24,8 +20,6 @@ from hypostases.engine.constants import (
     INEQUITY_AVERSION_GAIN,
     KALMAN_OBS_NOISE_R,
     KALMAN_PROCESS_NOISE_Q,
-    MOOD_DECAY_RATE,
-    PEER_BELIEF_ALPHA,
     PUNISH_MOOD_GAIN,
     PUNISH_RESERVE_COST,
     PUNISH_TARGET_PENALTY,
@@ -35,14 +29,9 @@ from hypostases.engine.constants import (
     REQUEST_SOCIAL_COST,
     SHARE_MOOD_BONUS,
     SHARE_SOCIAL_GAIN,
-    SIGMA2_MAX,
     SIGMA2_MIN,
-    STATUS_COUPLING,
-    STATUS_RESERVE_THRESHOLD,
     STATUS_U_GAIN,
     SURVIVAL_U_GAIN,
-    TEMPERATURE_OFFSET,
-    UTILITY_DECAY_RATE,
     WITHDRAW_DEGRADE,
     WITHDRAW_FEE,
     WITHDRAW_MOOD_PENALTY,
@@ -50,6 +39,10 @@ from hypostases.engine.constants import (
     WORLD_MU_GAIN,
     WORLD_REPLENISH_GAIN,
     WORLD_SIGMA2_UPDATE_GAIN,
+)
+from hypostases.engine.state_transitions import (
+    _integrate_non_world as _integrate_non_world,
+    evolve as evolve,
 )
 from hypostases.engine.types import (
     EPISTEMIC_ACTION_TYPES,
@@ -61,84 +54,17 @@ from hypostases.engine.types import (
     DeltaPowerExternal,
     DeltaWorldModel,
     FeedbackDelta,
-    GoalCategory,
     K,
 )
-from hypostases.schemas import declared_simplification
-
-
-def _survival_amount(ag: AgentState, pool: float) -> float:
-    return max(0.5, 10.0 - ag.c.reserve)
-
-
-@declared_simplification("amount_acquisition")
-def _acquisition_amount(ag: AgentState, pool: float) -> float:
-    return min(5.0, max(1.0, pool * 0.3))
-
-
-def _relational_amount(ag: AgentState, pool: float) -> float:
-    return min(ag.c.reserve * 0.2, 3.0)
-
-
-@declared_simplification("amount_status")
-def _status_amount(ag: AgentState, pool: float) -> float:
-    return 0.0
-
-
-@dataclass(frozen=True)
-class GoalBranch:
-    action_type: ActionType
-    amount_fn: Callable[[AgentState, float], float]
-
-
-# Directive 003 Branch Audit (Part III §5.8):
-#   - SURVIVAL: ActionType.REQUEST, state-dependent on reserve deficit (10.0 - c.reserve).
-#   - ACQUISITION: ActionType.REQUEST, state-dependent on pool_belief (pool * 0.3).
-#   - RELATIONAL: ActionType.SHARE, state-dependent on reserve capacity (c.reserve * 0.2).
-#   - STATUS: ActionType.WITHDRAW, zero resource exchange (declared simplification for status signaling).
-GOAL_SPEC: dict[GoalCategory, GoalBranch] = {
-    GoalCategory.SURVIVAL: GoalBranch(ActionType.REQUEST, _survival_amount),
-    GoalCategory.ACQUISITION: GoalBranch(ActionType.REQUEST, _acquisition_amount),
-    GoalCategory.RELATIONAL: GoalBranch(ActionType.SHARE, _relational_amount),
-    GoalCategory.STATUS: GoalBranch(ActionType.WITHDRAW, _status_amount),
-}
-
-_STATUS_IDX: Final[int] = K.index(GoalCategory.STATUS)
-_RELATIONAL_IDX: Final[int] = K.index(GoalCategory.RELATIONAL)
-_ACQUISITION_IDX: Final[int] = K.index(GoalCategory.ACQUISITION)
-_SURVIVAL_IDX: Final[int] = K.index(GoalCategory.SURVIVAL)
-
-
-def _effective_utilities(agent: AgentState, coupling: float = STATUS_COUPLING) -> np.ndarray:
-    """Computes effective goal utilities u_eff with reserve sensitivity on STATUS (Part VII §12.5)."""
-    u_eff = agent.g.u.copy()
-
-    reserve_factor = 1.0 + coupling * max(0.0, agent.c.reserve - STATUS_RESERVE_THRESHOLD)
-    u_eff[_STATUS_IDX] *= reserve_factor
-    return u_eff
-
-
-def goal_probs(
-    agent: AgentState,
-    xi: np.ndarray,
-    coupling: float = STATUS_COUPLING,
-    pool_belief: float = 10.0,
-) -> np.ndarray:
-    """Computes transient goal probabilities π ∈ Δ(K) dynamically from latent utilities u (v4).
-
-    Shared generative goal distribution between pi_decision and action_likelihood.
-
-    Parameters:
-        agent: The AgentState containing primitives and weights.
-        xi: The Index of Exploration context vector used to compute logit scaling temperature.
-        coupling: Status-reserve coupling coefficient.
-        pool_belief: Current pool estimate S_t used for endogenous scarcity action cost scaling (Contention 1).
-    """
-    u_eff = _effective_utilities(agent, coupling=coupling)
-    omega = agent.omega(xi, pool_belief=pool_belief)
-    logits = omega * u_eff
-    temperature = compute_temperature(xi, offset=TEMPERATURE_OFFSET)
-    return softmax(logits / temperature)
+from hypostases.engine.utility_dynamics import (
+    _ACQUISITION_IDX,
+    _RELATIONAL_IDX,
+    _STATUS_IDX,
+    _SURVIVAL_IDX,
+    GOAL_SPEC,
+    _effective_utilities,
+    goal_probs,
+)
 
 
 def pi_decision(
@@ -524,65 +450,6 @@ def feedback(
         delta_rho_ext=delta_rho_ext,
         delta_peer_beliefs=delta_peer_beliefs,
     )
-
-
-def _integrate_non_world(agent: AgentState, phi: FeedbackDelta) -> None:
-    """Integrates all primitive state fields EXCEPT the world model (shared by evolve and evolve_rb)."""
-    # Integrate Characteristics c
-    if "reserve" in phi.delta_c:
-        agent.c.reserve = max(0.0, agent.c.reserve + phi.delta_c["reserve"])
-    if "mood" in phi.delta_c:
-        agent.c.mood = max(-1.0, min(1.0, agent.c.mood + phi.delta_c["mood"]))
-
-    # Baseline mood decay toward zero (Phase 2.4)
-    agent.c.mood *= 1.0 - MOOD_DECAY_RATE
-
-    # Integrate Peer Beliefs (Theory of Mind & Bayesian Evidence Integration)
-    for peer_name, val in phi.delta_peer_beliefs.items():
-        prev = agent.w.peer_beliefs.get(peer_name, val)
-        # Apply exponential smoothing as robust fallback baseline for direct scalar deltas
-        agent.w.peer_beliefs[peer_name] = PEER_BELIEF_ALPHA * val + (1.0 - PEER_BELIEF_ALPHA) * prev
-
-    # Integrate Goal Hierarchy latent utilities u with baseline decay regularization
-    agent.g.u = (1.0 - UTILITY_DECAY_RATE) * agent.g.u + phi.delta_g
-
-    # Integrate External Power ρ_ext
-    if "social_capital" in phi.delta_rho_ext:
-        agent.rho_ext.social_capital = max(
-            0.0, agent.rho_ext.social_capital + phi.delta_rho_ext["social_capital"]
-        )
-
-    # Tier-1 tick: decrement time_budget (reset at Tier-2 epoch boundary — declared out of scope)
-    agent.rho_ext.time_budget = max(0.0, agent.rho_ext.time_budget - 1.0)
-
-
-def evolve(agent: AgentState, phi: FeedbackDelta) -> None:
-    """Part II §3.4: State Evolution Stage integrating deltas into primitives."""
-    _integrate_non_world(agent, phi)
-
-    # Integrate World Model w
-    if "mu" in phi.delta_w:
-        agent.w.mu += phi.delta_w["mu"]
-    if "replenish_rate_est" in phi.delta_w:
-        agent.w.replenish_rate_est += phi.delta_w["replenish_rate_est"]
-    if "sigma2" in phi.delta_w:
-        agent.w.sigma2 = max(SIGMA2_MIN, agent.w.sigma2 + phi.delta_w["sigma2"])
-    if "last_surprise" in phi.delta_w:
-        agent.w.last_surprise = phi.delta_w["last_surprise"]
-
-    # Apply memory decay to belief confidence (Phase 2)
-    decay_mode = getattr(agent, "decay_mode", "variance")
-    if decay_mode == "variance":
-        agent.w.sigma2 = agent.w.sigma2 + (SIGMA2_MAX - agent.w.sigma2) * (
-            1.0 - agent.c.memory_decay
-        )
-    elif decay_mode == "precision":
-        tau = 1.0 / max(agent.w.sigma2, 1e-9)
-        tau_min = 1.0 / SIGMA2_MAX
-        tau = tau + (tau_min - tau) * (1.0 - agent.c.memory_decay)
-        agent.w.sigma2 = max(SIGMA2_MIN, 1.0 / max(tau, 1e-9))
-
-    _record_memory_event(agent, phi)
 
 
 def _record_memory_event(agent: AgentState, phi: FeedbackDelta) -> None:

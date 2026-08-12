@@ -1,10 +1,4 @@
-"""HYPOSTASES Engine — Active Perception & Active Information Gathering.
-
-Spec Ref: Front 09 (Wave 1) — Active Sensing Dynamics.
-Implements active perception routines: executing epistemic actions (INSPECT, PROBE,
-MONITOR, QUERY, EXPERIMENT, VERIFY, OBSERVE, SPY), performing Bayesian belief state
-updates over w, and allocating epistemic costs across primitive state variables.
-"""
+"""Active Perception & Active Information Gathering routines for Front 09."""
 
 from __future__ import annotations
 
@@ -24,72 +18,76 @@ from hypostases.engine.types import (
     DeltaWorldModel,
     FeedbackDelta,
 )
-
-_DEFAULT_CONFIG_PATH = Path(__file__).parent.parent.parent / "schema" / "active_sensing_config.yaml"
+from hypostases.schemas.loader import load_active_sensing_config as _load_schema_config
 
 
 def load_active_sensing_config(config_path: Path | str | None = None) -> dict[str, Any]:
     """Loads active sensing YAML configuration file (Rule 006 data-driven approach)."""
-    target_path = Path(config_path) if config_path else _DEFAULT_CONFIG_PATH
-    if not target_path.exists():
-        # Fallback default configuration
-        return {
-            "epistemic_weight": 0.3,
-            "min_variance_threshold": 0.05,
-            "epistemic_actions": {
-                "INSPECT": {
-                    "cost_reserve": 0.2,
-                    "cost_time": 0.5,
-                    "observation_variance": 0.25,
-                    "target_property": "environment_mu",
-                },
-                "PROBE": {
-                    "cost_reserve": 0.5,
-                    "cost_time": 1.0,
-                    "observation_variance": 0.10,
-                    "target_property": "replenish_rate",
-                },
-                "MONITOR": {
-                    "cost_reserve": 0.1,
-                    "cost_time": 0.2,
-                    "observation_variance": 0.50,
-                    "target_property": "environment_mu",
-                },
-                "QUERY": {
-                    "cost_reserve": 0.1,
-                    "cost_time": 0.3,
-                    "observation_variance": 0.30,
-                    "target_property": "peer_belief",
-                },
-                "EXPERIMENT": {
-                    "cost_reserve": 1.2,
-                    "cost_time": 2.0,
-                    "observation_variance": 0.05,
-                    "target_property": "replenish_rate",
-                },
-                "VERIFY": {
-                    "cost_reserve": 0.3,
-                    "cost_time": 0.4,
-                    "observation_variance": 0.15,
-                    "target_property": "environment_mu",
-                },
-                "OBSERVE": {
-                    "cost_reserve": 0.05,
-                    "cost_time": 0.1,
-                    "observation_variance": 0.60,
-                    "target_property": "environment_mu",
-                },
-                "SPY": {
-                    "cost_reserve": 0.8,
-                    "cost_time": 1.5,
-                    "observation_variance": 0.20,
-                    "target_property": "peer_reserve",
-                },
+    if config_path is None:
+        try:
+            return _load_schema_config()
+        except Exception:
+            pass
+    else:
+        target_path = Path(config_path)
+        if target_path.exists():
+            with open(target_path, encoding="utf-8") as f:
+                return yaml.safe_load(f)
+    # Fallback default configuration
+    return {
+        "epistemic_weight": 0.3,
+        "min_variance_threshold": 0.05,
+        "epistemic_actions": {
+            "INSPECT": {
+                "cost_reserve": 0.2,
+                "cost_time": 0.5,
+                "observation_variance": 0.25,
+                "target_property": "environment_mu",
             },
-        }
-
-    with open(target_path, encoding="utf-8") as f:
-        return yaml.safe_load(f)
+            "PROBE": {
+                "cost_reserve": 0.5,
+                "cost_time": 1.0,
+                "observation_variance": 0.10,
+                "target_property": "replenish_rate",
+            },
+            "MONITOR": {
+                "cost_reserve": 0.1,
+                "cost_time": 0.2,
+                "observation_variance": 0.50,
+                "target_property": "environment_mu",
+            },
+            "QUERY": {
+                "cost_reserve": 0.1,
+                "cost_time": 0.3,
+                "observation_variance": 0.30,
+                "target_property": "peer_belief",
+            },
+            "EXPERIMENT": {
+                "cost_reserve": 1.2,
+                "cost_time": 2.0,
+                "observation_variance": 0.05,
+                "target_property": "replenish_rate",
+            },
+            "VERIFY": {
+                "cost_reserve": 0.3,
+                "cost_time": 0.4,
+                "observation_variance": 0.15,
+                "target_property": "environment_mu",
+            },
+            "OBSERVE": {
+                "cost_reserve": 0.05,
+                "cost_time": 0.1,
+                "observation_variance": 0.60,
+                "target_property": "environment_mu",
+            },
+            "SPY": {
+                "cost_reserve": 0.8,
+                "cost_time": 1.5,
+                "observation_variance": 0.20,
+                "target_property": "peer_reserve",
+            },
+        },
+    }
 
 
 def execute_epistemic_action(
