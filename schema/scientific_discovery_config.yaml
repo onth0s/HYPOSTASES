@@ -1,0 +1,22 @@
+# schema/scientific_discovery_config.yaml
+# Data-driven configuration for Wave 4 Front 12: Scientific Discovery Loop
+# Rule 006 Compliance: Ground truth configuration loaded dynamically via schema loaders.
+# Rule 009 Compliance: Default Friston Expected Free Energy (EFE) Integration (efe_mode: true).
+
+scientific_discovery:
+  version: "1.0.0"
+  enabled: true
+  efe_mode: true                        # Rule 009 Friston EFE mode
+  anomaly_threshold_eta: 0.15           # KL divergence threshold for hypothesis generation trigger
+  max_hypotheses_K: 16                 # Maximum capacity of candidate hypothesis ensemble
+  mdl_complexity_penalty_beta: 0.5     # Minimum Description Length Occam penalty weight
+  eig_monte_carlo_samples: 1000        # Monte Carlo sampling resolution for EIG estimation (Lindley 1956, MacKay 1992)
+  ace_num_contrastive_samples_L: 64    # Foster 2020 ACE lower bound contrastive sample size
+  elo_initial_rating: 1000.0           # Gottweis 2025 initial Elo rating for generated hypotheses H_k
+  elo_k_factor: 32.0                   # Gottweis 2025 Elo rating adjustment K-factor
+  pruning_threshold_epsilon: 1e-4       # Posterior probability threshold for hypothesis elimination
+  ase_cost_weight_gamma: 1.0           # King 2004 Active Selection of Experiments cost weighting
+  dual_persistence:
+    enabled: true                      # Rule 011 dual persistence
+    snapshot_interval_ticks: 10
+    storage_format: "yaml"

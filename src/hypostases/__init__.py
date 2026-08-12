@@ -7,6 +7,13 @@ from hypostases.counterfactual import (
     CounterfactualEngine,
     VirtualEnvironmentSandbox,
 )
+from hypostases.mechanism_search import (
+    MechanismCandidate,
+    MechanismEvaluator,
+    MechanismOptimizer,
+    MechanismSearchRunner,
+    MechanismSpace,
+)
 
 __version__ = "0.2.0"
 
@@ -14,5 +21,10 @@ __version__ = "0.2.0"
 __all__ = [
     "CounterfactualBranch",
     "CounterfactualEngine",
+    "MechanismCandidate",
+    "MechanismEvaluator",
+    "MechanismOptimizer",
+    "MechanismSearchRunner",
+    "MechanismSpace",
     "VirtualEnvironmentSandbox",
 ]

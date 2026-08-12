@@ -1,0 +1,72 @@
+# Ground-Truth Mechanism Search Specification & Presets (Rule 006)
+
+version: "1.0.0"
+front: "Wave 4 Front 10 — Mechanism Search"
+
+# Objective & Welfare Aggregator Configuration
+evaluation:
+  default_welfare_aggregator: "productivity_gini" # Selected for optimal convergence & trade-off balance
+  welfare_aggregators:
+    productivity_gini:
+      productivity_weight: 1.0
+      equality_weight: 1.0
+      description: "Productivity multiplied by Gini-derived equality: W = Productivity * (1 - Gini)"
+    rawlsian_maxmin:
+      description: "Rawlsian Max-Min welfare: W = min_i u_i"
+    pareto_efficiency:
+      description: "Ratio of total utility to theoretical Pareto optimal frontier: W = sum(u_i) / U_pareto_max"
+    weighted_linear:
+      weights: [0.5, 0.5]
+      description: "Linear combination of productivity and equality: W = w1 * Productivity + w2 * Equality"
+
+  penalty_weights:
+    lambda_ic: 10.0      # Weight for Incentive Compatibility (IC) regret violation penalty R_IC
+    lambda_ir: 10.0      # Weight for Individual Rationality (IR) violation penalty R_IR
+    lambda_budget: 5.0   # Weight for Budget Balance violation penalty R_budget
+
+# Optimization Engine Parameters
+optimizers:
+  bayesian:
+    n_init_samples: 10
+    n_iterations: 50
+    surrogate_model: "tpe"  # Tree-structured Parzen Estimator / GP
+    exploration_factor: 1.96
+
+  evolutionary:
+    population_size: 20
+    n_generations: 30
+    mutation_rate: 0.15
+    crossover_rate: 0.7
+    fec_enabled: true  # Functional Equivalence Checking (Real et al. 2020)
+
+  differentiable:
+    learning_rate: 0.01
+    n_epochs: 100
+    rho_augmented_lagrangian: 1.0
+    gamma_lagrangian_step: 0.1
+
+# Presets of Institutional Mechanisms
+presets:
+  vickrey_second_price:
+    mechanism_type: "auction"
+    allocation_rule: "highest_bidder"
+    payment_rule: "second_highest_price"
+    dsic_guaranteed: true
+
+  clarke_pivot_tax:
+    mechanism_type: "public_goods"
+    allocation_rule: "samuelson_efficient"
+    payment_rule: "externality_tax"
+    dsic_guaranteed: true
+
+  myerson_optimal_auction:
+    mechanism_type: "auction"
+    allocation_rule: "virtual_valuation_max"
+    payment_rule: "virtual_valuation_threshold"
+    dsic_guaranteed: true
+
+  ai_economist_tax_schedule:
+    mechanism_type: "taxation"
+    income_brackets: [0.0, 10.0, 50.0, 100.0]
+    tax_rates: [0.0, 0.15, 0.30, 0.45]
+    redistribution_mode: "equal_lump_sum_subsidy"
