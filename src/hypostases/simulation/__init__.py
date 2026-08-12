@@ -11,6 +11,7 @@ from hypostases.simulation.benchmarks import (
     run_sweep_benchmark,
     single_trial,
 )
+from hypostases.simulation.exporter import RunExporter
 from hypostases.simulation.harness import (
     build_agent,
     generate_forced_withdraw_trace,
@@ -22,6 +23,7 @@ from hypostases.simulation.harness import (
 from hypostases.simulation.scenarios import create_scenario_agents
 
 __all__ = [
+    "RunExporter",
     "build_agent",
     "create_scenario_agents",
     "evaluate_config",

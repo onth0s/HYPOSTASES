@@ -55,4 +55,14 @@ The active sensing action selection engine is configured by default to Friston E
 
 NEVER track, stage, or push PDF files (`*.pdf`) to the Git repository. Literature PDF files stored in `docs/WAVE_*/papers/` or anywhere else in the workspace are for local agent ingestion only and MUST remain ignored by Git. Markdown documentation (`*.md`), specifications, code, YAML presets, and test files are the only permitted tracked assets.
 
+### 011 — Dual Persistence & Performance Monitoring for Meta-Parameters ($\theta_{\text{meta}}$)
+
+Implement dual persistence for meta-parameters ($\theta_{\text{meta}}$): (1) in-memory tuple projection within $c.m_{\text{procedural}}$, and (2) persistent human-readable YAML serialization as the default state snapshot format. DO NOT purge or deprecate YAML human-readable serialization. Monitor and benchmark YAML serialization of $\theta_{\text{meta}}$ during high-frequency simulation/inference ticks for potential performance bottlenecks.
+
+### 012 — Mandatory Formal Mathematical Implementation Verification
+
+Every wave, front, and engine feature MUST be backed by explicit formal mathematical verification tests, not just unit/syntax surface assertions. Tests MUST empirically verify end-to-end mathematical theorems, limit behavior ($N \to \infty$), asymptotic convergence, game-theoretic equilibrium bounds, variational free energy bounds, and simplex projection invariants. To prevent giant monolithic test files, formal mathematical test suites MUST be modularly split into domain-specific test modules under `tests/formal_math/`.
+
+
+
 

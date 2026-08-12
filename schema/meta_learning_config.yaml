@@ -1,0 +1,65 @@
+# HYPOSTASES Meta-Learning Layer Configuration Schema
+# Rule 006, Rule 009 & Rule 011 Compliant
+
+meta_learning_layer:
+  version: "4.0.0"
+  enabled: true
+
+  # Outer-Loop Meta-Optimizer Hyperparameters
+  outer_loop:
+    meta_learning_rate: 0.01
+    evaluation_window_ticks: 10
+    regularization_weight: 0.001
+
+  # Rule 009: Default Active Sensing EFE Configuration
+  active_sensing:
+    efe_mode: true
+    fallback_utility_mixing:
+      beta_epistemic: 0.5
+      pragmatic_weight: 0.5
+    preference_compatibility:
+      enforce_simplex_projection: true # Enforces C_o = A * C_s
+
+  # ALFA Adaptive Hyperparameters (Baik et al. 2020)
+  alfa_configuration:
+    enabled: true
+    base_learning_rate: 0.01
+    default_mood_decay_rate: 0.1 # Rule 004 Calibration Target
+    generator_network:
+      layers: 3
+      hidden_dim_multiplier: 2
+      activation: "relu"
+    post_multipliers:
+      enable_layerwise_scaling: true
+
+  # MetaPEFT Differentiable Modulators (Tian et al. 2025)
+  meta_peft:
+    enabled: true
+    modulator_activation: "softplus"
+    initial_gamma: 1.0
+    outer_loop_sampling_ratio: 0.20
+
+  # MetaClaw Dual-Timescale Agent Evolution (Xia et al. 2026)
+  meta_claw:
+    enabled: true
+    skill_driven_adaptation:
+      max_skills_per_distillation: 5
+      retrieval_top_k: 3
+    opportunistic_policy_optimization:
+      omls_idle_signals:
+        sleep_window: "23:00-07:00"
+        inactivity_threshold_minutes: 30
+        calendar_aware: true
+    support_query_versioning:
+      strict_buffer_flush: true
+
+  # Rule 008 Calibration
+  kmp_configuration:
+    basis_dimension_k: 4 # Benchmark target: K=8
+    kernel_type: "gaussian"
+
+  # Rule 011 Dual Persistence Settings
+  dual_persistence:
+    in_memory_target: "c.m_procedural"
+    yaml_snapshot_path: "schema/meta_parameters_preset.yaml"
+    benchmark_serialization_overhead: true

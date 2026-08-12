@@ -1,0 +1,24 @@
+# HYPOSTASES Meta-Parameters State Snapshot (Rule 011 Compliant)
+# Persistent Human-Readable Snapshot of theta_meta
+
+meta_parameters_snapshot:
+  snapshot_id: "snap_wave4_front07_001"
+  timestamp: "2026-08-12T15:34:00Z"
+  theta_meta:
+    policy_initialization:
+      weights_mean: [0.012, -0.045, 0.108, -0.002]
+      weights_variance: [0.001, 0.002, 0.001, 0.0005]
+    utility_parameters:
+      pragmatic_bias: 1.0
+      epistemic_scale: 0.85
+      mood_decay_rate: 0.10 # Rule 004
+    alfa_generator_weights:
+      layer_1_scale: 0.9841
+      layer_2_scale: 0.8095
+      layer_3_scale: 0.6564
+    peft_modulators:
+      gamma_attn_qkv: 1.24
+      gamma_attn_out: 0.88
+      gamma_ffn_mlp1: 1.45
+      gamma_ffn_mlp2: 1.12
+    kmp_basis_dimension: 4 # Rule 008

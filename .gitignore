@@ -44,3 +44,4 @@ htmlcov/
 !docs/**/*.md
 
 scratch/
+exports/
