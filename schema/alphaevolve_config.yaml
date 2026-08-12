@@ -1,0 +1,51 @@
+# schema/alphaevolve_config.yaml
+# Data-driven configuration for Wave 5 Front 13: Evolutionary Algorithm Discovery (AlphaEvolve Engine)
+# Rule 006 Compliance: Ground truth configuration loaded dynamically via schema loaders.
+# Rule 009 Compliance: Default Friston Expected Free Energy (EFE) Integration (efe_mode: true).
+# Rule 011 Compliance: Dual persistence configuration for meta-parameters (theta_meta) and compiled SkillArtifacts.
+
+alphaevolve:
+  version: "1.0.0"
+  enabled: true
+  efe_mode: true                         # Rule 009 Friston EFE active sensing mode
+
+  evolutionary_search:
+    population_size: 32                  # N_pop fixed population size
+    mutation_rate: 0.15                  # AST mutation probability mu_r
+    crossover_rate: 0.70                 # Recombination rate between parent ASTs
+    aging_regularization: true           # Real et al. 2019 regularized evolution (discard oldest candidate)
+    max_generations: 50                  # Evolutionary search horizon
+    island_count: 4                      # Romera-Paredes et al. 2023 FunSearch island diversity count
+
+  functional_equivalence:
+    fec_enabled: true                    # Real et al. 2020 Functional Equivalence Checking
+    num_synthetic_probes_K: 16           # Number of probe state vectors for FEC evaluation
+    fec_tolerance_epsilon: 1e-6          # Discrepancy threshold to consider ASTs equivalent
+
+  quality_diversity:
+    map_elites_enabled: true             # Mouret & Clune 2015 MAP-Elites archive
+    grid_dimensions:
+      time_complexity_bins: 10           # Computational complexity axis
+      incentive_regret_bins: 10          # Game-theoretic IC regret axis R_IC
+      scarcity_gain_bins: 10             # Endogenous scarcity delta_kappa axis
+    novelty_search:
+      enabled: true                      # Lehman & Stanley 2011 Novelty Search
+      k_nearest_neighbors: 15            # Neighborhood size for novelty distance computation
+      archive_novelty_threshold: 0.25    # Distance threshold to add candidate to novelty archive
+
+  morphological_coevolution:
+    enabled: true                        # Müller & Hoffmann 2017 Morphological Computation
+    reservoir_dim: 16                    # Physical reservoir state dimension in rho_ext
+    coupling_strength: 0.5               # Physical/procedural feedback coupling multiplier
+
+  evaluator_oracle:
+    simulation_duration_ticks: 20        # Multi-agent simulation horizon per candidate evaluation
+    penalty_weights:
+      lambda_ic: 10.0                    # Incentive compatibility regret penalty
+      lambda_scarcity: 5.0               # Endogenous resource scarcity penalty
+
+  dual_persistence:
+    enabled: true                        # Rule 011 dual persistence
+    snapshot_interval_ticks: 10          # YAML snapshot export frequency
+    snapshot_format: "yaml"
+    skill_artifact_export: true          # Save compiled elite ASTs into c.m_procedural as SkillArtifact

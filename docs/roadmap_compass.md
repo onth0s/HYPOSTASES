@@ -120,8 +120,8 @@
 
   ### Wave 5 — Universal Scaling & Symbolic Generalization
 
-  #### 13. Front 13 — Evolutionary Algorithm Discovery (AlphaEvolve Engine) (`docs/front_13_evolutionary_algorithm_discovery_alphaevolve.md`)
-  - **Core Concept**: Mutating and evolving code/heuristics evaluated against multi-agent game-theoretic equilibrium and endogenous scarcity ($\kappa$) feedback oracles.
+  #### 13. Front 13 — Evolutionary Algorithm Discovery (AlphaEvolve Engine) (`docs/WAVE_5_FRONT_13/front_13_evolutionary_algorithm_discovery_alphaevolve_spec.md`)
+  - **Core Concept**: Mutating and evolving AST code/heuristics evaluated against multi-agent game-theoretic equilibrium, Quality-Diversity (MAP-Elites) archives, regularized aging evolution, and Müller & Hoffmann (2017) Morphological Computation reservoir co-evolution.
 
   #### 14. Front 14 — Natural Language as Symbolic Compression (`docs/front_14_natural_language_symbolic_compression.md`)
   - **Core Concept**: Natural language as a lossy, high-density symbolic compression operator over continuous state $\sigma \in \mathbb{R}^d$, enabling tractable swarm communication and LLM reasoning.

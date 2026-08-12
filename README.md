@@ -2,7 +2,7 @@
 
 Agent-based modeling framework — formal specification (v4 Target), reference implementation, continuous substrate integration, vanguard game-theoretic mechanism design, cognitive expansion research fronts, and inverse inference engine.
 
-**Current Version**: `v0.4.0` | **Status**: 225/225 tests passing · `ruff` clean · Fully audited and refactored
+**Current Version**: `v0.4.0` | **Status**: 290/290 tests passing · `ruff` clean · Fully audited and refactored
 
 ## Project Structure
 
@@ -31,6 +31,7 @@ HYPOSTASES/
 │   ├── world_model/               # Hierarchical world models, conceptual spaces, TEM & CAN grid attractors
 │   ├── causal/                    # Structural Causal Models, do-calculus, NOTEARS discovery, RSCMs & policy planning
 │   ├── planning/                  # Explicit plan executor, plan library, plan repair
+│   ├── alphaevolve/               # Wave 5 AlphaEvolve AST mutator, MAP-Elites QD archives, reservoir & engine
 │   ├── active_perception.py       # Active sensing & variational free energy dynamics
 │   ├── counterfactual.py          # Multi-future rollouts & Dubins PDE reachability
 │   ├── epistemic_utility.py       # Shannon entropy, KL divergence & FEP utility
@@ -102,7 +103,7 @@ All 14 cognitive expansion fronts maintain the core state invariant: $\sigma = (
 - **[Front 10: Mechanism Search](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_10_mechanism_search.md)** `[DEFERRED]`: Optimization over institutional rule spaces using the simulation harness as an oracle.
 - **[Front 11: Abductive Reasoning & Hypotheses](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_11_abductive_reasoning_hypothesis_objects.md)** `[DEFERRED]`: Explanations as explicit `Hypothesis` objects ($H_1, H_2, \dots$) and abductive inference.
 - **[Front 12: Scientific Discovery Loop](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_12_scientific_discovery_loop.md)** `[DEFERRED]`: Iterative hypothesis generation, experimental design, and empirical model refinement.
-- **[Front 13: Evolutionary Algorithm Discovery](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_13_evolutionary_algorithm_discovery_alphaevolve.md)** `[DEFERRED]`: AlphaEvolve engine with game-theoretic oracles and Müller & Hoffmann (2017) Morphological Computation reservoir co-evolution.
+- **[Front 13: Evolutionary Algorithm Discovery](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_5_FRONT_13/front_13_evolutionary_algorithm_discovery_alphaevolve_spec.md)** `[RATIFIED]`: AlphaEvolve engine with game-theoretic oracles, Quality-Diversity (MAP-Elites) archives, regularized aging evolution, and Müller & Hoffmann (2017) Morphological Computation reservoir co-evolution.
 - **[Front 14: Natural Language as Symbolic Compression](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_14_natural_language_symbolic_compression.md)** `[DEFERRED]`: Natural language as a lossy, high-density compression operator over continuous state $\sigma \in \mathbb{R}^d$.
 
 ## Specification v4 Highlights
