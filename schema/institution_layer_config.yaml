@@ -1,0 +1,49 @@
+institution_layer:
+  enabled: true
+  punish_reserve_cost: 0.333  # 1:3 ratio (Fehr & Gächter 2002)
+  compliance_check_frequency: 1
+  default_sanction_multiplier: 3.0
+
+archetypes:
+  government:
+    tax_rate: 0.10
+    public_goods_allocation_ratio: 0.80
+    enforcement_authority: 1.0
+    adico_rules:
+      - rule_id: "gov_tax_payment"
+        attribute: "CITIZEN"
+        deontic: "MUST"
+        aim: "PAY_TAX"
+        condition: "has_income"
+        or_else_penalty: 15.0
+  market:
+    fee_rate: 0.02
+    order_matching_algorithm: "VCG_AUCTION"
+    enforcement_authority: 0.7
+    adico_rules:
+      - rule_id: "mkt_contract_honoring"
+        attribute: "TRADER"
+        deontic: "MUST"
+        aim: "DELIVER_ASSET"
+        condition: "trade_executed"
+        or_else_penalty: 20.0
+  court:
+    arbitration_fee: 5.0
+    enforcement_authority: 0.9
+    adico_rules:
+      - rule_id: "court_dispute_compliance"
+        attribute: "LITIGANT"
+        deontic: "MUST"
+        aim: "ABIDE_RULING"
+        condition: "dispute_resolved"
+        or_else_penalty: 25.0
+  guild:
+    membership_fee: 2.0
+    enforcement_authority: 0.5
+    adico_rules:
+      - rule_id: "guild_resource_sharing"
+        attribute: "MEMBER"
+        deontic: "MAY"
+        aim: "POOL_RESOURCE"
+        condition: "in_good_standing"
+        or_else_penalty: 5.0
