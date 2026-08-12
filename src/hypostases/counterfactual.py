@@ -25,6 +25,7 @@ class VirtualEnvironmentSandbox:
     agent_state: AgentState
     pool_state: float
     xi: np.ndarray
+    kappa_max: float = 1.0  # Dynamic elastica curvature bound (Cacace et al. 2020)
 
     def step(self, action: Action) -> float:
         """Simulate one discrete environment tick, return scalar utility delta Δu."""
@@ -52,6 +53,7 @@ class VirtualEnvironmentSandbox:
             agent_state=self.agent_state.clone(),
             pool_state=self.pool_state,
             xi=self.xi.copy(),
+            kappa_max=self.kappa_max,
         )
 
 
@@ -164,6 +166,25 @@ class CounterfactualEngine:
         assert_invariants(initial_agent_state)
 
         return selected_action
+
+    def evaluate_dubins_reachability(
+        self,
+        start_pose: np.ndarray,
+        target_pose: np.ndarray,
+        kappa_max: float = 1.0,
+    ) -> float:
+        """Computes Dubins reachability path distance under curvature bound kappa_max (Cacace et al. 2020).
+
+        Returns estimated continuous path length under physical curvature constraints.
+        """
+        start = np.asarray(start_pose, dtype=float)
+        target = np.asarray(target_pose, dtype=float)
+        euclidean_dist = float(np.linalg.norm(target[:2] - start[:2]))
+
+        # Curvature penalty scaling (Dubins car model lower bound approximation)
+        r_min = 1.0 / max(1e-6, kappa_max)
+        curvature_penalty = 0.5 * r_min * abs(target[-1] - start[-1]) if len(start) > 2 else 0.0
+        return euclidean_dist + curvature_penalty
 
     def mutate_plan_evocf(
         self,

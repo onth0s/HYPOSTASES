@@ -2,13 +2,13 @@
 
 Agent-based modeling framework — formal specification (v4 Target), reference implementation, continuous substrate integration, vanguard game-theoretic mechanism design, cognitive expansion research fronts, and inverse inference engine.
 
-**Current Version**: `v0.3.0` | **Status**: 164/164 tests passing · `ruff` clean · Fully audited and refactored
+**Current Version**: `v0.4.0` | **Status**: 215/215 tests passing · `ruff` clean · Fully audited and refactored
 
 ## Project Structure
 
 ```
 HYPOSTASES/
-├── AGENTS.md                  # AI agent behavioral directives (including Rule 005)
+├── AGENTS.md                  # AI agent behavioral directives (including Rules 005 & 008)
 ├── pyproject.toml             # Project config (Python >=3.11, ruff & pytest settings)
 │
 ├── spec/                      # Formal specification (Parts I–VII)
@@ -27,17 +27,23 @@ HYPOSTASES/
 │   └── update_dynamics.yaml       # Core loop signatures & constraints
 │
 ├── src/hypostases/            # Core package
-│   ├── engine/                    # v4 Core simulation engine (types, dynamics, likelihood, _math)
+│   ├── engine/                    # v4 Core simulation engine (types, dynamics, likelihood, memory, _math)
+│   ├── world_model/               # Hierarchical world models, conceptual spaces, TEM & CAN grid attractors
+│   ├── planning/                  # Explicit plan executor, plan library, plan repair
+│   ├── active_perception.py       # Active sensing & variational free energy dynamics
+│   ├── counterfactual.py          # Multi-future rollouts & Dubins PDE reachability
+│   ├── epistemic_utility.py       # Shannon entropy, KL divergence & FEP utility
 │   ├── inference/                 # Inverse inference (SMC particle filter, hierarchical, summaries)
 │   ├── simulation/                # Multi-agent simulation & scenario registry
 │   ├── schemas/                   # Schema loaders, programmatic validators & static auditor
 │   ├── cli/                       # Command-line architecture (main, trace, infer, sweep, spec, sweep-memory)
 │   └── utils/                     # Package utilities (spec merging)
 │
-├── tests/                     # Test suite (164 tests covering engine, dynamics, inference, regressions)
+├── tests/                     # Test suite (215 tests covering engine, dynamics, planning, memory, inference)
 │
-├── docs/                      # Cognitive Expansion Fronts (First-Class Research Specs)
-│   ├── fronts_index.md            # Master index of 14 Cognitive Expansion Fronts
+├── docs/                      # Cognitive Expansion Fronts & Compass Architecture
+│   ├── roadmap_compass.md         # Ratified High-Level Specification and Strategic Compass
+│   ├── fronts_index.md            # Master index of 14 Cognitive Expansion Fronts with Status flags
 │   └── front_01_..._front_14.md   # Individual self-contained research front specs
 │
 ├── misc/                      # Auxiliary notes & seed documents
@@ -81,20 +87,22 @@ All 14 cognitive expansion fronts maintain the core state invariant: $\sigma = (
 └──────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **[Front 01: Hierarchical World Models](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_01_hierarchical_world_models.md)**: Multi-level semantic representations (`Env -> Objects -> Relations -> Norms`).
-- **[Front 02: Explicit Planning Layer](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_02_explicit_planning_layer.md)**: Reusable `Plan` objects with interruption, repair, and plan libraries (`Goal -> Plan -> Action`).
-- **[Front 03: Memory Architecture](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_03_memory_architecture.md)**: Structured `WorkingMemory`, `EpisodicMemory`, and `SkillArtifact` consolidation.
-- **[Front 04: Counterfactual Simulation](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_04_counterfactual_simulation.md)**: Multi-future rollouts & expected utility evaluation (aligned with ICML/ICLR 2026 EvoCF).
-- **[Front 05: Institution Layer](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_05_institution_layer.md)**: First-class institutional entities operating as agents with governance rules and authority.
-- **[Front 06: Communication as Bayesian Evidence](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_06_communication_bayesian_evidence.md)**: Messages as probabilistic likelihood evidence for belief posterior updates.
-- **[Front 07: Meta-Learning](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_07_meta_learning.md)**: Self-adaptation of internal exploration heuristics ($\xi$), search depths, and learning parameters.
-- **[Front 08: Causal World Models](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_08_causal_world_models.md)**: Structural Causal Models (SCMs) and intervention ($do$-calculus) in $w$.
-- **[Front 09: Active Information Gathering](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_09_active_information_gathering.md)**: Epistemic actions (`INSPECT`, `PROBE`, `MONITOR`) trading material utility for variance reduction ($\Delta \sigma^2$).
-- **[Front 10: Mechanism Search](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_10_mechanism_search.md)**: Optimization over institutional rule spaces using the simulation harness as an oracle.
-- **[Front 11: Abductive Reasoning & Hypotheses](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_11_abductive_reasoning_hypothesis_objects.md)**: Explanations as explicit `Hypothesis` objects ($H_1, H_2, \dots$) and abductive inference.
-- **[Front 12: Scientific Discovery Loop](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_12_scientific_discovery_loop.md)**: Iterative hypothesis generation, experimental design, and empirical model refinement.
-- **[Front 13: Evolutionary Algorithm Discovery](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_13_evolutionary_algorithm_discovery_alphaevolve.md)**: AlphaEvolve engine with game-theoretic & endogenous scarcity feedback oracles.
-- **[Front 14: Natural Language as Symbolic Compression](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_14_natural_language_symbolic_compression.md)**: Natural language as a lossy, high-density compression operator over continuous state $\sigma \in \mathbb{R}^d$.
+### Front Implementation Status Matrix
+
+- **[Front 01: Hierarchical World Models](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_01_hierarchical_world_models.md)** `[IMPLEMENTED]`: Multi-level semantic representations (`Env -> Objects -> Relations -> Norms`), Gärdenfors conceptual spaces, Whittington et al. (2020) TEM factorization $G \otimes X$, and Burak & Fiete (2009) Continuous Attractor Network (CAN) grid velocity integration.
+- **[Front 02: Explicit Planning Layer](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_02_explicit_planning_layer.md)** `[IMPLEMENTED]`: Reusable `Plan` objects with interruption, repair, and plan libraries (`Goal -> Plan -> Action`).
+- **[Front 03: Memory Architecture](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_03_memory_architecture.md)** `[IMPLEMENTED]`: Structured `WorkingMemory`, `EpisodicMemory`, and `SkillArtifact` consolidation with Zelman et al. (2013) Kinematic Motion Primitives (kMPs) 2D Gaussian decomposition and Gutfreund et al. (1998) stiffening wave speed control (Rule 008 calibrated $K=4 / K=8$).
+- **[Front 04: Counterfactual Simulation](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_04_counterfactual_simulation.md)** `[IMPLEMENTED]`: Multi-future rollouts & expected utility evaluation (ICML/ICLR 2026 EvoCF), curvature-constrained elastica PDE rollouts, and Cacace et al. (2020) Dubins reachability distance pruning.
+- **[Front 05: Institution Layer](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_05_institution_layer.md)** `[PARTIAL]`: First-class institutional entities operating as agents with governance rules and authority.
+- **[Front 06: Communication as Bayesian Evidence](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_06_communication_bayesian_evidence.md)** `[PARTIAL]`: Messages as probabilistic likelihood evidence for belief posterior updates.
+- **[Front 07: Meta-Learning](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_07_meta_learning.md)** `[DEFERRED]`: Self-adaptation of internal exploration heuristics ($\xi$), search depths, and learning parameters.
+- **[Front 08: Causal World Models](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_08_causal_world_models.md)** `[DEFERRED]`: Structural Causal Models (SCMs) and intervention ($do$-calculus) in $w$.
+- **[Front 09: Active Information Gathering](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_09_active_information_gathering.md)** `[IMPLEMENTED]`: Epistemic actions (`INSPECT`, `PROBE`, `MONITOR`) trading material utility for variance reduction ($\Delta \sigma^2$) and Dodig-Crnkovic (2022) Variational Free Energy active inference.
+- **[Front 10: Mechanism Search](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_10_mechanism_search.md)** `[DEFERRED]`: Optimization over institutional rule spaces using the simulation harness as an oracle.
+- **[Front 11: Abductive Reasoning & Hypotheses](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_11_abductive_reasoning_hypothesis_objects.md)** `[DEFERRED]`: Explanations as explicit `Hypothesis` objects ($H_1, H_2, \dots$) and abductive inference.
+- **[Front 12: Scientific Discovery Loop](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_12_scientific_discovery_loop.md)** `[DEFERRED]`: Iterative hypothesis generation, experimental design, and empirical model refinement.
+- **[Front 13: Evolutionary Algorithm Discovery](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_13_evolutionary_algorithm_discovery_alphaevolve.md)** `[DEFERRED]`: AlphaEvolve engine with game-theoretic oracles and Müller & Hoffmann (2017) Morphological Computation reservoir co-evolution.
+- **[Front 14: Natural Language as Symbolic Compression](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_14_natural_language_symbolic_compression.md)** `[DEFERRED]`: Natural language as a lossy, high-density compression operator over continuous state $\sigma \in \mathbb{R}^d$.
 
 ## Specification v4 Highlights
 

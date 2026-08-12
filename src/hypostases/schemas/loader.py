@@ -75,3 +75,10 @@ def load_skill_artifact_schema(schema_filename: str = "memory/skill_artifact_sch
 def load_planning_config(config_filename: str = "planning_config.yaml") -> dict:
     """Loads explicit planning layer configuration."""
     return load_yaml(config_filename)
+
+
+def load_hierarchical_world_model_config(
+    config_filename: str = "hierarchical_world_model_config.yaml",
+) -> dict:
+    """Loads hierarchical world model and conceptual spaces configuration."""
+    return load_yaml(config_filename)

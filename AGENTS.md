@@ -42,3 +42,8 @@ ALWAYS prefer a data-driven YAML configuration approach over hardcoded Python st
 ### 007 — YAML Serialization & Performance Assessment for Plan Storage Persistence Format
 
 Ratify that YAML serialization of the Plan Storage Persistence Format is not significantly computationally taxing during simulation/inference. If profiling or benchmarking demonstrates that YAML serialization creates a computational bottleneck, prompt the User whether to write a plan for a more compressed, non-human readable serialization format (e.g., Protocol Buffers, MessagePack, or binary IPC).
+
+### 008 — Calibration of Kinematic Motion Primitive (kMP) Basis Dimension $K$
+
+The default Gaussian basis dimension for continuous `SkillArtifact` procedural memory is configured to $K=4$ for optimal performance during Monte Carlo counterfactual rollouts. If test precision failures occur or if higher trajectory expressiveness is required for performance/competence trade-offs, evaluate and benchmark $K=8$ as an alternative configuration.
+

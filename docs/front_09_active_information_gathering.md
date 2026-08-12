@@ -22,6 +22,15 @@ $$\text{Utility}_{\text{epistemic}} = \alpha_{\text{info}} \Delta H(w) - \text{C
 
 Where $\Delta H(w)$ measures the reduction in Shannon entropy / variance $\sigma^2$ over WorldModel beliefs.
 
+## Theoretical Info-Computational Foundation & Active Inference (Dodig-Crnkovic 2022)
+Following **Dodig-Crnkovic (2022)** (*Entropy*, Cognition as Morphological/Morphogenetic Embodied Computation In Vivo):
+- **Info-Computational Active Inference**: Epistemic actions operate under an info-computational paradigm where physical/abstract environment structures represent information and state transitions represent computation.
+- **Variational Free Energy Minimization**: Active perception minimizes expected free energy by executing sensory affordances (`INSPECT`, `PROBE`, `MONITOR`) that resolve environmental ambiguity and update Bayesian belief posteriors $P(w \mid o)$.
+- **Rule 005 Compliance**: Epistemic decision dynamics operate strictly under optimal game-theoretic Bayesian state updates and computable projections without introducing artificial human biases or emotional irrationality hacks.
+
+## Implementation Status
+- **Status**: **IMPLEMENTED** ([`src/hypostases/active_perception.py`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/src/hypostases/active_perception.py), [`epistemic_utility.py`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/src/hypostases/epistemic_utility.py), `test_active_perception.py`).
+
 ## Objective
 Trade immediate material utility for uncertainty reduction — minimizing posterior entropy over latent state $\sigma$ as an explicit sub-goal within the goal hierarchy $g$.
 

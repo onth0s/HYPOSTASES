@@ -96,9 +96,10 @@ class EpisodicEvent:
 
 @dataclass
 class SkillArtifact:
-    """Reusable Procedural Macro-Action Skill (Voyager, Wang et al. 2023).
+    """Reusable Procedural Macro-Action Skill (Voyager, Wang et al. 2023; Zelman et al. 2013 kMPs).
 
-    Encapsulates macro-policy execution routines with precondition triggers and expected utility gain.
+    Encapsulates macro-policy execution routines, continuous Kinematic Motion Primitives (kMPs),
+    precondition triggers, and expected utility gain.
     """
 
     skill_id: str
@@ -108,9 +109,34 @@ class SkillArtifact:
     expected_utility_gain: np.ndarray = field(default_factory=lambda: np.zeros(N_K))
     confidence: float = 0.5
     execution_count: int = 0
+    # Kinematic Motion Primitives (kMPs) & Wave Dynamics (Zelman et al. 2013, Gutfreund et al. 1998)
+    gaussian_weights: np.ndarray = field(
+        default_factory=lambda: np.ones(4)
+    )  # Default K=4 (Rule 008)
+    gaussian_means: np.ndarray = field(
+        default_factory=lambda: np.zeros((4, 2))
+    )  # (K, 2) for (s, t)
+    gaussian_stds: np.ndarray = field(default_factory=lambda: np.ones((4, 2)))  # (K, 2) for (s, t)
+    stiffness_wave_speed: float = 1.0
 
     def __post_init__(self) -> None:
         self.expected_utility_gain = np.asarray(self.expected_utility_gain, dtype=float)
+        self.gaussian_weights = np.asarray(self.gaussian_weights, dtype=float)
+        self.gaussian_means = np.asarray(self.gaussian_means, dtype=float)
+        self.gaussian_stds = np.clip(np.asarray(self.gaussian_stds, dtype=float), 1e-6, None)
+
+    def evaluate_kmp_trajectory(self, s: float, t: float) -> float:
+        """Evaluate spatiotemporal Gaussian basis sum for continuous trajectory s at time t (Zelman et al. 2013)."""
+        val = 0.0
+        k_dim = len(self.gaussian_weights)
+        for k in range(k_dim):
+            w_k = self.gaussian_weights[k]
+            mu_s, mu_t = self.gaussian_means[k, 0], self.gaussian_means[k, 1]
+            sigma_s, sigma_t = self.gaussian_stds[k, 0], self.gaussian_stds[k, 1]
+            diff_s = (s - mu_s) / sigma_s
+            diff_t = (t * self.stiffness_wave_speed - mu_t) / sigma_t
+            val += w_k * float(np.exp(-0.5 * (diff_s**2 + diff_t**2)))
+        return float(val)
 
     def matches_preconditions(self, sigma: AgentState) -> bool:
         """Check if current state σ satisfies the skill's precondition predicates."""
@@ -161,6 +187,9 @@ class SkillArtifact:
             preconditions=self.preconditions.copy(),
             macro_policy=[step.copy() for step in self.macro_policy],
             expected_utility_gain=self.expected_utility_gain.copy(),
+            gaussian_weights=self.gaussian_weights.copy(),
+            gaussian_means=self.gaussian_means.copy(),
+            gaussian_stds=self.gaussian_stds.copy(),
         )
 
 

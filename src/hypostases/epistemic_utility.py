@@ -33,6 +33,21 @@ def compute_kl_divergence_gaussian(
     return 0.5 * (term1 - 1.0 + term2)
 
 
+def compute_variational_free_energy(
+    q_mu: float,
+    q_sigma2: float,
+    p_mu: float,
+    p_sigma2: float,
+    log_likelihood: float,
+) -> float:
+    """Computes Variational Free Energy F = D_KL(q(w) || p(w)) - E_q[ln p(o|w)] (Dodig-Crnkovic 2022).
+
+    Measures complexity penalty plus accuracy mismatch for info-computational active inference.
+    """
+    kl_complexity = compute_kl_divergence_gaussian(q_mu, q_sigma2, p_mu, p_sigma2)
+    return float(kl_complexity - log_likelihood)
+
+
 def compute_expected_information_gain(
     action_type: ActionType,
     agent_state: AgentState,

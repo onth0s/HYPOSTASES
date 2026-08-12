@@ -31,6 +31,7 @@ from hypostases.epistemic_utility import (
     compute_expected_information_gain,
     compute_kl_divergence_gaussian,
     compute_shannon_entropy,
+    compute_variational_free_energy,
 )
 from hypostases.schemas.audit_schemas import run_completeness_audit
 
@@ -144,3 +145,11 @@ def test_action_likelihood_epistemic():
 
 def test_completeness_audit():
     assert run_completeness_audit() is True
+
+
+def test_variational_free_energy():
+    """Verifies Variational Free Energy calculation F = D_KL - ln p(o|w) (Dodig-Crnkovic 2022)."""
+    f_val = compute_variational_free_energy(
+        q_mu=10.0, q_sigma2=1.0, p_mu=10.0, p_sigma2=1.0, log_likelihood=-0.5
+    )
+    assert f_val == 0.5  # D_KL = 0.0, F = 0.0 - (-0.5) = 0.5

@@ -31,15 +31,19 @@ Instead of purely Boolean predicate logic, semantic concepts are formalized as *
   $$\text{Similarity}(x, \mu_k) = \exp\left(-\gamma \, d_{\mathbf{M}}(x, \mu_k)\right)$$
 - **Geometric Free Lunch**: Instant $O(1)$ categorization, spatial neighborhood lookup, and generalization across continuous state space without combinatorial logical checks.
 
-## Tolman-Eichenbaum Machine (TEM) Structural Basis
-Following Whittington et al. (*Cell* 2020), entorhinal grid-cell representations are formalized as structural basis matrices $G$ that factorize relational environments:
-- **Structural Basis Matrix $G$**: Invariant grid-cell spatial/relational layout.
-- **Sensory Binding Matrix $X$**: Specific environment observations bound to grid positions.
-- Enables the agent to use its spatial navigation hardware to navigate non-spatial conceptual and relational hierarchies.
+## Tolman-Eichenbaum Machine (TEM) Structural Basis & Continuous Attractor Dynamics
+Following **Whittington et al. (2020)** (*bioRxiv/Cell*, TEM model) and **Burak & Fiete (2009)** (*PLoS Comput Biol*, Continuous Attractor Networks), entorhinal grid-cell representations and continuous attractor manifolds are integrated into the world model:
+- **Structural Basis Matrix $G$ (Whittington et al. 2020)**: Invariant grid-cell spatial/relational layout describing topology independent of specific sensory observations.
+- **Sensory Binding Matrix $X$ (Whittington et al. 2020)**: Specific environment state observations bound to structural grid positions via tensor outer products $G \otimes X$.
+- **Continuous Attractor Networks (CANs) (Burak & Fiete 2009)**: Low-dimensional continuous attractor manifolds driven by agent velocity and heading inputs $\mathbf{v}(t)$, ensuring drift-free path integration and zero-shot spatial/relational memory transfer.
+- Enables the agent to reuse spatial navigation mechanics to navigate non-spatial conceptual, social, and relational hierarchies.
+
+## Implementation Status
+- **Status**: **IMPLEMENTED** (`src/hypostases/world_model/`, [`tem_factorization.py`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/src/hypostases/world_model/tem_factorization.py), [`conceptual_spaces.py`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/src/hypostases/world_model/conceptual_spaces.py), [`hierarchical_world_model.py`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/src/hypostases/world_model/hierarchical_world_model.py)).
 
 ## Targeted Capabilities
 - Geometric conceptual spaces & Voronoi tessellation
-- Grid-cell relational tensor factorization (TEM)
+- Grid-cell relational tensor factorization (TEM) & CAN velocity integration
 - Semantic abstraction & spatial reasoning
 - Institutional reasoning & nested representations
 - Abstract situation understanding

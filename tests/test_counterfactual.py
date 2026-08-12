@@ -99,3 +99,13 @@ def test_evocf_mutation(sample_agent_state: AgentState) -> None:
 
     mutated = engine.mutate_plan_evocf(branch, rng=rng)
     assert len(mutated.action_sequence) == len(branch.action_sequence)
+
+
+def test_dubins_reachability_evaluation() -> None:
+    """Verifies Dubins reachability path calculation under curvature constraints (Cacace et al. 2020)."""
+    engine = CounterfactualEngine()
+    start_pose = np.array([0.0, 0.0, 0.0])
+    target_pose = np.array([3.0, 4.0, np.pi / 2])
+
+    dist = engine.evaluate_dubins_reachability(start_pose, target_pose, kappa_max=1.0)
+    assert dist > 5.0  # Euclidean distance 5.0 + curvature penalty > 5.0

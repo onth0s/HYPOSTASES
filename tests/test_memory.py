@@ -234,3 +234,34 @@ def test_schema_and_preset_loading() -> None:
     skill_schema = load_skill_artifact_schema()
     assert "fields" in skill_schema
     assert "skill_id" in skill_schema["fields"]
+
+
+def test_kmp_gaussian_primitive_evaluation() -> None:
+    """Verifies Kinematic Motion Primitives (kMP) Gaussian basis evaluation (Zelman et al. 2013)."""
+    # K=4 default (Rule 008)
+    skill_k4 = SkillArtifact(
+        skill_id="kmp_test_k4",
+        description="Continuous reach skill",
+        preconditions={},
+        macro_policy=[],
+        gaussian_weights=np.array([1.0, 0.5, 0.2, 0.1]),
+        gaussian_means=np.zeros((4, 2)),
+        gaussian_stds=np.ones((4, 2)),
+        stiffness_wave_speed=1.0,
+    )
+    val_k4 = skill_k4.evaluate_kmp_trajectory(0.0, 0.0)
+    assert val_k4 > 0.0
+
+    # K=8 alternative (Rule 008)
+    skill_k8 = SkillArtifact(
+        skill_id="kmp_test_k8",
+        description="High-expressiveness continuous skill",
+        preconditions={},
+        macro_policy=[],
+        gaussian_weights=np.ones(8),
+        gaussian_means=np.zeros((8, 2)),
+        gaussian_stds=np.ones((8, 2)),
+        stiffness_wave_speed=1.5,
+    )
+    val_k8 = skill_k8.evaluate_kmp_trajectory(0.0, 0.0)
+    assert val_k8 > val_k4

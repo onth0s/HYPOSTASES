@@ -1,0 +1,94 @@
+# HYPOSTASES Wave 2 Front 01 — Hierarchical World Model & Conceptual Spaces Config
+# Schema Version: 1.0.0
+# Target Substrate: sigma = (c, w, g, rho_ext)
+
+version: "1.0.0"
+
+# Quality Dimensions for Level 2 & Level 4 Gärdenfors Conceptual Spaces (Omega \subset R^D)
+quality_dimensions:
+  - name: "reserve_capacity"
+    min_val: 0.0
+    max_val: 100.0
+    metric: "euclidean"
+    description: "Internal resource reserve capacity metric"
+
+  - name: "pool_density"
+    min_val: 0.0
+    max_val: 1.0
+    metric: "euclidean"
+    description: "Environmental density of available resource pools"
+
+  - name: "peer_trust"
+    min_val: 0.0
+    max_val: 1.0
+    metric: "euclidean"
+    description: "Inferred Bayesian reliability index of peer agents"
+
+  - name: "scarcity_index"
+    min_val: 0.0
+    max_val: 1.0
+    metric: "euclidean"
+    description: "Endogenous environmental scarcity coefficient kappa"
+
+  - name: "epistemic_uncertainty"
+    min_val: 0.0
+    max_val: 1.0
+    metric: "euclidean"
+    description: "Belief variance over state parameters sigma^2"
+
+# Level 4 Prototype Vectors & Convex Voronoi Regions (Bechberger & Kühnberger 2017)
+conceptual_regions:
+  - id: "region_abundant_security"
+    label: "Abundant Security"
+    prototype: [85.0, 0.85, 0.90, 0.10, 0.05]
+    gamma: 0.5
+    covariance_matrix:
+      - [25.0, 0.0, 0.0, 0.0, 0.0]
+      - [0.0, 0.01, 0.0, 0.0, 0.0]
+      - [0.0, 0.0, 0.01, 0.0, 0.0]
+      - [0.0, 0.0, 0.0, 0.01, 0.0]
+      - [0.0, 0.0, 0.0, 0.0, 0.005]
+
+  - id: "region_scarcity_crisis"
+    label: "Scarcity Crisis"
+    prototype: [15.0, 0.10, 0.30, 0.90, 0.70]
+    gamma: 0.5
+    covariance_matrix:
+      - [25.0, 0.0, 0.0, 0.0, 0.0]
+      - [0.0, 0.01, 0.0, 0.0, 0.0]
+      - [0.0, 0.0, 0.01, 0.0, 0.0]
+      - [0.0, 0.0, 0.0, 0.01, 0.0]
+      - [0.0, 0.0, 0.0, 0.0, 0.02]
+
+  - id: "region_epistemic_fog"
+    label: "Epistemic Uncertainty Fog"
+    prototype: [50.0, 0.40, 0.50, 0.50, 0.85]
+    gamma: 0.5
+    covariance_matrix:
+      - [50.0, 0.0, 0.0, 0.0, 0.0]
+      - [0.0, 0.04, 0.0, 0.0, 0.0]
+      - [0.0, 0.0, 0.04, 0.0, 0.0]
+      - [0.0, 0.0, 0.0, 0.04, 0.0]
+      - [0.0, 0.0, 0.0, 0.0, 0.01]
+
+# Level 3 Tolman-Eichenbaum Machine (TEM) Grid-Cell Basis Factorization (Whittington et al. 2020)
+tem_basis_config:
+  grid_size: 4
+  num_grid_modules: 3
+  action_transitions:
+    MOVE_NORTH:
+      [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+    MOVE_SOUTH:
+      [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+    MOVE_EAST:
+      [[0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]]
+    MOVE_WEST:
+      [[0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]]
+    INSPECT:
+      [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+
+# Multi-Level Abstraction Hierarchy Update Parameters
+hierarchy_settings:
+  enable_voronoi_caching: true
+  similarity_threshold: 0.1
+  max_hierarchy_levels: 6
