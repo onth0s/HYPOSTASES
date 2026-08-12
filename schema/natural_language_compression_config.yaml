@@ -1,0 +1,50 @@
+# Schema Configuration: Wave 5 Front 14 Natural Language Symbolic Compression
+# Substrate: HYPOSTASES Engine v0.4.0 (sigma = (c, w, g, rho_ext))
+# Compliance: Rule 005, Rule 006, Rule 009 (efe_mode: true), Rule 011
+
+version: "1.0"
+front: "Wave 5 Front 14 - Natural Language Symbolic Compression & Visual-Epistemic Duality"
+
+# Friston Expected Free Energy (EFE) Integration (Rule 009)
+efe_mode: true
+beta_efe: 0.25  # Epistemic vs pragmatic trade-off weighting
+
+# Minimum Description Length (MDL) Rate-Distortion Operator Parameters
+mdl_config:
+  lambda_mdl: 0.15          # MDL penalty multiplier on code length |H|
+  bits_per_float: 32        # Floating-point representation precision
+  stochastic_complexity_eps: 1e-6
+  fec_epsilon: 1e-4          # Functional equivalence check threshold
+
+# Codebook & Vocabulary Parameters
+vocabulary_config:
+  vocab_size: 512           # Symbol vocabulary dimension |V|
+  codebook_size: 256        # Discrete latent codebook slots K_codebook
+  word_bank_max_size: 64    # Maximum word bank size per continuous state sample
+  symbol_dim: 16            # Dense embedding dimension per symbol
+
+# Visual-Epistemic Duality Parameters (Giaquinto 2007)
+duality_config:
+  spatial_voronoi_cells: 16 # Convex Voronoi region discretization in c.m_semantic
+  gist_resolution: 32       # Spatial topology grid resolution
+  topological_invariance_tol: 1e-3
+
+# Communicative Language Symbolism Router (CLSR) Parameters (Pei et al. 2026)
+router_config:
+  kappa_theta: 1.2          # Active-token information rate (bits per generated token)
+  token_budget_default: 128 # Default token generation budget B
+  target_accuracy_default: 0.95 # Default target accuracy alpha (1 - delta)
+  pareto_alpha: 0.5         # Accuracy vs cost Pareto weighting
+
+# Multi-Agent Protocol & Transfer Parameters (Feng & Lu 2023, Ajuzieogu 2025)
+protocol_config:
+  referential_disentanglement_min: 0.6 # Minimum refdis threshold
+  eic_threshold_beta: 1.5   # Environmental Information Content transition threshold
+  checksum_enabled: true     # Spontaneous hash checksum verification
+  checksum_modulus: 17
+
+# Rule 011 Dual Persistence Configuration
+persistence_config:
+  enable_yaml_snapshot: true
+  snapshot_dir: "schema/snapshots/front_14"
+  meta_param_tuple: ["lambda_mdl", "vocab_size", "kappa_theta", "beta_efe"]

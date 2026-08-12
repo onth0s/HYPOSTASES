@@ -89,3 +89,11 @@ def load_bayesian_communication_config(
 ) -> dict:
     """Loads Communication as Bayesian Evidence configuration preset."""
     return load_yaml(config_filename)
+
+
+def load_natural_language_compression_config(
+    config_filename: str = "natural_language_compression_config.yaml",
+) -> dict:
+    """Loads Wave 5 Front 14 Natural Language Symbolic Compression configuration."""
+    return load_yaml(config_filename)
+
