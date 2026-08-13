@@ -320,7 +320,12 @@ class ChessSelfPlayTrainer:
                             agent.theta_meta = new_theta
 
                         if gen_idx in task_ids:
-                            progress.update(task_ids[gen_idx], advance=1)
+                            formatted_theta = _format_agent_theta(agent)
+                            progress.update(
+                                task_ids[gen_idx],
+                                advance=1,
+                                description=f"[cyan]Gen {gen_idx:0{digits}d}/{total_generations}[/cyan] [yellow]theta={formatted_theta}[/yellow] [magenta]temp={agent.temperature:.3f}[/magenta] [blue]beta={agent.beta_efe:.3f}[/blue]",
+                            )
 
                         completed_per_gen[gen_idx] += 1
                         if (
@@ -329,7 +334,7 @@ class ChessSelfPlayTrainer:
                         ):
                             chk_theta = _format_agent_theta(agent)
                             console.print(
-                                f"    --> [bold green][CHECKPOINT SAVED][/bold green] Gen {gen_idx:0{digits}d} Checkpoint Staged ([bold yellow]theta = {chk_theta}[/bold yellow] [magenta]temp={agent.temperature:.3f}[/magenta] [blue]beta={agent.beta_efe:.2f}[/blue])"
+                                f"    --> [bold green][CHECKPOINT SAVED][/bold green] Gen {gen_idx:0{digits}d} Checkpoint Staged ([bold yellow]theta = {chk_theta}[/bold yellow] [magenta]temp={agent.temperature:.3f}[/magenta] [blue]beta={agent.beta_efe:.3f}[/blue])"
                             )
                             snapshots.append(
                                 PolicySnapshot(
