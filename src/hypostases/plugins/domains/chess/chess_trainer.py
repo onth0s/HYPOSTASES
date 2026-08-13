@@ -10,7 +10,8 @@ from __future__ import annotations
 import copy
 import random
 import signal
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from collections import defaultdict
+from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, as_completed, wait
 from typing import Any
 
 import numpy as np
@@ -175,7 +176,7 @@ class ChessSelfPlayTrainer:
         seed: int = 42,
         verbose: bool = True,
     ) -> list[PolicySnapshot]:
-        """Runs full multi-generation self-play training run and returns PolicySnapshots."""
+        """Runs continuous asynchronous streaming multi-generation self-play training run and returns PolicySnapshots."""
         snapshots = []
 
         # Create initial Gen 0 agent
@@ -201,6 +202,13 @@ class ChessSelfPlayTrainer:
         )
 
         digits = len(str(total_generations))
+        total_games = total_generations * games_per_generation
+        max_capacity = min(self.max_workers * 2, games_per_generation * 2)
+
+        pending_futures: dict[Any, int] = {}
+        completed_per_gen: dict[int, int] = defaultdict(int)
+        task_ids: dict[int, Any] = {}
+        next_game_id = 0
 
         with (
             Progress(
@@ -212,37 +220,75 @@ class ChessSelfPlayTrainer:
                 disable=not verbose,
             ) as progress,
             ProcessPoolExecutor(
-                max_workers=min(self.max_workers, games_per_generation),
+                max_workers=self.max_workers,
                 initializer=_init_worker_process,
             ) as pool_executor,
         ):
-            for gen in range(1, total_generations + 1):
-                agent.temperature = max(0.05, self.initial_temperature * (0.9**gen))
-
-                formatted_theta = "[" + " ".join(f"{v:04.2f}" for v in agent.theta_meta) + "]"
-                task_id = progress.add_task(
-                    f"[cyan]Gen {gen:0{digits}d}/{total_generations}[/cyan] [yellow]theta={formatted_theta}[/yellow] [magenta]temp={agent.temperature:.3f}[/magenta]",
-                    total=games_per_generation,
-                )
-
-                agent = self.train_generation(
-                    agent=agent,
-                    games_per_gen=games_per_generation,
-                    max_moves=60,
-                    seed=seed + (gen * 100),
-                    progress=progress,
-                    task_id=task_id,
-                    executor=pool_executor,
-                )
-
-                if gen % snapshot_interval_k == 0:
-                    console.print(
-                        f"    --> [bold green][CHECKPOINT SAVED][/bold green] Gen {gen} Checkpoint Staged ([bold yellow]theta_meta = {np.round(agent.theta_meta, 3)}[/bold yellow])"
-                    )
-                    snapshots.append(
-                        PolicySnapshot(
-                            generation=gen, policy_fn=make_policy_fn(copy.deepcopy(agent))
+            try:
+                # Helper to submit a single game to the worker pool
+                def _submit_game(game_id: int) -> None:
+                    gen_idx = (game_id // games_per_generation) + 1
+                    if gen_idx not in task_ids and gen_idx <= total_generations:
+                        agent.temperature = max(0.05, self.initial_temperature * (0.9**gen_idx))
+                        formatted_theta = (
+                            "[" + " ".join(f"{v:04.2f}" for v in agent.theta_meta) + "]"
                         )
+                        task_ids[gen_idx] = progress.add_task(
+                            f"[cyan]Gen {gen_idx:0{digits}d}/{total_generations}[/cyan] [yellow]theta={formatted_theta}[/yellow] [magenta]temp={agent.temperature:.3f}[/magenta]",
+                            total=games_per_generation,
+                        )
+
+                    fut = pool_executor.submit(
+                        _worker_run_training_game,
+                        agent.theta_meta,
+                        self.beta_efe,
+                        agent.temperature,
+                        60,
+                        seed + game_id,
                     )
+                    pending_futures[fut] = gen_idx
+
+                # Fill initial streaming pool capacity
+                while next_game_id < total_games and len(pending_futures) < max_capacity:
+                    _submit_game(next_game_id)
+                    next_game_id += 1
+
+                # Continuous streaming loop: process FIRST_COMPLETED game and immediately backfill worker
+                while pending_futures:
+                    done_set, _ = wait(pending_futures.keys(), return_when=FIRST_COMPLETED)
+                    for fut in done_set:
+                        gen_idx = pending_futures.pop(fut)
+                        final_reward, trajectory_features = fut.result()
+
+                        if trajectory_features and final_reward != 0.0:
+                            mean_feat = np.mean(trajectory_features, axis=0)
+                            grad = self.learning_rate * final_reward * mean_feat
+                            agent.theta_meta = np.maximum(0.0, agent.theta_meta + grad)
+
+                        if gen_idx in task_ids:
+                            progress.update(task_ids[gen_idx], advance=1)
+
+                        completed_per_gen[gen_idx] += 1
+                        if (
+                            completed_per_gen[gen_idx] == games_per_generation
+                            and gen_idx % snapshot_interval_k == 0
+                        ):
+                            console.print(
+                                f"    --> [bold green][CHECKPOINT SAVED][/bold green] Gen {gen_idx} Checkpoint Staged ([bold yellow]theta_meta = {np.round(agent.theta_meta, 3)}[/bold yellow])"
+                            )
+                            snapshots.append(
+                                PolicySnapshot(
+                                    generation=gen_idx,
+                                    policy_fn=make_policy_fn(copy.deepcopy(agent)),
+                                )
+                            )
+
+                        # Immediately backfill next game to keep workers 100% saturated
+                        if next_game_id < total_games:
+                            _submit_game(next_game_id)
+                            next_game_id += 1
+
+            except KeyboardInterrupt:
+                raise
 
         return snapshots

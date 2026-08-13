@@ -8,8 +8,8 @@ training:
   learning_rate: 0.01
   efe_beta: 0.2
   policy_temperature: 0.8
-  generations: 32 
-  games_per_generation: 24
+  generations: 12 
+  games_per_generation: 20
 
 ground_a:
   snapshot_interval_k: 4
