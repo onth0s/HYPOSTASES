@@ -104,6 +104,7 @@ class ChessSelfPlayTrainer:
         seed: int = 42,
         progress: Progress | None = None,
         task_id: Any = None,
+        executor: ProcessPoolExecutor | None = None,
     ) -> ChessAgentAdapter:
         """Trains HYPOSTASES agent for one generation via parallel self-play policy gradient updates."""
         updated_agent = copy.deepcopy(agent)
@@ -126,12 +127,10 @@ class ChessSelfPlayTrainer:
                     progress.update(task_id, advance=1)
         else:
             try:
-                with ProcessPoolExecutor(
-                    max_workers=min(self.max_workers, games_per_gen),
-                    initializer=_init_worker_process,
-                ) as executor:
+
+                def _run_with_exec(exec_inst: ProcessPoolExecutor) -> None:
                     futures = [
-                        executor.submit(
+                        exec_inst.submit(
                             _worker_run_training_game,
                             updated_agent.theta_meta,
                             self.beta_efe,
@@ -154,6 +153,15 @@ class ChessSelfPlayTrainer:
 
                         if progress is not None and task_id is not None:
                             progress.update(task_id, advance=1)
+
+                if executor is not None:
+                    _run_with_exec(executor)
+                else:
+                    with ProcessPoolExecutor(
+                        max_workers=min(self.max_workers, games_per_gen),
+                        initializer=_init_worker_process,
+                    ) as local_executor:
+                        _run_with_exec(local_executor)
             except KeyboardInterrupt:
                 raise
 
@@ -194,14 +202,20 @@ class ChessSelfPlayTrainer:
 
         digits = len(str(total_generations))
 
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            MofNCompleteColumn(),
-            console=console,
-            disable=not verbose,
-        ) as progress:
+        with (
+            Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                MofNCompleteColumn(),
+                console=console,
+                disable=not verbose,
+            ) as progress,
+            ProcessPoolExecutor(
+                max_workers=min(self.max_workers, games_per_generation),
+                initializer=_init_worker_process,
+            ) as pool_executor,
+        ):
             for gen in range(1, total_generations + 1):
                 agent.temperature = max(0.05, self.initial_temperature * (0.9**gen))
 
@@ -218,6 +232,7 @@ class ChessSelfPlayTrainer:
                     seed=seed + (gen * 100),
                     progress=progress,
                     task_id=task_id,
+                    executor=pool_executor,
                 )
 
                 if gen % snapshot_interval_k == 0:
