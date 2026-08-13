@@ -223,8 +223,9 @@ class ChessSelfPlayTrainer:
         )
 
         if verbose:
+            formatted_gen0 = "[" + " ".join(f"{v:04.2f}" for v in agent.theta_meta) + "]"
             console.print(
-                f"\n[bold cyan][HYPOSTASES Trainer][/bold cyan] Initialized Gen 0 Agent ([bold yellow]theta_meta = {np.round(agent.theta_meta, 3)}[/bold yellow])"
+                f"\n[bold cyan][HYPOSTASES Trainer][/bold cyan] Initialized Gen 0 Agent ([bold yellow]theta_meta = {formatted_gen0}[/bold yellow])"
             )
 
         def make_policy_fn(cur_agent: ChessAgentAdapter) -> Any:
