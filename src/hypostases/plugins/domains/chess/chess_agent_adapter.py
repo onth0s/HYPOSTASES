@@ -40,9 +40,12 @@ class ChessAgentAdapter:
         self.characteristics = Characteristics(skill=0.8, resilience=0.7)
         self.goal_hierarchy = GoalHierarchy()  # Latent utility weights u ∈ ℝ^{n_k}
 
-        # Meta-parameters θ_meta ∈ ℝ^9 for feature valuation & learned policy temperature
-        # Features: [capture, center, king_safety, checkmate, mobility, defended, capture_delta, king_attackers, temperature]
-        if theta_meta is None:
+        # Meta-parameters θ_meta ∈ ℝ^K for feature valuation & learned policy temperature
+        if isinstance(theta_meta, int):
+            # Programmatically generate uniform ones vector of size K without hardcoded array literals
+            self.theta_meta = np.ones(theta_meta, dtype=np.float32)
+            self.theta_meta[-1] = self._temperature
+        elif theta_meta is None:
             self.theta_meta = np.array(
                 [1.0, 0.3, 0.5, 0.8, 0.2, 0.4, 0.5, 0.3, self._temperature], dtype=np.float32
             )

@@ -9,6 +9,7 @@ training:
   efe_beta: 0.2
   policy_temperature: 0.8
   min_temperature: 0.20
+  feature_basis_k: 9
   max_moves_training: 35
   early_adjudication_material: 6.0
   generations: 16
