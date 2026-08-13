@@ -273,8 +273,9 @@ class ChessSelfPlayTrainer:
                             completed_per_gen[gen_idx] == games_per_generation
                             and gen_idx % snapshot_interval_k == 0
                         ):
+                            chk_theta = "[" + " ".join(f"{v:04.2f}" for v in agent.theta_meta) + "]"
                             console.print(
-                                f"    --> [bold green][CHECKPOINT SAVED][/bold green] Gen {gen_idx} Checkpoint Staged ([bold yellow]theta_meta = {np.round(agent.theta_meta, 3)}[/bold yellow])"
+                                f"    --> [bold green][CHECKPOINT SAVED][/bold green] Gen {gen_idx:0{digits}d} Checkpoint Staged ([bold yellow]theta_meta = {chk_theta}[/bold yellow])"
                             )
                             snapshots.append(
                                 PolicySnapshot(
