@@ -7,6 +7,7 @@ Logs draw-rate and game-length collapse metrics.
 
 from __future__ import annotations
 
+import os
 import random
 import signal
 from collections.abc import Callable
@@ -107,9 +108,11 @@ class TournamentResult:
 class GroundASelfPlay:
     """Ground A Self-Play harness and internal Elo tournament solver with Parallel Workers."""
 
-    def __init__(self, chess_domain: ChessDomain | None = None, max_workers: int = 10) -> None:
+    def __init__(
+        self, chess_domain: ChessDomain | None = None, max_workers: int | None = None
+    ) -> None:
         self.domain = chess_domain or ChessDomain()
-        self.max_workers = max(1, max_workers)
+        self.max_workers = max_workers or (os.cpu_count() or 20)
 
     def run_self_play_game(
         self,

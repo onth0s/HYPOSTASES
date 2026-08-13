@@ -121,7 +121,10 @@ def evaluate_dual_grounds(
             border_style="green",
         )
     )
-    ground_a = GroundASelfPlay(chess_domain=chess_domain)
+    ground_a = GroundASelfPlay(
+        chess_domain=chess_domain,
+        max_workers=int(g_a_cfg.get("parallel_workers", 20)),
+    )
     tournament_result = ground_a.run_snapshot_tournament(
         snapshots=snapshots,
         games_per_pair=g_a_cfg["games_per_pair"],
