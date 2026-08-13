@@ -16,12 +16,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# Ensure UTF-8 output encoding for Windows terminals
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8")
-if hasattr(sys.stderr, "reconfigure"):
-    sys.stderr.reconfigure(encoding="utf-8")
-
 # Ensure src is in sys.path for standalone script execution
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
@@ -35,6 +29,26 @@ from hypostases.plugins.domains.chess.chess_domain import ChessDomain
 from hypostases.plugins.domains.chess.chess_trainer import ChessSelfPlayTrainer
 from hypostases.plugins.domains.chess.ground_a_self_play import GroundASelfPlay, PolicySnapshot
 from hypostases.plugins.domains.chess.ground_b_stockfish import GroundBStockfish
+
+
+# Suppress noisy unhandled KeyboardInterrupt tracebacks across main and worker processes
+def _quiet_excepthook(kind: type, value: BaseException, tb: Any) -> None:
+    if issubclass(kind, KeyboardInterrupt):
+        return
+    sys.__excepthook__(kind, value, tb)
+
+
+sys.excepthook = _quiet_excepthook
+
+# Ensure UTF-8 output encoding for Windows terminals
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
+
+# Ensure src is in sys.path for standalone script execution
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
+
 
 console = Console()
 
