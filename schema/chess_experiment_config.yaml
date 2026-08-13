@@ -20,7 +20,7 @@ ground_a:
 ground_b:
   games_per_elo_estimate_n: 30
   calibration_method: "UCI_Elo"
-  stockfish_fixed_level: 1320
+  stockfish_fixed_level: 800
   time_control_per_move: 0.1
   parallel_workers: 10
   stockfish_threads: 2
