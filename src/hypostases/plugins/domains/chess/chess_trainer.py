@@ -31,46 +31,49 @@ def _worker_run_training_game(
     seed_val: int,
 ) -> tuple[float, list[np.ndarray]]:
     """Isolated process worker function running 1 self-play training game on a separate CPU process."""
-    random.seed(seed_val)
-    np.random.seed(seed_val)
+    try:
+        random.seed(seed_val)
+        np.random.seed(seed_val)
 
-    domain = ChessDomain()
-    agent = ChessAgentAdapter(
-        domain=domain,
-        beta_efe=beta_efe,
-        temperature=temperature,
-        theta_meta=theta_meta,
-    )
-    opponent = copy.deepcopy(agent)
-    board = domain.initial_state()
-    num_moves = 0
-    done = False
-    trajectory_features = []
+        domain = ChessDomain()
+        agent = ChessAgentAdapter(
+            domain=domain,
+            beta_efe=beta_efe,
+            temperature=temperature,
+            theta_meta=theta_meta,
+        )
+        opponent = copy.deepcopy(agent)
+        board = domain.initial_state()
+        num_moves = 0
+        done = False
+        trajectory_features = []
 
-    while not done and num_moves < max_moves:
-        legal_moves = domain.valid_actions(board)
-        if not legal_moves:
-            break
+        while not done and num_moves < max_moves:
+            legal_moves = domain.valid_actions(board)
+            if not legal_moves:
+                break
 
-        if board.turn == domain.initial_state().turn:
-            chosen_move = agent.select_move(board, legal_moves)
-            feats = agent.extract_move_features(board, chosen_move)
-            trajectory_features.append(feats)
-        else:
-            chosen_move = opponent.select_move(board, legal_moves)
+            if board.turn == domain.initial_state().turn:
+                chosen_move = agent.select_move(board, legal_moves)
+                feats = agent.extract_move_features(board, chosen_move)
+                trajectory_features.append(feats)
+            else:
+                chosen_move = opponent.select_move(board, legal_moves)
 
-        board, reward, done, info = domain.step(board, chosen_move)
-        num_moves += 1
+            board, reward, done, info = domain.step(board, chosen_move)
+            num_moves += 1
 
-    outcome = board.outcome()
-    final_reward = 0.0
-    if outcome is not None:
-        if outcome.winner == domain.initial_state().turn:
-            final_reward = 1.0
-        elif outcome.winner is not None:
-            final_reward = -1.0
+        outcome = board.outcome()
+        final_reward = 0.0
+        if outcome is not None:
+            if outcome.winner == domain.initial_state().turn:
+                final_reward = 1.0
+            elif outcome.winner is not None:
+                final_reward = -1.0
 
-    return final_reward, trajectory_features
+        return final_reward, trajectory_features
+    except KeyboardInterrupt:
+        return 0.0, []
 
 
 class ChessSelfPlayTrainer:
@@ -119,29 +122,36 @@ class ChessSelfPlayTrainer:
                 if progress is not None and task_id is not None:
                     progress.update(task_id, advance=1)
         else:
-            with ProcessPoolExecutor(max_workers=min(self.max_workers, games_per_gen)) as executor:
-                futures = [
-                    executor.submit(
-                        _worker_run_training_game,
-                        updated_agent.theta_meta,
-                        self.beta_efe,
-                        updated_agent.temperature,
-                        max_moves,
-                        seed + g_idx,
-                    )
-                    for g_idx in range(games_per_gen)
-                ]
+            try:
+                with ProcessPoolExecutor(
+                    max_workers=min(self.max_workers, games_per_gen)
+                ) as executor:
+                    futures = [
+                        executor.submit(
+                            _worker_run_training_game,
+                            updated_agent.theta_meta,
+                            self.beta_efe,
+                            updated_agent.temperature,
+                            max_moves,
+                            seed + g_idx,
+                        )
+                        for g_idx in range(games_per_gen)
+                    ]
 
-                for future in as_completed(futures):
-                    final_reward, trajectory_features = future.result()
+                    for future in as_completed(futures):
+                        final_reward, trajectory_features = future.result()
 
-                    if trajectory_features and final_reward != 0.0:
-                        mean_feat = np.mean(trajectory_features, axis=0)
-                        grad = self.learning_rate * final_reward * mean_feat
-                        updated_agent.theta_meta = np.maximum(0.0, updated_agent.theta_meta + grad)
+                        if trajectory_features and final_reward != 0.0:
+                            mean_feat = np.mean(trajectory_features, axis=0)
+                            grad = self.learning_rate * final_reward * mean_feat
+                            updated_agent.theta_meta = np.maximum(
+                                0.0, updated_agent.theta_meta + grad
+                            )
 
-                    if progress is not None and task_id is not None:
-                        progress.update(task_id, advance=1)
+                        if progress is not None and task_id is not None:
+                            progress.update(task_id, advance=1)
+            except KeyboardInterrupt:
+                raise
 
         return updated_agent
 
