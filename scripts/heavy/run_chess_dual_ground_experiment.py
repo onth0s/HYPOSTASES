@@ -100,6 +100,7 @@ def evaluate_dual_grounds(
         min_temp = float(t_cfg.get("min_temperature", 0.20))
         max_moves_train = int(t_cfg.get("max_moves_training", 35))
         early_adj_mat = float(t_cfg.get("early_adjudication_material", 6.0))
+        initial_priors = t_cfg.get("initial_priors", "random")
 
         console.print(
             Panel.fit(
@@ -114,6 +115,7 @@ def evaluate_dual_grounds(
             min_temperature=min_temp,
             max_moves_training=max_moves_train,
             early_adjudication_material=early_adj_mat,
+            initial_priors=initial_priors,
             verbose=True,
         )
     else:

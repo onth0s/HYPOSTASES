@@ -41,14 +41,22 @@ class ChessAgentAdapter:
         self.goal_hierarchy = GoalHierarchy()  # Latent utility weights u ∈ ℝ^{n_k}
 
         # Meta-parameters θ_meta ∈ ℝ^K for feature valuation & learned policy temperature
-        if isinstance(theta_meta, int):
-            # Programmatically generate uniform ones vector of size K without hardcoded array literals
+        if isinstance(theta_meta, str) and theta_meta.lower() == "random":
+            k_dim = 9
+            self.theta_meta = np.random.uniform(0.3, 1.0, size=k_dim).astype(np.float32)
+            self.theta_meta[-1] = self._temperature
+        elif isinstance(theta_meta, str) and theta_meta.lower() == "uniform":
+            k_dim = 9
+            self.theta_meta = np.ones(k_dim, dtype=np.float32)
+            self.theta_meta[-1] = self._temperature
+        elif isinstance(theta_meta, int):
             self.theta_meta = np.ones(theta_meta, dtype=np.float32)
             self.theta_meta[-1] = self._temperature
         elif theta_meta is None:
-            self.theta_meta = np.array(
-                [1.0, 0.3, 0.5, 0.8, 0.2, 0.4, 0.5, 0.3, self._temperature], dtype=np.float32
-            )
+            # Default: random uniform initialization
+            k_dim = 9
+            self.theta_meta = np.random.uniform(0.3, 1.0, size=k_dim).astype(np.float32)
+            self.theta_meta[-1] = self._temperature
         else:
             self.theta_meta = np.array(theta_meta, dtype=np.float32)
 

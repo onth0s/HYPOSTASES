@@ -205,6 +205,7 @@ class ChessSelfPlayTrainer:
         min_temperature: float = 0.20,
         max_moves_training: int = 35,
         early_adjudication_material: float = 6.0,
+        initial_priors: Any = "random",
         verbose: bool = True,
     ) -> list[PolicySnapshot]:
         """Runs continuous asynchronous streaming multi-generation self-play training run and returns PolicySnapshots."""
@@ -215,6 +216,7 @@ class ChessSelfPlayTrainer:
             domain=self.domain,
             beta_efe=self.beta_efe,
             temperature=self.initial_temperature,
+            theta_meta=initial_priors,
         )
 
         if verbose:
