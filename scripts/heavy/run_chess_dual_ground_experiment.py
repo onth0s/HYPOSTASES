@@ -66,7 +66,7 @@ console = Console()
 
 
 def load_experiment_config(
-    config_path: str = "schema/chess_experiment_config.yaml",
+    config_path: str = "src/hypostases/plugins/domains/chess/chess_experiment_config.yaml",
 ) -> dict[str, Any]:
     """Loads pre-registered experiment parameters from YAML configuration."""
     with open(config_path, encoding="utf-8") as f:

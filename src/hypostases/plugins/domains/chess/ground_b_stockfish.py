@@ -200,13 +200,31 @@ class GroundBStockfish:
         )
         node = game_pgn
 
+        from hypostases.plugins.domains.chess.chess_agent_adapter import ChessAgentAdapter
+        from hypostases.world_model.nnue_net import NNUENet
+
+        agent = ChessAgentAdapter(
+            domain=self.domain,
+            beta_efe=0.2,
+            temperature=snapshot.temperature,
+            theta_meta=snapshot.theta_meta,
+        )
+        net = NNUENet() if snapshot.nnue_weights is not None else None
+        if net and snapshot.nnue_weights:
+            net.W_white = snapshot.nnue_weights["W_white"]
+            net.W_black = snapshot.nnue_weights["W_black"]
+            net.W_l1 = snapshot.nnue_weights["W_l1"]
+            net.b_l1 = snapshot.nnue_weights["b_l1"]
+            net.W_l2 = snapshot.nnue_weights["W_l2"]
+            net.b_l2 = snapshot.nnue_weights["b_l2"]
+
         while not board.is_game_over() and num_moves < max_moves:
             legal_moves = self.domain.valid_actions(board)
             if not legal_moves:
                 break
 
             if (board.turn == chess.WHITE) == agent_is_white:
-                chosen_move = snapshot.policy_fn(board, legal_moves)
+                chosen_move = agent.select_move(board, legal_moves, depth=2, nnue_net=net)
             else:
                 play_result = engine.play(board, limit)
                 chosen_move = (
@@ -327,6 +345,12 @@ class GroundBStockfish:
                         console.print(
                             f"  [cyan][Game {completed_count}/{games_n} Completed][/cyan] Result: [bold]{res_char}[/bold] | Moves: {moves} | Score: {wins}W-{losses}L-{draws}D"
                         )
+        except KeyboardInterrupt:
+            console.print(
+                "\n[bold red]Interrupted by User (Ctrl+C). Terminating Stockfish engine processes...[/bold red]"
+            )
+            self._close_engine_pool(engines)
+            sys.exit(1)
         finally:
             self._close_engine_pool(engines)
 

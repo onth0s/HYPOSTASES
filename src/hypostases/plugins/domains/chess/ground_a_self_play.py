@@ -39,9 +39,12 @@ def _worker_run_ground_a_game(
     temp_black: float,
     max_moves: int,
     game_seed: int,
+    nnue_weights_white: dict[str, np.ndarray] | None = None,
+    nnue_weights_black: dict[str, np.ndarray] | None = None,
 ) -> tuple[float, float, int, str]:
     """Top-level worker running one Ground A self-play game between two policy snapshots."""
     import random
+    from hypostases.world_model.nnue_net import NNUENet
 
     random.seed(game_seed)
     np.random.seed(game_seed)
@@ -54,6 +57,24 @@ def _worker_run_ground_a_game(
         domain=domain, beta_efe=beta_efe, temperature=temp_black, theta_meta=theta_black
     )
 
+    net_w = NNUENet() if nnue_weights_white is not None else None
+    if net_w and nnue_weights_white:
+        net_w.W_white = nnue_weights_white["W_white"]
+        net_w.W_black = nnue_weights_white["W_black"]
+        net_w.W_l1 = nnue_weights_white["W_l1"]
+        net_w.b_l1 = nnue_weights_white["b_l1"]
+        net_w.W_l2 = nnue_weights_white["W_l2"]
+        net_w.b_l2 = nnue_weights_white["b_l2"]
+
+    net_b = NNUENet() if nnue_weights_black is not None else None
+    if net_b and nnue_weights_black:
+        net_b.W_white = nnue_weights_black["W_white"]
+        net_b.W_black = nnue_weights_black["W_black"]
+        net_b.W_l1 = nnue_weights_black["W_l1"]
+        net_b.b_l1 = nnue_weights_black["b_l1"]
+        net_b.W_l2 = nnue_weights_black["W_l2"]
+        net_b.b_l2 = nnue_weights_black["b_l2"]
+
     board = domain.initial_state()
     num_moves = 0
     done = False
@@ -64,8 +85,10 @@ def _worker_run_ground_a_game(
         if not legal_moves:
             break
 
-        cur_agent = agent_w if board.turn == chess.WHITE else agent_b
-        chosen_move = cur_agent.select_move(board, legal_moves)
+        if board.turn == chess.WHITE:
+            chosen_move = agent_w.select_move(board, legal_moves, nnue_net=net_w)
+        else:
+            chosen_move = agent_b.select_move(board, legal_moves, nnue_net=net_b)
 
         board, reward, done, info = domain.step(board, chosen_move)
         num_moves += 1
@@ -90,6 +113,7 @@ class PolicySnapshot:
     policy_fn: Callable[[Any, list[Any]], Any]
     theta_meta: np.ndarray | None = None
     temperature: float = 0.5
+    nnue_weights: dict[str, np.ndarray] | None = None
 
 
 @dataclass
@@ -252,6 +276,8 @@ class GroundASelfPlay:
                             t2,
                             max_moves,
                             g_seed,
+                            s1.nnue_weights,
+                            s2.nnue_weights,
                         )
                         futures_map[fut] = (s1.generation, s2.generation, True)
                     else:
@@ -264,6 +290,8 @@ class GroundASelfPlay:
                             t1,
                             max_moves,
                             g_seed,
+                            s2.nnue_weights,
+                            s1.nnue_weights,
                         )
                         futures_map[fut] = (s1.generation, s2.generation, False)
                     game_counter += 1

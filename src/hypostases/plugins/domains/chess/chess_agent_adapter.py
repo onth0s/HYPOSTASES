@@ -173,62 +173,58 @@ class ChessAgentAdapter:
         )
 
     def evaluate_efe_utility(
-        self, board: chess.Board, move: chess.Move, depth: int = 2
+        self, board: chess.Board, move: chess.Move, depth: int = 2, nnue_net: Any | None = None
     ) -> tuple[float, float, float]:
-        """Evaluates pragmatic, epistemic, and total Expected Free Energy utility with 2-ply lookahead search.
+        """Evaluates pragmatic, epistemic, and total Expected Free Energy utility with search lookahead.
 
         U_total = (1 - β) * U_pragmatic + β * U_epistemic
         """
-        features = self.extract_move_features(board, move)
-
-        goal_categories = list(GoalCategory)
-        u_survival = self.goal_hierarchy.u[goal_categories.index(GoalCategory.SURVIVAL)]
-        u_acquisition = self.goal_hierarchy.u[goal_categories.index(GoalCategory.ACQUISITION)]
-
-        # 1-ply base pragmatic value
-        base_pragmatic = float(
-            np.dot(self.theta_meta[: len(features)], features) * (u_survival + u_acquisition)
-        )
-
         test_board = board.copy()
         test_board.push(move)
 
         if test_board.is_checkmate():
             return 100.0, 100.0, 0.0
 
-        # 2-ply adversarial minimax lookahead evaluation
-        if depth >= 2:
-            opp_moves = list(test_board.legal_moves)
-            if opp_moves:
-                worst_opp_penalty = 0.0
-                for opp_move in opp_moves:
-                    opp_test_board = test_board.copy()
-                    opp_test_board.push(opp_move)
-                    if opp_test_board.is_checkmate():
-                        return -100.0, -100.0, 0.0
-                    if test_board.is_capture(opp_move):
-                        cap = test_board.piece_at(opp_move.to_square)
-                        if cap:
-                            val = cap.piece_type * 2.0
-                            if val > worst_opp_penalty:
-                                worst_opp_penalty = val
-                base_pragmatic -= worst_opp_penalty
+        # Pragmatic evaluation via NNUENet + AlphaBetaSearch if available
+        if nnue_net is not None:
+            from hypostases.world_model.alphabeta_search import AlphaBetaSearch, SearchConfig
+            from hypostases.world_model.nnue_net import extract_halfkp_features
 
-        u_pragmatic = base_pragmatic
+            def nnue_evaluator(s: chess.Board) -> float:
+                acc = nnue_net.create_accumulator(s)
+                _, _, aux = extract_halfkp_features(s)
+                return nnue_net.forward(acc, aux)
+
+            config = SearchConfig(max_depth=depth, time_budget_ms=50.0)
+            searcher = AlphaBetaSearch(domain=self.domain, evaluator=nnue_evaluator, config=config)
+            _, pragmatic_score, _ = searcher.search(test_board)
+            u_pragmatic = float(pragmatic_score)
+        else:
+            features = self.extract_move_features(board, move)
+            goal_categories = list(GoalCategory)
+            u_survival = self.goal_hierarchy.u[goal_categories.index(GoalCategory.SURVIVAL)]
+            u_acquisition = self.goal_hierarchy.u[goal_categories.index(GoalCategory.ACQUISITION)]
+            u_pragmatic = float(
+                np.dot(self.theta_meta[: len(features)], features) * (u_survival + u_acquisition)
+            )
 
         # Epistemic utility: Information gain from future branch entropy
         epistemic_entropy = np.log(len(list(test_board.legal_moves)) + 1.0)
         u_epistemic = float(epistemic_entropy * self.characteristics.skill)
 
-        # Total expected utility
+        # Total expected utility with active perception beta mixing
         u_total = (1.0 - self.beta_efe) * u_pragmatic + self.beta_efe * u_epistemic
 
         return u_total, u_pragmatic, u_epistemic
 
     def select_move(
-        self, board: chess.Board, legal_moves: list[chess.Move], depth: int = 2
+        self,
+        board: chess.Board,
+        legal_moves: list[chess.Move],
+        depth: int = 2,
+        nnue_net: Any | None = None,
     ) -> chess.Move:
-        """Selects a legal move using active sensing softmax policy distribution with 2-ply EFE lookahead search."""
+        """Selects a legal move using active sensing softmax policy distribution with EFE lookahead search."""
         if not legal_moves:
             raise ValueError("No legal moves available in state.")
 
@@ -241,7 +237,7 @@ class ChessAgentAdapter:
 
         utilities = []
         for move in legal_moves:
-            u_tot, _, _ = self.evaluate_efe_utility(board, move, depth=depth)
+            u_tot, _, _ = self.evaluate_efe_utility(board, move, depth=depth, nnue_net=nnue_net)
             utilities.append(u_tot)
 
         u_arr = np.array(utilities, dtype=np.float32)

@@ -56,7 +56,7 @@ class AlphaBetaSearch:
     def search(self, state: Any) -> tuple[Any | None, float, SearchTelemetry]:
         """Performs domain-agnostic iterative deepening negamax search."""
         self.recorder = TelemetryRecorder(mode=self.config.telemetry_mode)
-        start_time = time.process_time() * 1000.0
+        start_time = time.perf_counter() * 1000.0
 
         valid_actions = self.domain.valid_actions(state)
         if not valid_actions:
@@ -68,7 +68,7 @@ class AlphaBetaSearch:
         best_eval = 0.0
 
         for depth in range(1, self.config.max_depth + 1):
-            elapsed_ms = (time.process_time() * 1000.0) - start_time
+            elapsed_ms = (time.perf_counter() * 1000.0) - start_time
             if elapsed_ms >= self.config.time_budget_ms:
                 break
 
@@ -116,7 +116,7 @@ class AlphaBetaSearch:
     ) -> float:
         self.recorder.record_node(is_quiescence=False)
 
-        elapsed_ms = (time.process_time() * 1000.0) - start_time
+        elapsed_ms = (time.perf_counter() * 1000.0) - start_time
         if elapsed_ms >= self.config.time_budget_ms:
             return self._evaluate(state)
 
@@ -184,7 +184,10 @@ class AlphaBetaSearch:
             alpha = stand_pat
 
         valid_actions = self.domain.valid_actions(state)
-        for action in valid_actions:
+        # Quiescence filtering: only search tactical moves (captures or checks)
+        tactical_actions = [a for a in valid_actions if state.is_capture(a) or state.gives_check(a)]
+
+        for action in tactical_actions:
             next_state, _, _, _ = self.domain.step(state, action)
             score = -self._quiescence(next_state, q_depth - 1, -beta, -alpha)
             if score >= beta:

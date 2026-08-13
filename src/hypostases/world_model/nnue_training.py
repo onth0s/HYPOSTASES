@@ -24,20 +24,240 @@ PIECE_VALUES = {
 }
 
 
+# Classical Piece-Square Tables (PST) for positional evaluation
+PST_PAWN = np.array(
+    [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        50,
+        50,
+        50,
+        50,
+        50,
+        50,
+        50,
+        50,
+        10,
+        10,
+        20,
+        30,
+        30,
+        20,
+        10,
+        10,
+        5,
+        5,
+        10,
+        25,
+        25,
+        10,
+        5,
+        5,
+        0,
+        0,
+        0,
+        20,
+        20,
+        0,
+        0,
+        0,
+        5,
+        -5,
+        -10,
+        0,
+        0,
+        -10,
+        -5,
+        5,
+        5,
+        10,
+        10,
+        -20,
+        -20,
+        10,
+        10,
+        5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+    ],
+    dtype=np.float32,
+)
+
+PST_KNIGHT = np.array(
+    [
+        -50,
+        -40,
+        -30,
+        -30,
+        -30,
+        -30,
+        -40,
+        -50,
+        -40,
+        -20,
+        0,
+        0,
+        0,
+        0,
+        -20,
+        -40,
+        -30,
+        0,
+        10,
+        15,
+        15,
+        10,
+        0,
+        -30,
+        -30,
+        5,
+        15,
+        20,
+        20,
+        15,
+        5,
+        -30,
+        -30,
+        0,
+        15,
+        20,
+        20,
+        15,
+        0,
+        -30,
+        -30,
+        5,
+        10,
+        15,
+        15,
+        10,
+        5,
+        -30,
+        -40,
+        -20,
+        0,
+        5,
+        5,
+        0,
+        -20,
+        -40,
+        -50,
+        -40,
+        -30,
+        -30,
+        -30,
+        -30,
+        -40,
+        -50,
+    ],
+    dtype=np.float32,
+)
+
+PST_BISHOP = np.array(
+    [
+        -20,
+        -10,
+        -10,
+        -10,
+        -10,
+        -10,
+        -10,
+        -20,
+        -10,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        -10,
+        -10,
+        0,
+        5,
+        10,
+        10,
+        5,
+        0,
+        -10,
+        -10,
+        5,
+        5,
+        10,
+        10,
+        5,
+        5,
+        -10,
+        -10,
+        0,
+        10,
+        10,
+        10,
+        10,
+        0,
+        -10,
+        -10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        -10,
+        -10,
+        5,
+        0,
+        0,
+        0,
+        0,
+        5,
+        -10,
+        -20,
+        -10,
+        -10,
+        -10,
+        -10,
+        -10,
+        -10,
+        -20,
+    ],
+    dtype=np.float32,
+)
+
+PST_MAP = {
+    chess.PAWN: PST_PAWN,
+    chess.KNIGHT: PST_KNIGHT,
+    chess.BISHOP: PST_BISHOP,
+}
+
+
 def bootstrap_eval(state: chess.Board) -> float:
-    """Stage 0 bootstrap static evaluation (material + simplified PST)."""
+    """Stage 0 bootstrap static evaluation (material + classical PST positional terms)."""
     if state.is_checkmate():
         return -100.0 if state.turn == chess.WHITE else 100.0
     if state.is_game_over():
         return 0.0
 
-    score = 0
-    for _sq, piece in state.piece_map().items():
+    score = 0.0
+    for sq, piece in state.piece_map().items():
         val = PIECE_VALUES[piece.piece_type]
+        pst_bonus = PST_MAP[piece.piece_type][sq] if piece.piece_type in PST_MAP else 0.0
+
         if piece.color == chess.WHITE:
-            score += val
+            score += val + pst_bonus
         else:
-            score -= val
+            score -= val + pst_bonus
 
     perspective_score = score if state.turn == chess.WHITE else -score
     return float(perspective_score) / 100.0
@@ -220,23 +440,72 @@ def train_nnue(
     dataset: list[tuple[chess.Board, float]],
     epochs: int = 5,
     lr: float = 0.01,
+    verbose: bool = False,
 ) -> float:
-    """Trains NNUENet dense weights using MSE loss against bootstrap labels."""
-    final_loss = 0.0
+    """Trains NNUENet end-to-end dense and sparse accumulator weights using SGD."""
+    from rich.console import Console
 
-    for _epoch in range(epochs):
+    console = Console()
+
+    final_loss = 0.0
+    for epoch in range(1, epochs + 1):
         total_loss = 0.0
         for board, label in dataset:
             acc = net.create_accumulator(board)
-            _, _, aux = extract_halfkp_features(board)
+            w_feats, b_feats, aux = extract_halfkp_features(board)
+            is_white_turn = aux[0] == 1.0
+            us_acc = net.clipped_relu(acc.white_acc if is_white_turn else acc.black_acc)
+            them_acc = net.clipped_relu(acc.black_acc if is_white_turn else acc.white_acc)
+            concat_input = np.concatenate([us_acc, them_acc, aux], axis=0)
 
-            pred = net.forward(acc, aux)
+            # ReLU activations
+            z1 = np.dot(concat_input, net.W_l1) + net.b_l1
+            h1 = net.clipped_relu(z1)
+            pred = float(np.dot(h1, net.W_l2) + net.b_l2)
+
             err = pred - label
             total_loss += err**2
 
-            net.W_l2[0, 0] -= lr * err * 0.1
-            net.b_l2[0] -= lr * err * 0.1
+            # Gradients
+            dL_dout = 2.0 * err
+            dL_dW_l2 = dL_dout * h1[:, None]
+            dL_db_l2 = np.array([dL_dout], dtype=np.float32)
 
-        final_loss = total_loss / max(len(dataset), 1)
+            dL_dh1 = dL_dout * net.W_l2.flatten() * (h1 > 0)
+            concat_input = np.concatenate([acc.white_acc, acc.black_acc, aux])
+            dL_dW_l1 = np.outer(concat_input, dL_dh1)
+            dL_db_l1 = dL_dh1
+
+            # Backprop into accumulators
+            dL_dconcat = np.dot(net.W_l1, dL_dh1)
+            dL_dw_acc = dL_dconcat[:256]
+            dL_db_acc = dL_dconcat[256:512]
+
+            # Parameter updates with gradient clipping
+            grad_clip = 1.0
+            dL_dW_l2 = np.clip(dL_dW_l2, -grad_clip, grad_clip)
+            dL_db_l2 = np.clip(dL_db_l2, -grad_clip, grad_clip)
+            dL_dW_l1 = np.clip(dL_dW_l1, -grad_clip, grad_clip)
+            dL_db_l1 = np.clip(dL_db_l1, -grad_clip, grad_clip)
+
+            net.W_l2 -= lr * dL_dW_l2
+            net.b_l2 -= lr * dL_db_l2
+            net.W_l1 -= lr * dL_dW_l1
+            net.b_l1 -= lr * dL_db_l1
+
+            # Feature matrix updates with clipping
+            dL_dw_acc = np.clip(dL_dw_acc, -grad_clip, grad_clip)
+            dL_db_acc = np.clip(dL_db_acc, -grad_clip, grad_clip)
+            for idx in w_feats:
+                net.W_white[idx] -= lr * dL_dw_acc * 0.01
+            for idx in b_feats:
+                net.W_black[idx] -= lr * dL_db_acc * 0.01
+
+        epoch_loss = total_loss / max(len(dataset), 1)
+        final_loss = epoch_loss
+        if verbose:
+            console.print(
+                f"  [cyan]Epoch {epoch:02d}/{epochs:02d}[/cyan] — Mean MSE Loss: [bold yellow]{epoch_loss:.4f}[/bold yellow]"
+            )
 
     return final_loss

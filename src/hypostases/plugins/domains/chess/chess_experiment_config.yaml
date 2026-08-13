@@ -11,15 +11,15 @@ description: "Pre-registered parameters for Ground A (Self-Play) vs Ground B (St
 # ------------------------------------------------------------------------------
 training:
   learning_rate: 0.015                 # Meta-RL policy gradient learning rate η (Δθ_meta = η * R * f_bar)
-  efe_beta: 0.3                       # Initial pragmatic vs epistemic balance β in U_total = (1-β)U_pragmatic + βU_epistemic
+  efe_beta: 0.2                       # Initial pragmatic vs epistemic balance β in U_total = (1-β)U_pragmatic + βU_epistemic
   policy_temperature: 0.8             # Initial policy exploration temperature τ_0 for softmax action sampling
   min_temperature: 0.20               # Soft temperature floor ensuring stochastic exploration
   feature_basis_k: 10                 # Meta-parameter vector dimension K (8 tactical features + 1 temperature + 1 beta_efe)
   initial_priors: "uniform"            # Prior mode for θ_meta: "random" (isotropic uniform U(0.3,1.0)), "uniform" (ones), or list
   max_moves_training: 35              # Move cap per self-play training game to eliminate long-tail draw maneuvering
   early_adjudication_material: 6.0    # Resignation threshold: adjudicates Win/Loss after move 15 if material lead >= 6.0
-  generations: 80                     # Total self-play training generations to execute
-  games_per_generation: 4            # Number of self-play games executed per generation
+  generations: 8                     # Total self-play training generations to execute
+  games_per_generation: 20            # Number of self-play games executed per generation
 
 # ------------------------------------------------------------------------------
 # 2. Ground A Parameters (Internal Self-Play Snapshot Tournament)

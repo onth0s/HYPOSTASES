@@ -54,8 +54,11 @@ def _worker_run_training_game(
     max_moves: int,
     seed_val: int,
     early_adjudication_material: float = 6.0,
-) -> tuple[float, list[np.ndarray]]:
+    nnue_weights: dict[str, np.ndarray] | None = None,
+) -> tuple[float, list[np.ndarray], list[tuple[chess.Board, float]]]:
     """Isolated process worker function running 1 self-play training game on a separate CPU process."""
+    from hypostases.world_model.nnue_net import NNUENet
+
     random.seed(seed_val)
     np.random.seed(seed_val)
 
@@ -67,28 +70,43 @@ def _worker_run_training_game(
         theta_meta=theta_meta,
     )
     opponent = copy.deepcopy(agent)
+
+    net = NNUENet() if nnue_weights is not None else None
+    if net and nnue_weights:
+        net.W_white = nnue_weights["W_white"]
+        net.W_black = nnue_weights["W_black"]
+        net.W_l1 = nnue_weights["W_l1"]
+        net.b_l1 = nnue_weights["b_l1"]
+        net.W_l2 = nnue_weights["W_l2"]
+        net.b_l2 = nnue_weights["b_l2"]
+
     board = domain.initial_state()
     agent_color = board.turn
     num_moves = 0
     done = False
     trajectory_features = []
+    game_positions: list[chess.Board] = []
 
     while not done and num_moves < max_moves:
         legal_moves = domain.valid_actions(board)
         if not legal_moves:
             break
 
+        game_positions.append(board.copy())
+
         if board.turn == agent_color:
-            chosen_move = agent.select_move(board, legal_moves)
+            chosen_move = agent.select_move(board, legal_moves, depth=2, nnue_net=net)
             feats = agent.extract_move_features(board, chosen_move)
             if len(theta_meta) >= 9:
                 feats = np.append(feats, 0.5)
             if len(theta_meta) >= 10:
-                u_tot, u_prag, u_epis = agent.evaluate_efe_utility(board, chosen_move)
+                u_tot, u_prag, u_epis = agent.evaluate_efe_utility(
+                    board, chosen_move, depth=2, nnue_net=net
+                )
                 feats = np.append(feats, float(u_epis / 3.0))
             trajectory_features.append(feats)
         else:
-            chosen_move = opponent.select_move(board, legal_moves)
+            chosen_move = opponent.select_move(board, legal_moves, depth=2, nnue_net=net)
 
         board, reward, done, info = domain.step(board, chosen_move)
         num_moves += 1
@@ -98,17 +116,22 @@ def _worker_run_training_game(
             mat_bal = _compute_material_balance(board, agent_color)
             if abs(mat_bal) >= early_adjudication_material:
                 final_reward = 1.0 if mat_bal > 0 else -1.0
-                return final_reward, trajectory_features
+                labeled_positions = [(b, final_reward) for b in game_positions]
+                return final_reward, trajectory_features, labeled_positions, num_moves, mat_bal
 
     outcome = board.outcome()
-    final_reward = 0.0
-    if outcome is not None:
-        if outcome.winner == agent_color:
-            final_reward = 1.0
-        elif outcome.winner is not None:
-            final_reward = -1.0
+    mat_bal = _compute_material_balance(board, agent_color)
+    if outcome is None:
+        final_reward = float(np.tanh(mat_bal / 3.0))
+    elif outcome.winner == agent_color:
+        final_reward = 1.0
+    elif outcome.winner is None:
+        final_reward = 0.0
+    else:
+        final_reward = -1.0
 
-    return final_reward, trajectory_features
+    labeled_positions = [(b, final_reward) for b in game_positions]
+    return final_reward, trajectory_features, labeled_positions, num_moves, mat_bal
 
 
 class ChessSelfPlayTrainer:
@@ -244,12 +267,28 @@ class ChessSelfPlayTrainer:
 
             return policy
 
+        from hypostases.world_model.nnue_net import NNUENet
+        from hypostases.world_model.nnue_training import train_nnue
+
+        nnue_net = NNUENet(seed=seed)
+
+        def _extract_nnue_weights(net: NNUENet) -> dict[str, np.ndarray]:
+            return {
+                "W_white": net.W_white.copy(),
+                "W_black": net.W_black.copy(),
+                "W_l1": net.W_l1.copy(),
+                "b_l1": net.b_l1.copy(),
+                "W_l2": net.W_l2.copy(),
+                "b_l2": net.b_l2.copy(),
+            }
+
         snapshots.append(
             PolicySnapshot(
                 generation=0,
                 policy_fn=make_policy_fn(copy.deepcopy(agent)),
                 theta_meta=agent.theta_meta.copy(),
                 temperature=agent.temperature,
+                nnue_weights=_extract_nnue_weights(nnue_net),
             )
         )
 
@@ -295,6 +334,7 @@ class ChessSelfPlayTrainer:
                         max_moves_training,
                         seed + game_id,
                         early_adjudication_material,
+                        _extract_nnue_weights(nnue_net),
                     )
                     pending_futures[fut] = gen_idx
 
@@ -304,11 +344,19 @@ class ChessSelfPlayTrainer:
                     next_game_id += 1
 
                 # Continuous streaming loop: process FIRST_COMPLETED game and immediately backfill worker
+                collected_positions: list[tuple[chess.Board, float]] = []
                 while pending_futures:
                     done_set, _ = wait(pending_futures.keys(), return_when=FIRST_COMPLETED)
                     for fut in done_set:
                         gen_idx = pending_futures.pop(fut)
-                        final_reward, trajectory_features = fut.result()
+                        (
+                            final_reward,
+                            trajectory_features,
+                            labeled_positions,
+                            num_moves,
+                            mat_bal,
+                        ) = fut.result()
+                        collected_positions.extend(labeled_positions)
 
                         if trajectory_features and final_reward != 0.0:
                             mean_feat = np.mean(trajectory_features, axis=0)
@@ -328,20 +376,42 @@ class ChessSelfPlayTrainer:
                             )
 
                         completed_per_gen[gen_idx] += 1
-                        if (
-                            completed_per_gen[gen_idx] == games_per_generation
-                            and gen_idx % snapshot_interval_k == 0
-                        ):
-                            chk_theta = _format_agent_theta(agent)
-                            console.print(
-                                f"    --> [bold green][CHECKPOINT SAVED][/bold green] Gen {gen_idx:0{digits}d} Checkpoint Staged ([bold yellow]theta = {chk_theta}[/bold yellow] [magenta]temp={agent.temperature:.3f}[/magenta] [blue]beta={agent.beta_efe:.3f}[/blue])"
-                            )
-                            snapshots.append(
-                                PolicySnapshot(
-                                    generation=gen_idx,
-                                    policy_fn=make_policy_fn(copy.deepcopy(agent)),
+                        res_char = (
+                            "W" if final_reward > 0.5 else ("L" if final_reward < -0.5 else "D")
+                        )
+                        res_style = (
+                            "bold green"
+                            if res_char == "W"
+                            else ("bold red" if res_char == "L" else "yellow")
+                        )
+                        console.print(
+                            f"  [cyan][Gen {gen_idx:0{digits}d} Game {completed_per_gen[gen_idx]:02d}/{games_per_generation:02d}][/cyan] Result: [{res_style}]{res_char}[/{res_style}] | Moves: {num_moves:02d} | Reward: {final_reward:+.2f} | Mat: {mat_bal:+.1f} | theta={_format_agent_theta(agent)}"
+                        )
+
+                        if completed_per_gen[gen_idx] == games_per_generation:
+                            if collected_positions:
+                                loss = train_nnue(
+                                    nnue_net, collected_positions[:200], epochs=1, lr=0.001
                                 )
-                            )
+                                console.print(
+                                    f"    --> [bold blue][NNUE SGD][/bold blue] Gen {gen_idx:0{digits}d} Neural Loss: [bold yellow]{loss:.4f}[/bold yellow] ({len(collected_positions)} FENs)"
+                                )
+                                collected_positions.clear()
+
+                            if gen_idx % snapshot_interval_k == 0:
+                                chk_theta = _format_agent_theta(agent)
+                                console.print(
+                                    f"    --> [bold green][CHECKPOINT SAVED][/bold green] Gen {gen_idx:0{digits}d} Checkpoint Staged ([bold yellow]theta = {chk_theta}[/bold yellow] [magenta]temp={agent.temperature:.3f}[/magenta] [blue]beta={agent.beta_efe:.3f}[/blue])"
+                                )
+                                snapshots.append(
+                                    PolicySnapshot(
+                                        generation=gen_idx,
+                                        policy_fn=make_policy_fn(copy.deepcopy(agent)),
+                                        theta_meta=agent.theta_meta.copy(),
+                                        temperature=agent.temperature,
+                                        nnue_weights=_extract_nnue_weights(nnue_net),
+                                    )
+                                )
 
                         # Immediately backfill next game to keep workers 100% saturated
                         if next_game_id < total_games:

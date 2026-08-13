@@ -1,14 +1,16 @@
-"""Light utility script to train NNUENet and execute a Stockfish 1400 Elo match tournament.
+"""Heavy script to train NNUENet and execute a Stockfish 1400 Elo match tournament.
 
+Spec Ref: Rule 006 (Data-driven YAML Configuration via schema/stockfish_match_config.yaml)
 Rule 013 Ref: Color user-facing terminal output using `rich`.
-Rule 014 Ref: Light script under scripts/light/.
+Rule 014 Ref: Heavy script under scripts/heavy/.
 """
 
 from __future__ import annotations
 
 import argparse
-import sys
+from pathlib import Path
 import chess
+import yaml
 
 from rich.console import Console
 from rich.panel import Panel
@@ -22,16 +24,42 @@ from hypostases.world_model.nnue_net import NNUENet, extract_halfkp_features
 from hypostases.world_model.nnue_training import generate_and_audit_dataset, train_nnue
 
 console = Console()
+DEFAULT_CONFIG_PATH = Path("src/hypostases/plugins/domains/chess/stockfish_match_config.yaml")
 
 
-def run_training_and_match(
-    positions: int = 5000,
-    epochs: int = 5,
-    match_games: int = 20,
-    target_elo: float = 1400.0,
-    search_depth: int = 4,
-    time_budget_ms: float = 200.0,
-) -> None:
+def load_config(config_path: Path) -> dict:
+    if config_path.exists():
+        with open(config_path, encoding="utf-8") as f:
+            return yaml.safe_load(f)
+    return {
+        "dataset": {"num_positions": 5000, "seed": 42},
+        "training": {"epochs": 5, "learning_rate": 0.001, "seed": 42},
+        "match": {
+            "target_elo": 1400.0,
+            "games": 20,
+            "time_control_sec": 0.02,
+            "max_workers": 16,
+            "stockfish_threads": 1,
+        },
+        "search": {"max_depth": 4, "time_budget_ms": 50.0, "tt_size_mb": 16, "quiescence_depth": 4},
+    }
+
+
+def run_training_and_match(cfg: dict) -> None:
+    ds_cfg = cfg.get("dataset", {})
+    tr_cfg = cfg.get("training", {})
+    match_cfg = cfg.get("match", {})
+    search_cfg = cfg.get("search", {})
+
+    target_elo = float(match_cfg.get("target_elo", 1400.0))
+    positions = int(ds_cfg.get("num_positions", 5000))
+    epochs = int(tr_cfg.get("epochs", 5))
+    lr = float(tr_cfg.get("learning_rate", 0.001))
+    games = int(match_cfg.get("games", 20))
+    time_ctrl = float(match_cfg.get("time_control_sec", 0.02))
+    max_workers = int(match_cfg.get("max_workers", 16))
+    sf_threads = int(match_cfg.get("stockfish_threads", 1))
+
     console.print(
         Panel(
             f"[bold cyan]HYPOSTASES-NNUE Training & Stockfish {int(target_elo)} Match Session[/bold cyan]"
@@ -40,37 +68,46 @@ def run_training_and_match(
 
     # Phase 1: Train NNUENet
     console.print(
-        f"[yellow]Phase 1/2: Generating {positions} positions and training NNUENet for {epochs} epochs...[/yellow]"
+        f"[yellow]Phase 1/2: Generating {positions} positions and training NNUENet for {epochs} epochs (lr={lr})...[/yellow]"
     )
-    dataset = generate_and_audit_dataset(num_positions=positions)
-    net = NNUENet(seed=42)
-    final_loss = train_nnue(net, dataset, epochs=epochs, lr=0.01)
+    dataset = generate_and_audit_dataset(num_positions=positions, seed=ds_cfg.get("seed", 42))
+    net = NNUENet(seed=tr_cfg.get("seed", 42))
+    final_loss = train_nnue(net, dataset, epochs=epochs, lr=lr)
     console.print(
         f"[bold green][OK] Training Complete! Final MSE Loss: {final_loss:.6f}[/bold green]\n"
     )
 
     # Phase 2: Prepare Policy Snapshot for Search
-    def agent_policy(state: chess.Board, legal_moves: list[chess.Move]) -> chess.Move:
-        def nnue_evaluator(s: chess.Board) -> float:
-            acc = net.create_accumulator(s)
-            _, _, aux = extract_halfkp_features(s)
-            return net.forward(acc, aux)
+    def nnue_evaluator(s: chess.Board) -> float:
+        acc = net.create_accumulator(s)
+        _, _, aux = extract_halfkp_features(s)
+        return net.forward(acc, aux)
 
-        cfg = SearchConfig(max_depth=search_depth, time_budget_ms=time_budget_ms)
-        searcher = AlphaBetaSearch(domain=ChessDomain(), evaluator=nnue_evaluator, config=cfg)
+    s_config = SearchConfig(
+        max_depth=int(search_cfg.get("max_depth", 4)),
+        time_budget_ms=float(search_cfg.get("time_budget_ms", 50.0)),
+        tt_size_mb=int(search_cfg.get("tt_size_mb", 16)),
+        quiescence_depth=int(search_cfg.get("quiescence_depth", 4)),
+    )
+    searcher = AlphaBetaSearch(domain=ChessDomain(), evaluator=nnue_evaluator, config=s_config)
+
+    def agent_policy(state: chess.Board, legal_moves: list[chess.Move]) -> chess.Move:
         move, _, _ = searcher.search(state)
         return move if move in legal_moves else legal_moves[0]
 
     snapshot = PolicySnapshot(generation=1, policy_fn=agent_policy)
 
-    # Phase 3: Match against Stockfish (Utilizing 16 parallel CPU workers)
+    # Phase 3: Match against Stockfish
     console.print(
-        f"[yellow]Phase 2/2: Executing {match_games}-game match vs Stockfish (Target Elo: {target_elo}) across 16 parallel CPU workers...[/yellow]"
+        f"[yellow]Phase 2/2: Executing {games}-game match vs Stockfish (Target Elo: {target_elo}) across {max_workers} CPU workers...[/yellow]"
     )
     harness = GroundBStockfish(
-        reference_elo=target_elo, time_control=0.1, max_workers=16, stockfish_threads=1
+        reference_elo=target_elo,
+        time_control=time_ctrl,
+        max_workers=max_workers,
+        stockfish_threads=sf_threads,
     )
-    result = harness.evaluate_snapshot(snapshot=snapshot, games_n=match_games, verbose=True)
+    result = harness.evaluate_snapshot(snapshot=snapshot, games_n=games, verbose=True)
 
     # Render Summary Results Table
     table = Table(title=f"Match Results vs Stockfish {int(target_elo)} Elo")
@@ -94,21 +131,15 @@ def main() -> None:
         description="Train HYPOSTASES-NNUE and run Stockfish match tournament"
     )
     parser.add_argument(
-        "--positions", type=int, default=2000, help="Number of bootstrap positions to generate"
+        "--config",
+        type=str,
+        default=str(DEFAULT_CONFIG_PATH),
+        help="Path to YAML configuration file",
     )
-    parser.add_argument("--epochs", type=int, default=5, help="Number of training epochs")
-    parser.add_argument(
-        "--games", type=int, default=20, help="Number of match games against Stockfish"
-    )
-    parser.add_argument("--elo", type=float, default=1400.0, help="Stockfish target Elo rating")
     args = parser.parse_args()
 
-    run_training_and_match(
-        positions=args.positions,
-        epochs=args.epochs,
-        match_games=args.games,
-        target_elo=args.elo,
-    )
+    cfg = load_config(Path(args.config))
+    run_training_and_match(cfg)
 
 
 if __name__ == "__main__":

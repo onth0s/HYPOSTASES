@@ -172,12 +172,17 @@ class NNUENet:
     def forward(self, accum: Accumulator, x_aux: np.ndarray) -> float:
         """Evaluates dense pass given accumulator state and aux vector.
 
-        Returns scalar score (in pawns / centipawns normalized).
+        Returns scalar score from perspective of side-to-move.
         """
-        w_clipped = self.clipped_relu(accum.white_acc)
-        b_clipped = self.clipped_relu(accum.black_acc)
+        # Active player (side to move) accumulator comes first
+        is_white_turn = x_aux[0] == 1.0
+        us_acc = accum.white_acc if is_white_turn else accum.black_acc
+        them_acc = accum.black_acc if is_white_turn else accum.white_acc
 
-        concat_input = np.concatenate([w_clipped, b_clipped, x_aux], axis=0)
+        us_clipped = self.clipped_relu(us_acc)
+        them_clipped = self.clipped_relu(them_acc)
+
+        concat_input = np.concatenate([us_clipped, them_clipped, x_aux], axis=0)
         h1 = self.clipped_relu(np.dot(concat_input, self.W_l1) + self.b_l1)
         out = np.dot(h1, self.W_l2) + self.b_l2
         return float(out[0])
