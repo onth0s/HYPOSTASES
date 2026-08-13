@@ -255,23 +255,25 @@ def evaluate_dual_grounds(
 
     # --- Programmatic Ratification Metrics ---
     eval_gens = [s.generation for s in b_snapshots]
+    matching_internal = [
+        internal_elo_dict.get(g, float(g_a_cfg["base_elo_anchor"])) for g in eval_gens
+    ]
+
     mono_a_count = sum(
-        1 for i in range(len(internal_elos) - 1) if internal_elos[i + 1] > internal_elos[i]
+        1
+        for i in range(len(matching_internal) - 1)
+        if matching_internal[i + 1] > matching_internal[i]
     )
-    mono_a_ratio = mono_a_count / float(max(1, len(internal_elos) - 1))
+    mono_a_ratio = mono_a_count / float(max(1, len(matching_internal) - 1))
 
     mono_b_count = sum(
         1 for i in range(len(external_elos) - 1) if external_elos[i + 1] > external_elos[i]
     )
     mono_b_ratio = mono_b_count / float(max(1, len(external_elos) - 1))
 
-    if len(external_elos) > 1 and np.std(external_elos) > 0:
-        matching_internal = [internal_elo_dict[g] for g in eval_gens]
-        if np.std(matching_internal) > 0:
-            corr_matrix = np.corrcoef(matching_internal, external_elos)
-            pearson_r = float(corr_matrix[0, 1])
-        else:
-            pearson_r = 0.0
+    if len(external_elos) > 1 and np.std(external_elos) > 0 and np.std(matching_internal) > 0:
+        corr_matrix = np.corrcoef(matching_internal, external_elos)
+        pearson_r = float(corr_matrix[0, 1])
     else:
         pearson_r = 0.0
 
@@ -287,6 +289,7 @@ def evaluate_dual_grounds(
     results = {
         "experiment_id": config["experiment_id"],
         "generations": generations,
+        "generations_evaluated": eval_gens,
         "internal_elo_ground_a": internal_elos,
         "external_elo_ground_b": external_elos,
         "stockfish_score_ratios": scores_ratio,
@@ -330,7 +333,7 @@ def main() -> None:
     table_res.add_column("Metric", style="cyan")
     table_res.add_column("Value", style="bold white")
 
-    table_res.add_row("Generations Evaluated", str(results["generations"]))
+    table_res.add_row("Generations Evaluated", str(results["generations_evaluated"]))
     table_res.add_row(
         "Ground A Monotonicity",
         f"{results['metrics']['ground_a_monotonicity_ratio'] * 100:.1f}%",
