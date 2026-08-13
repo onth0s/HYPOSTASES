@@ -34,18 +34,32 @@ class ChessAgentAdapter:
         """
         self.domain = domain or ChessDomain(representation_mode="full")
         self.beta_efe = beta_efe
-        self.temperature = max(0.01, temperature)
+        self._temperature = max(0.05, temperature)
 
         # Agent state σ = (c, w, g, ρ_ext)
         self.characteristics = Characteristics(skill=0.8, resilience=0.7)
         self.goal_hierarchy = GoalHierarchy()  # Latent utility weights u ∈ ℝ^{n_k}
 
-        # Meta-parameters θ_meta for feature valuation
-        # Features: [capture, center, king_safety, checkmate, mobility, defended_pieces, capture_delta, king_attackers]
+        # Meta-parameters θ_meta ∈ ℝ^9 for feature valuation & learned policy temperature
+        # Features: [capture, center, king_safety, checkmate, mobility, defended, capture_delta, king_attackers, temperature]
         if theta_meta is None:
-            self.theta_meta = np.array([1.0, 0.3, 0.5, 0.8, 0.2, 0.4, 0.5, 0.3], dtype=np.float32)
+            self.theta_meta = np.array(
+                [1.0, 0.3, 0.5, 0.8, 0.2, 0.4, 0.5, 0.3, self._temperature], dtype=np.float32
+            )
         else:
             self.theta_meta = np.array(theta_meta, dtype=np.float32)
+
+    @property
+    def temperature(self) -> float:
+        if len(self.theta_meta) >= 9:
+            return float(max(0.05, self.theta_meta[8]))
+        return self._temperature
+
+    @temperature.setter
+    def temperature(self, val: float) -> None:
+        self._temperature = max(0.05, val)
+        if len(self.theta_meta) >= 9:
+            self.theta_meta[8] = max(0.05, val)
 
     def extract_move_features(self, board: chess.Board, move: chess.Move) -> np.ndarray:
         """Extracts 8-dimensional numerical feature vector for a candidate legal move."""
@@ -142,7 +156,9 @@ class ChessAgentAdapter:
         u_acquisition = self.goal_hierarchy.u[goal_categories.index(GoalCategory.ACQUISITION)]
 
         # 1-ply base pragmatic value
-        base_pragmatic = float(np.dot(self.theta_meta, features) * (u_survival + u_acquisition))
+        base_pragmatic = float(
+            np.dot(self.theta_meta[: len(features)], features) * (u_survival + u_acquisition)
+        )
 
         test_board = board.copy()
         test_board.push(move)

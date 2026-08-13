@@ -81,6 +81,8 @@ def _worker_run_training_game(
         if board.turn == agent_color:
             chosen_move = agent.select_move(board, legal_moves)
             feats = agent.extract_move_features(board, chosen_move)
+            if len(theta_meta) >= 9:
+                feats = np.append(feats, 0.5)
             trajectory_features.append(feats)
         else:
             chosen_move = opponent.select_move(board, legal_moves)
@@ -263,9 +265,6 @@ class ChessSelfPlayTrainer:
                 def _submit_game(game_id: int) -> None:
                     gen_idx = (game_id // games_per_generation) + 1
                     if gen_idx not in task_ids and gen_idx <= total_generations:
-                        agent.temperature = max(
-                            min_temperature, self.initial_temperature * (0.9**gen_idx)
-                        )
                         formatted_theta = (
                             "[" + " ".join(f"{v:04.2f}" for v in agent.theta_meta) + "]"
                         )
