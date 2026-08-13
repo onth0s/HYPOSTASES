@@ -223,15 +223,13 @@ class ChessSelfPlayTrainer:
         )
 
         def _format_agent_theta(cur_agent: ChessAgentAdapter) -> str:
-            vals = list(cur_agent.theta_meta)
-            if len(vals) >= 10:
-                vals[9] = cur_agent.beta_efe
-            return "[" + " ".join(f"{v:04.2f}" for v in vals) + "]"
+            feat_vals = cur_agent.theta_meta[:8]
+            return "[" + " ".join(f"{v:04.2f}" for v in feat_vals) + "]"
 
         if verbose:
             formatted_gen0 = _format_agent_theta(agent)
             console.print(
-                f"\n[bold cyan][HYPOSTASES Trainer][/bold cyan] Initialized Gen 0 Agent ([bold yellow]theta_meta = {formatted_gen0}[/bold yellow])"
+                f"\n[bold cyan][HYPOSTASES Trainer][/bold cyan] Initialized Gen 0 Agent ([bold yellow]theta_meta = {formatted_gen0}[/bold yellow] [magenta]temp={agent.temperature:.3f}[/magenta] [blue]beta={agent.beta_efe:.2f}[/blue])"
             )
 
         def make_policy_fn(cur_agent: ChessAgentAdapter) -> Any:
@@ -323,7 +321,7 @@ class ChessSelfPlayTrainer:
                         ):
                             chk_theta = _format_agent_theta(agent)
                             console.print(
-                                f"    --> [bold green][CHECKPOINT SAVED][/bold green] Gen {gen_idx:0{digits}d} Checkpoint Staged ([bold yellow]theta_meta = {chk_theta}[/bold yellow])"
+                                f"    --> [bold green][CHECKPOINT SAVED][/bold green] Gen {gen_idx:0{digits}d} Checkpoint Staged ([bold yellow]theta = {chk_theta}[/bold yellow] [magenta]temp={agent.temperature:.3f}[/magenta] [blue]beta={agent.beta_efe:.2f}[/blue])"
                             )
                             snapshots.append(
                                 PolicySnapshot(
