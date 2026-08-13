@@ -305,7 +305,7 @@ class GroundASelfPlay:
             avg_len = float(np.mean(stats["lengths"])) if stats["lengths"] else 0.0
             if verbose:
                 console.print(
-                    f"  [bold green][Ground A Matchup][/bold green] Gen {g1:0{digits}d} vs Gen {g2:0{digits}d} | Gen {g1:0{digits}d}: [bold white]{stats['g1_wins']}W[/bold white] - Gen {g2:0{digits}d}: [bold white]{stats['g2_wins']}W[/bold white] - Draws: [yellow]{stats['draws']}D[/yellow] (Score: [bold cyan]{stats['score_g1']:.1f}/{games_per_pair}[/bold cyan], Avg Length: {avg_len:.1f} moves)"
+                    f"  [bold green][Ground A Matchup][/bold green] Gen {g1:0{digits}d} vs Gen {g2:0{digits}d} | Record: [bold white]{stats['g1_wins']}W - {stats['g2_wins']}L - {stats['draws']}D[/bold white] (Score: [bold cyan]{stats['score_g1']:.1f}/{games_per_pair}[/bold cyan], Avg Length: {avg_len:.1f} moves)"
                 )
 
         return result

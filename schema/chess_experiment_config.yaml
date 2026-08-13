@@ -28,7 +28,7 @@ ground_a:
   parallel_workers: 20                # Multiprocessing worker pool size (bypasses Python GIL for 100% CPU usage)
   snapshot_interval_k: 4              # Staging interval: saves a policy snapshot every K generations (e.g. Gen 0, 4, 8, 12, 16)
   eval_last_n_snapshots: 2            # Rapid iteration filter: evaluates baseline Gen 0 + last N trained snapshots (0 = all)
-  games_per_pair: 4                   # Number of head-to-head games per snapshot pair (5 snapshots -> 10 pairs * 4 = 40 games)
+  games_per_pair: 20                   # Number of head-to-head games per snapshot pair (5 snapshots -> 10 pairs * 4 = 40 games)
   max_moves_eval: 120                 # Maximum move limit per evaluation game in Ground A tournament
   base_elo_anchor: 800.0              # Anchor Elo rating assigned to Gen 0 for Bradley-Terry Bradley-Terry fitting
 
