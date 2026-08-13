@@ -108,12 +108,58 @@ def evaluate_dual_grounds(
     )
     internal_elos = [internal_elo_dict[g] for g in generations]
 
-    table_a = Table(title="Ground A Internal Elo Ratings", header_style="bold green")
-    table_a.add_column("Generation", justify="center")
-    table_a.add_column("Internal Elo (Bayeselo)", justify="right")
+    table_a = Table(
+        title="Ground A Comprehensive Internal Elo & Performance Summary",
+        header_style="bold green",
+    )
+    table_a.add_column("Generation", justify="center", style="cyan")
+    table_a.add_column("Internal Elo", justify="right", style="bold yellow")
+    table_a.add_column("Record (W-L-D)", justify="center", style="bold white")
+    table_a.add_column("Score (%)", justify="right", style="bold green")
+    table_a.add_column("Win Rate (%)", justify="right", style="green")
+    table_a.add_column("Draw Rate (%)", justify="right", style="magenta")
 
     for g, elo in zip(generations, internal_elos, strict=False):
-        table_a.add_row(f"Gen {g}", f"{elo:.1f}")
+        # Aggregate games for generation g across all matchups
+        total_w = 0.0
+        total_l = 0.0
+        total_d = 0.0
+        total_g = 0
+
+        for (p1, p2), g_count in tournament_result.games.items():
+            draws = tournament_result.draw_counts.get((p1, p2), 0)
+            p1_score = tournament_result.wins.get((p1, p2), 0.0)
+            p1_wins = int(p1_score - 0.5 * draws)
+            p2_wins = g_count - p1_wins - draws
+
+            if p1 == g:
+                total_w += p1_wins
+                total_l += p2_wins
+                total_d += draws
+                total_g += g_count
+            elif p2 == g:
+                total_w += p2_wins
+                total_l += p1_wins
+                total_d += draws
+                total_g += g_count
+
+        if total_g > 0:
+            score_pct = ((total_w + 0.5 * total_d) / total_g) * 100.0
+            win_pct = (total_w / total_g) * 100.0
+            draw_pct = (total_d / total_g) * 100.0
+        else:
+            score_pct = 50.0
+            win_pct = 0.0
+            draw_pct = 100.0
+
+        table_a.add_row(
+            f"Gen {g:0{len(str(max(generations)))}d}",
+            f"{elo:.1f}",
+            f"{int(total_w)}W - {int(total_l)}L - {int(total_d)}D",
+            f"{score_pct:.1f}%",
+            f"{win_pct:.1f}%",
+            f"{draw_pct:.1f}%",
+        )
     console.print(table_a)
 
     # --- Ground B Execution ---

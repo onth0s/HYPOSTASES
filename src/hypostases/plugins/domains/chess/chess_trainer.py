@@ -192,6 +192,8 @@ class ChessSelfPlayTrainer:
             PolicySnapshot(generation=0, policy_fn=make_policy_fn(copy.deepcopy(agent)))
         )
 
+        digits = len(str(total_generations))
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -204,7 +206,7 @@ class ChessSelfPlayTrainer:
                 agent.temperature = max(0.05, self.initial_temperature * (0.9**gen))
 
                 task_id = progress.add_task(
-                    f"[cyan]Gen {gen:>2}/{total_generations}[/cyan] [yellow]theta={np.round(agent.theta_meta, 2)}[/yellow] [magenta]temp={agent.temperature:.3f}[/magenta]",
+                    f"[cyan]Gen {gen:0{digits}d}/{total_generations}[/cyan] [yellow]theta={np.round(agent.theta_meta, 2)}[/yellow] [magenta]temp={agent.temperature:.3f}[/magenta]",
                     total=games_per_generation,
                 )
 

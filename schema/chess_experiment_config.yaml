@@ -8,11 +8,11 @@ training:
   learning_rate: 0.01
   efe_beta: 0.2
   policy_temperature: 0.8
-  generations: 20 
-  games_per_generation: 50
+  generations: 32 
+  games_per_generation: 48
 
 ground_a:
-  snapshot_interval_k: 20
+  snapshot_interval_k: 4
   games_per_pair: 10
   max_moves_per_game: 200
   base_elo_anchor: 800.0
