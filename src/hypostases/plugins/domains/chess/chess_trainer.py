@@ -14,6 +14,7 @@ from collections import defaultdict
 from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, as_completed, wait
 from typing import Any
 
+import chess
 import numpy as np
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, SpinnerColumn, TextColumn
@@ -30,12 +31,29 @@ def _init_worker_process() -> None:
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
+def _compute_material_balance(board: chess.Board, agent_color: chess.Color) -> float:
+    """Computes material advantage balance for agent_color."""
+    piece_vals = {
+        chess.PAWN: 1.0,
+        chess.KNIGHT: 3.0,
+        chess.BISHOP: 3.25,
+        chess.ROOK: 5.0,
+        chess.QUEEN: 9.0,
+    }
+    balance = 0.0
+    for p_type, val in piece_vals.items():
+        balance += len(board.pieces(p_type, agent_color)) * val
+        balance -= len(board.pieces(p_type, not agent_color)) * val
+    return balance
+
+
 def _worker_run_training_game(
     theta_meta: np.ndarray,
     beta_efe: float,
     temperature: float,
     max_moves: int,
     seed_val: int,
+    early_adjudication_material: float = 6.0,
 ) -> tuple[float, list[np.ndarray]]:
     """Isolated process worker function running 1 self-play training game on a separate CPU process."""
     random.seed(seed_val)
@@ -50,6 +68,7 @@ def _worker_run_training_game(
     )
     opponent = copy.deepcopy(agent)
     board = domain.initial_state()
+    agent_color = board.turn
     num_moves = 0
     done = False
     trajectory_features = []
@@ -59,7 +78,7 @@ def _worker_run_training_game(
         if not legal_moves:
             break
 
-        if board.turn == domain.initial_state().turn:
+        if board.turn == agent_color:
             chosen_move = agent.select_move(board, legal_moves)
             feats = agent.extract_move_features(board, chosen_move)
             trajectory_features.append(feats)
@@ -69,10 +88,17 @@ def _worker_run_training_game(
         board, reward, done, info = domain.step(board, chosen_move)
         num_moves += 1
 
+        # Early adjudication after move 15 if material lead >= early_adjudication_material
+        if num_moves >= 15:
+            mat_bal = _compute_material_balance(board, agent_color)
+            if abs(mat_bal) >= early_adjudication_material:
+                final_reward = 1.0 if mat_bal > 0 else -1.0
+                return final_reward, trajectory_features
+
     outcome = board.outcome()
     final_reward = 0.0
     if outcome is not None:
-        if outcome.winner == domain.initial_state().turn:
+        if outcome.winner == agent_color:
             final_reward = 1.0
         elif outcome.winner is not None:
             final_reward = -1.0
@@ -174,6 +200,9 @@ class ChessSelfPlayTrainer:
         snapshot_interval_k: int = 5,
         games_per_generation: int = 15,
         seed: int = 42,
+        min_temperature: float = 0.20,
+        max_moves_training: int = 35,
+        early_adjudication_material: float = 6.0,
         verbose: bool = True,
     ) -> list[PolicySnapshot]:
         """Runs continuous asynchronous streaming multi-generation self-play training run and returns PolicySnapshots."""
@@ -198,7 +227,12 @@ class ChessSelfPlayTrainer:
             return policy
 
         snapshots.append(
-            PolicySnapshot(generation=0, policy_fn=make_policy_fn(copy.deepcopy(agent)))
+            PolicySnapshot(
+                generation=0,
+                policy_fn=make_policy_fn(copy.deepcopy(agent)),
+                theta_meta=agent.theta_meta.copy(),
+                temperature=agent.temperature,
+            )
         )
 
         digits = len(str(total_generations))
@@ -229,7 +263,9 @@ class ChessSelfPlayTrainer:
                 def _submit_game(game_id: int) -> None:
                     gen_idx = (game_id // games_per_generation) + 1
                     if gen_idx not in task_ids and gen_idx <= total_generations:
-                        agent.temperature = max(0.05, self.initial_temperature * (0.9**gen_idx))
+                        agent.temperature = max(
+                            min_temperature, self.initial_temperature * (0.9**gen_idx)
+                        )
                         formatted_theta = (
                             "[" + " ".join(f"{v:04.2f}" for v in agent.theta_meta) + "]"
                         )
@@ -243,8 +279,9 @@ class ChessSelfPlayTrainer:
                         agent.theta_meta,
                         self.beta_efe,
                         agent.temperature,
-                        60,
+                        max_moves_training,
                         seed + game_id,
+                        early_adjudication_material,
                     )
                     pending_futures[fut] = gen_idx
 

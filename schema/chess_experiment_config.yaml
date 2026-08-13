@@ -8,6 +8,9 @@ training:
   learning_rate: 0.01
   efe_beta: 0.2
   policy_temperature: 0.8
+  min_temperature: 0.20
+  max_moves_training: 35
+  early_adjudication_material: 6.0
   generations: 8
   games_per_generation: 16
 
@@ -15,15 +18,16 @@ ground_a:
   parallel_workers: 20
   snapshot_interval_k: 4
   games_per_pair: 10
-  max_moves_per_game: 200
+  max_moves_eval: 120
   base_elo_anchor: 800.0
 
 ground_b:
   games_per_elo_estimate_n: 30
+  max_moves_eval: 120
   calibration_method: "UCI_Elo"
   stockfish_fixed_level: 800
   time_control_per_move: 0.1
-  parallel_workers: 10
+  parallel_workers: 20
   stockfish_threads: 2
   stockfish_path: "src/hypostases/plugins/domains/chess/stockfish.exe"
 

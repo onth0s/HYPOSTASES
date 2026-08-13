@@ -86,16 +86,20 @@ def evaluate_dual_grounds(
 
     # Generate snapshots via real HYPOSTASES agent self-play training if none provided
     if custom_snapshots is None:
+        t_cfg = config.get("training", {})
         trainer = ChessSelfPlayTrainer(
-            learning_rate=float(config.get("training", {}).get("learning_rate", 0.01)),
-            beta_efe=float(config.get("training", {}).get("efe_beta", 0.2)),
-            initial_temperature=float(config.get("training", {}).get("policy_temperature", 0.8)),
+            learning_rate=float(t_cfg.get("learning_rate", 0.01)),
+            beta_efe=float(t_cfg.get("efe_beta", 0.2)),
+            initial_temperature=float(t_cfg.get("policy_temperature", 0.8)),
             chess_domain=chess_domain,
         )
 
-        total_gens = int(config.get("training", {}).get("generations", 20))
+        total_gens = int(t_cfg.get("generations", 20))
         k_interval = int(g_a_cfg["snapshot_interval_k"])
-        games_per_gen = int(config.get("training", {}).get("games_per_generation", 15))
+        games_per_gen = int(t_cfg.get("games_per_generation", 15))
+        min_temp = float(t_cfg.get("min_temperature", 0.20))
+        max_moves_train = int(t_cfg.get("max_moves_training", 35))
+        early_adj_mat = float(t_cfg.get("early_adjudication_material", 6.0))
 
         console.print(
             Panel.fit(
@@ -107,6 +111,9 @@ def evaluate_dual_grounds(
             total_generations=total_gens,
             snapshot_interval_k=k_interval,
             games_per_generation=games_per_gen,
+            min_temperature=min_temp,
+            max_moves_training=max_moves_train,
+            early_adjudication_material=early_adj_mat,
             verbose=True,
         )
     else:
@@ -128,7 +135,7 @@ def evaluate_dual_grounds(
     tournament_result = ground_a.run_snapshot_tournament(
         snapshots=snapshots,
         games_per_pair=g_a_cfg["games_per_pair"],
-        max_moves=g_a_cfg["max_moves_per_game"],
+        max_moves=g_a_cfg.get("max_moves_eval", 120),
         verbose=True,
     )
     internal_elo_dict = GroundASelfPlay.compute_internal_elo(
@@ -219,7 +226,7 @@ def evaluate_dual_grounds(
         res = ground_b.evaluate_snapshot(
             snapshot=snapshot,
             games_n=g_b_cfg["games_per_elo_estimate_n"],
-            max_moves=g_a_cfg["max_moves_per_game"],
+            max_moves=g_b_cfg.get("max_moves_eval", 120),
             verbose=True,
         )
         external_elos.append(res.estimated_elo)

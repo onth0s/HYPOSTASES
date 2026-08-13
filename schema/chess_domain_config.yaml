@@ -19,7 +19,7 @@ reward_structure:
   shaping_enabled: false
   win_reward: 1.0
   loss_reward: -1.0
-  draw_reward: 0.0
+  draw_reward: 0
   non_terminal_reward: 0.0
 
 action_space:
