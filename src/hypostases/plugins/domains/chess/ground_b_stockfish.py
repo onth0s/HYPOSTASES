@@ -100,10 +100,12 @@ class GroundBStockfish:
         stockfish_path: str | None = None,
         reference_elo: float = 1300.0,
         time_control: float = 0.1,
-        stockfish_threads: int = 2,
-        max_workers: int = 4,
+        stockfish_threads: int = 1,
+        max_workers: int | None = None,
         chess_domain: ChessDomain | None = None,
     ) -> None:
+        if max_workers is None:
+            max_workers = os.cpu_count() or 8
         if stockfish_path is not None:
             resolved_path = (
                 str(Path(stockfish_path).resolve()) if Path(stockfish_path).exists() else ""
@@ -278,21 +280,32 @@ class GroundBStockfish:
             finally:
                 engine_queue.put(eng)
 
+        # Progress bar showing live score, games finished, and elapsed time per game
+        progress_columns = [
+            SpinnerColumn(),
+            TextColumn("[bold yellow]Ground B Match[/bold yellow]"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            TextColumn(
+                "[bold green]Score: {task.fields[wins]}W-{task.fields[losses]}L-{task.fields[draws]}D[/bold green]"
+            ),
+        ]
+
         try:
             with (
                 Progress(
-                    SpinnerColumn(),
-                    TextColumn("[progress.description]{task.description}"),
-                    BarColumn(),
-                    MofNCompleteColumn(),
+                    *progress_columns,
                     console=console,
                     disable=not verbose,
                 ) as progress,
                 ThreadPoolExecutor(max_workers=pool_size) as executor,
             ):
                 task_id = progress.add_task(
-                    f"[yellow]Ground B Benchmark (Gen {gen_formatted} vs {engine_name})[/yellow]",
+                    "match",
                     total=games_n,
+                    wins=0,
+                    losses=0,
+                    draws=0,
                 )
                 futures = [executor.submit(worker_task, game_idx) for game_idx in range(games_n)]
 
@@ -310,7 +323,10 @@ class GroundBStockfish:
                             losses += 1
                         else:
                             draws += 1
-                        progress.update(task_id, advance=1)
+                        progress.update(task_id, advance=1, wins=wins, losses=losses, draws=draws)
+                        console.print(
+                            f"  [cyan][Game {completed_count}/{games_n} Completed][/cyan] Result: [bold]{res_char}[/bold] | Moves: {moves} | Score: {wins}W-{losses}L-{draws}D"
+                        )
         finally:
             self._close_engine_pool(engines)
 

@@ -1,0 +1,21 @@
+# HYPOSTASES-NNUE Configuration Schema
+
+nnue:
+  accumulator_dim: 256
+  dense_hidden_dim: 32
+  clipped_relu_max: 127.0
+  learning_rate: 0.001
+  batch_size: 256
+  epochs: 10
+  lcb95_threshold: 15.0
+
+search:
+  max_depth: 8
+  time_budget_ms: 100
+  tt_size_mb: 16
+  quiescence_depth: 4
+
+hybrid:
+  theta_hybrid: 0.5
+  tau_efe: 1.0
+  tau_nnue: 1.0
