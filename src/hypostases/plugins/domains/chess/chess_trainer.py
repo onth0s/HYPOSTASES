@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import copy
 import random
+import signal
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Any
 
@@ -23,6 +24,11 @@ from hypostases.plugins.domains.chess.ground_a_self_play import PolicySnapshot
 console = Console()
 
 
+def _init_worker_process() -> None:
+    """Worker process initializer ignoring SIGINT so only main process handles Ctrl+C cleanly."""
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
 def _worker_run_training_game(
     theta_meta: np.ndarray,
     beta_efe: float,
@@ -31,49 +37,46 @@ def _worker_run_training_game(
     seed_val: int,
 ) -> tuple[float, list[np.ndarray]]:
     """Isolated process worker function running 1 self-play training game on a separate CPU process."""
-    try:
-        random.seed(seed_val)
-        np.random.seed(seed_val)
+    random.seed(seed_val)
+    np.random.seed(seed_val)
 
-        domain = ChessDomain()
-        agent = ChessAgentAdapter(
-            domain=domain,
-            beta_efe=beta_efe,
-            temperature=temperature,
-            theta_meta=theta_meta,
-        )
-        opponent = copy.deepcopy(agent)
-        board = domain.initial_state()
-        num_moves = 0
-        done = False
-        trajectory_features = []
+    domain = ChessDomain()
+    agent = ChessAgentAdapter(
+        domain=domain,
+        beta_efe=beta_efe,
+        temperature=temperature,
+        theta_meta=theta_meta,
+    )
+    opponent = copy.deepcopy(agent)
+    board = domain.initial_state()
+    num_moves = 0
+    done = False
+    trajectory_features = []
 
-        while not done and num_moves < max_moves:
-            legal_moves = domain.valid_actions(board)
-            if not legal_moves:
-                break
+    while not done and num_moves < max_moves:
+        legal_moves = domain.valid_actions(board)
+        if not legal_moves:
+            break
 
-            if board.turn == domain.initial_state().turn:
-                chosen_move = agent.select_move(board, legal_moves)
-                feats = agent.extract_move_features(board, chosen_move)
-                trajectory_features.append(feats)
-            else:
-                chosen_move = opponent.select_move(board, legal_moves)
+        if board.turn == domain.initial_state().turn:
+            chosen_move = agent.select_move(board, legal_moves)
+            feats = agent.extract_move_features(board, chosen_move)
+            trajectory_features.append(feats)
+        else:
+            chosen_move = opponent.select_move(board, legal_moves)
 
-            board, reward, done, info = domain.step(board, chosen_move)
-            num_moves += 1
+        board, reward, done, info = domain.step(board, chosen_move)
+        num_moves += 1
 
-        outcome = board.outcome()
-        final_reward = 0.0
-        if outcome is not None:
-            if outcome.winner == domain.initial_state().turn:
-                final_reward = 1.0
-            elif outcome.winner is not None:
-                final_reward = -1.0
+    outcome = board.outcome()
+    final_reward = 0.0
+    if outcome is not None:
+        if outcome.winner == domain.initial_state().turn:
+            final_reward = 1.0
+        elif outcome.winner is not None:
+            final_reward = -1.0
 
-        return final_reward, trajectory_features
-    except KeyboardInterrupt:
-        return 0.0, []
+    return final_reward, trajectory_features
 
 
 class ChessSelfPlayTrainer:
@@ -124,7 +127,8 @@ class ChessSelfPlayTrainer:
         else:
             try:
                 with ProcessPoolExecutor(
-                    max_workers=min(self.max_workers, games_per_gen)
+                    max_workers=min(self.max_workers, games_per_gen),
+                    initializer=_init_worker_process,
                 ) as executor:
                     futures = [
                         executor.submit(
