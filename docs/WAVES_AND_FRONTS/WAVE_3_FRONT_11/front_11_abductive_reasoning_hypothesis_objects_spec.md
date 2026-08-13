@@ -14,12 +14,12 @@ This master specification synthesizes the theoretical mechanisms, mathematical f
 
 | Ingested PDF File | Source & Core Theoretical Synthesis |
 |---|---|
-| [`mackay_information_theory_inference_learning_2003.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_11/papers/mackay_information_theory_inference_learning_2003.pdf) | **MacKay (2003) — Occam's Razor & Model Evidence**: Model marginal likelihood $P(D \mid H_k) = \int P(D \mid w, H_k) P(w \mid H_k) dw$; Occam factor $\frac{\sigma_{w \mid D}}{\sigma_w} \ll 1$ penalizing overly complex hypothesis spaces; Bayes Factor evidence ratios $B_{12} = \frac{P(D \mid H_1)}{P(D \mid H_2)}$. |
-| [`dekleer_williams_diagnosing_multiple_faults_1987.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_11/papers/dekleer_williams_diagnosing_multiple_faults_1987.pdf) | **De Kleer & Williams (1987) — Model-Based Diagnosis (GDE)**: Minimal conflict sets $C \subseteq A$ violating observation constraints; minimal candidate hypothesis generation; entropy-driven optimal measurement selection $\arg\max_a \Delta H_e(a)$. |
-| [`friston_active_inference_curiosity_insight_2017.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_11/papers/friston_active_inference_curiosity_insight_2017.pdf) | **Friston et al. (2017) — Active Inference & Insight**: Variational Free Energy $F(q, o) = D_{KL}(q(s) \parallel P(s)) - \mathbb{E}_q[\log P(o \mid s)]$; surprise metric $-\log P(o) \le F$; abductive insight as Bayesian model reduction/expansion when $F(H_{\text{new}}) < F(H_{\text{current}})$. |
-| [`pearl_causality_ch7_counterfactuals_2000.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_11/papers/pearl_causality_ch7_counterfactuals_2000.pdf) | **Pearl (2000) Ch. 7 — Abductive Counterfactuals**: 3-step counterfactual algorithm: (1) Abduction: infer exogenous state $P(U \mid e)$; (2) Action: apply intervention $do(X=x)$; (3) Prediction: evaluate counterfactual outcome $P(Y_x \mid e)$. |
-| [`pearl_causality_ch9_probability_of_causation_2000.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_11/papers/pearl_causality_ch9_probability_of_causation_2000.pdf) | **Pearl (2000) Ch. 9 — Probability of Causation**: Probability of Necessity (PN), Probability of Sufficiency (PS), Probability of Necessity and Sufficiency (PNS); bounding causal attribution given observational and experimental evidence. |
-| [`tenenbaum_how_to_grow_a_mind_2011.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_11/papers/tenenbaum_how_to_grow_a_mind_2011.pdf) | **Tenenbaum et al. (2011) — Hierarchical Structure Learning**: Hierarchical Bayesian Modeling $P(S, \theta \mid D) \propto P(D \mid S, \theta) P(\theta \mid S) P(S)$ over compositional structural hypothesis spaces. |
+| [`mackay_information_theory_inference_learning_2003.pdf`](../../WAVE_3_FRONT_11/papers/mackay_information_theory_inference_learning_2003.pdf) | **MacKay (2003) — Occam's Razor & Model Evidence**: Model marginal likelihood $P(D \mid H_k) = \int P(D \mid w, H_k) P(w \mid H_k) dw$; Occam factor $\frac{\sigma_{w \mid D}}{\sigma_w} \ll 1$ penalizing overly complex hypothesis spaces; Bayes Factor evidence ratios $B_{12} = \frac{P(D \mid H_1)}{P(D \mid H_2)}$. |
+| [`dekleer_williams_diagnosing_multiple_faults_1987.pdf`](../../WAVE_3_FRONT_11/papers/dekleer_williams_diagnosing_multiple_faults_1987.pdf) | **De Kleer & Williams (1987) — Model-Based Diagnosis (GDE)**: Minimal conflict sets $C \subseteq A$ violating observation constraints; minimal candidate hypothesis generation; entropy-driven optimal measurement selection $\arg\max_a \Delta H_e(a)$. |
+| [`friston_active_inference_curiosity_insight_2017.pdf`](../../WAVE_3_FRONT_11/papers/friston_active_inference_curiosity_insight_2017.pdf) | **Friston et al. (2017) — Active Inference & Insight**: Variational Free Energy $F(q, o) = D_{KL}(q(s) \parallel P(s)) - \mathbb{E}_q[\log P(o \mid s)]$; surprise metric $-\log P(o) \le F$; abductive insight as Bayesian model reduction/expansion when $F(H_{\text{new}}) < F(H_{\text{current}})$. |
+| [`pearl_causality_ch7_counterfactuals_2000.pdf`](../../WAVE_3_FRONT_11/papers/pearl_causality_ch7_counterfactuals_2000.pdf) | **Pearl (2000) Ch. 7 — Abductive Counterfactuals**: 3-step counterfactual algorithm: (1) Abduction: infer exogenous state $P(U \mid e)$; (2) Action: apply intervention $do(X=x)$; (3) Prediction: evaluate counterfactual outcome $P(Y_x \mid e)$. |
+| [`pearl_causality_ch9_probability_of_causation_2000.pdf`](../../WAVE_3_FRONT_11/papers/pearl_causality_ch9_probability_of_causation_2000.pdf) | **Pearl (2000) Ch. 9 — Probability of Causation**: Probability of Necessity (PN), Probability of Sufficiency (PS), Probability of Necessity and Sufficiency (PNS); bounding causal attribution given observational and experimental evidence. |
+| [`tenenbaum_how_to_grow_a_mind_2011.pdf`](../../WAVE_3_FRONT_11/papers/tenenbaum_how_to_grow_a_mind_2011.pdf) | **Tenenbaum et al. (2011) — Hierarchical Structure Learning**: Hierarchical Bayesian Modeling $P(S, \theta \mid D) \propto P(D \mid S, \theta) P(\theta \mid S) P(S)$ over compositional structural hypothesis spaces. |
 
 ---
 
@@ -121,10 +121,10 @@ abductive_reasoning:
 
 ## 4. Module Map & Implementation Files
 
-- **Master Specification**: [`docs/WAVE_3_FRONT_11/front_11_abductive_reasoning_hypothesis_objects_spec.md`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_11/front_11_abductive_reasoning_hypothesis_objects_spec.md)
-- **Paper Manifest**: [`docs/WAVE_3_FRONT_11/papers_manifest.md`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_11/papers_manifest.md)
-- **Literature Summary**: [`docs/WAVE_3_FRONT_11/pertinent_literature.md`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_11/pertinent_literature.md)
-- **YAML Config**: [`schema/abductive_reasoning_config.yaml`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/schema/abductive_reasoning_config.yaml)
+- **Master Specification**: [`docs/WAVE_3_FRONT_11/front_11_abductive_reasoning_hypothesis_objects_spec.md`](../../WAVE_3_FRONT_11/front_11_abductive_reasoning_hypothesis_objects_spec.md)
+- **Paper Manifest**: [`docs/WAVE_3_FRONT_11/papers_manifest.md`](../../WAVE_3_FRONT_11/papers_manifest.md)
+- **Literature Summary**: [`docs/WAVE_3_FRONT_11/pertinent_literature.md`](../../WAVE_3_FRONT_11/pertinent_literature.md)
+- **YAML Config**: [`schema/abductive_reasoning_config.yaml`](../../../schema/abductive_reasoning_config.yaml)
 - **Core Engine Module**: `src/hypostases/abduction/`
   - `types.py`
   - `hypothesis.py`
@@ -132,4 +132,4 @@ abductive_reasoning:
   - `hypothesis_generator.py`
   - `abductive_engine.py`
   - `__init__.py`
-- **Pytest Suite**: [`tests/test_abductive_reasoning.py`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/tests/test_abductive_reasoning.py)
+- **Pytest Suite**: [`tests/test_abductive_reasoning.py`](../../../tests/test_abductive_reasoning.py)

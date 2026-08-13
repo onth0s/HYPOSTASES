@@ -4,7 +4,7 @@
 **Wave**: Wave 1 (Single-Agent Foundations)  
 **Front**: Front 04 — Counterfactual Simulation  
 **Target Substrate**: HYPOSTASES Engine ($\sigma = (c, w, g, \rho_{\text{ext}})$)  
-**SOTA Reference**: ICML/ICLR 2026 EvoCF (*Evolutionary Counterfactual Planning*) & Memory-Grounded MCTS  
+**SOTA Reference**: Evolutionary Counterfactual Planning (EvoCF, ICLR 2026 MALGAI Workshop) & Memory-Grounded MCTS  
 
 ---
 

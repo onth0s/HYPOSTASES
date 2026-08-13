@@ -25,7 +25,7 @@ Following **Cacace et al. (2020)** (*arXiv*, Octopus Tentacle Control & Dynamic 
 - **Adjoint-Based Optimal Control**: Computes exact adjoint gradients to rapidly evaluate alternative future trajectories during Monte Carlo counterfactual branch evaluation without mutating external physical state.
 
 ## Implementation Status
-- **Status**: **IMPLEMENTED** ([`src/hypostases/counterfactual.py`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/src/hypostases/counterfactual.py), `test_counterfactual.py`).
+- **Status**: **IMPLEMENTED** ([`src/hypostases/counterfactual.py`](../../src/hypostases/counterfactual.py), `test_counterfactual.py`).
 
 ## Targeted Capabilities
 - Lookahead search & Monte Carlo tree evaluation

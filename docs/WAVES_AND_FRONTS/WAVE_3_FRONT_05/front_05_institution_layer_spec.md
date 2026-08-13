@@ -14,11 +14,11 @@ This master specification synthesizes theoretical mechanisms, mathematical formu
 
 | Ingested PDF File | Source & Core Theoretical Synthesis |
 |---|---|
-| [`ostrom_walker_gardner_covenants_sword_1992.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_05/papers/ostrom_walker_gardner_covenants_sword_1992.pdf) | **Ostrom et al. (1992) — CPR Games & Endogenous Covenants**: Common Pool Resource extraction game; symmetric Nash dissipation vs. group optimal extraction; ADICO grammar syntax ($\mathbf{A-D-I-C-O}$); endogenous covenants with internal sanctioning achieving ~93% net yield. |
-| [`fehr_gaechter_altruistic_punishment_2002.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_05/papers/fehr_gaechter_altruistic_punishment_2002.pdf) | **Fehr & Gächter (2002) — Altruistic Peer Punishment**: 1:3 cost-to-impact sanction ratio; empirical calibration for `PUNISH_RESERVE_COST` ($\gamma_{\text{punish}} = 0.333$); contribution decay without sanctioning vs. sustainable high cooperation under active sanction options. |
-| [`bowles_gintis_social_capital_community_governance_2002.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_05/papers/bowles_gintis_social_capital_community_governance_2002.pdf) | **Bowles & Gintis (2002) — Community Governance & Strong Reciprocity**: Community governance solving incomplete contract failures; peer monitoring; informal Norms vs. formal Rules; authority distribution across agent networks. |
-| [`hurwicz_mechanisms_for_resource_allocation_1973.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_05/papers/hurwicz_mechanisms_for_resource_allocation_1973.pdf) | **Hurwicz (1973) — Formal Mechanism Design**: Mechanism triad $(M, f, h)$; message space privacy; Pareto-satisfactoriness; incentive compatibility bounds in decentralized allocation. |
-| [`nisan_ronen_algorithmic_mechanism_design_2001.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_05/papers/nisan_ronen_algorithmic_mechanism_design_2001.pdf) | **Nisan & Ronen (2001) — Algorithmic Mechanism Design & Verification**: VCG truthful payment mechanisms; task scheduling allocation; execution verification loops enabling post-execution bonus/penalty functions. |
+| [`ostrom_walker_gardner_covenants_sword_1992.pdf`](../../WAVE_3_FRONT_05/papers/ostrom_walker_gardner_covenants_sword_1992.pdf) | **Ostrom et al. (1992) — CPR Games & Endogenous Covenants**: Common Pool Resource extraction game; symmetric Nash dissipation vs. group optimal extraction; ADICO grammar syntax ($\mathbf{A-D-I-C-O}$); endogenous covenants with internal sanctioning achieving ~93% net yield. |
+| [`fehr_gaechter_altruistic_punishment_2002.pdf`](../../WAVE_3_FRONT_05/papers/fehr_gaechter_altruistic_punishment_2002.pdf) | **Fehr & Gächter (2002) — Altruistic Peer Punishment**: 1:3 cost-to-impact sanction ratio; empirical calibration for `PUNISH_RESERVE_COST` ($\gamma_{\text{punish}} = 0.333$); contribution decay without sanctioning vs. sustainable high cooperation under active sanction options. |
+| [`bowles_gintis_social_capital_community_governance_2002.pdf`](../../WAVE_3_FRONT_05/papers/bowles_gintis_social_capital_community_governance_2002.pdf) | **Bowles & Gintis (2002) — Community Governance & Strong Reciprocity**: Community governance solving incomplete contract failures; peer monitoring; informal Norms vs. formal Rules; authority distribution across agent networks. |
+| [`hurwicz_mechanisms_for_resource_allocation_1973.pdf`](../../WAVE_3_FRONT_05/papers/hurwicz_mechanisms_for_resource_allocation_1973.pdf) | **Hurwicz (1973) — Formal Mechanism Design**: Mechanism triad $(M, f, h)$; message space privacy; Pareto-satisfactoriness; incentive compatibility bounds in decentralized allocation. |
+| [`nisan_ronen_algorithmic_mechanism_design_2001.pdf`](../../WAVE_3_FRONT_05/papers/nisan_ronen_algorithmic_mechanism_design_2001.pdf) | **Nisan & Ronen (2001) — Algorithmic Mechanism Design & Verification**: VCG truthful payment mechanisms; task scheduling allocation; execution verification loops enabling post-execution bonus/penalty functions. |
 
 ---
 
@@ -105,14 +105,14 @@ Presets for Government, Market, Guild, Court, Protocol, and Treaty archetypes re
 
 ## 4. Module Structure & Implementation Files
 
-- **Master Specification**: [`docs/WAVE_3_FRONT_05/front_05_institution_layer_spec.md`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_05/front_05_institution_layer_spec.md)
-- **Paper Manifest**: [`docs/WAVE_3_FRONT_05/papers_manifest.md`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_05/papers_manifest.md)
-- **Literature Summary**: [`docs/WAVE_3_FRONT_05/pertinent_literature.md`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_05/pertinent_literature.md)
-- **YAML Preset Schema**: [`schema/institution_layer_config.yaml`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/schema/institution_layer_config.yaml)
+- **Master Specification**: [`docs/WAVE_3_FRONT_05/front_05_institution_layer_spec.md`](../../WAVE_3_FRONT_05/front_05_institution_layer_spec.md)
+- **Paper Manifest**: [`docs/WAVE_3_FRONT_05/papers_manifest.md`](../../WAVE_3_FRONT_05/papers_manifest.md)
+- **Literature Summary**: [`docs/WAVE_3_FRONT_05/pertinent_literature.md`](../../WAVE_3_FRONT_05/pertinent_literature.md)
+- **YAML Preset Schema**: [`schema/institution_layer_config.yaml`](../../../schema/institution_layer_config.yaml)
 - **Core Engine Module**: `src/hypostases/institutions/`
   - `types.py`
   - `adico_engine.py`
   - `institution_agent.py`
   - `governance_manager.py`
   - `__init__.py`
-- **Pytest Suite**: [`tests/test_institution_layer.py`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/tests/test_institution_layer.py)
+- **Pytest Suite**: [`tests/test_institution_layer.py`](../../../tests/test_institution_layer.py)

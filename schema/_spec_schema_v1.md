@@ -2,7 +2,7 @@
 
 Concrete field layouts and formulas for the reference domain: **social agents sharing a depletable resource pool**. This is *a* schema, not *the* schema — dimensions are implementation parameters (Part I §2.1).
 
-> Companion to [`schema_v1.yaml`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/schema/schema_v1.yaml)
+> Companion to [`schema_v1.yaml`](schema_v1.yaml)
 
 ---
 

@@ -1,6 +1,6 @@
 # Ingested & Pertinent Literature Inventory — Wave 3 Front 11: Abductive Reasoning & Hypothesis Objects
 
-**Location of Ingested PDFs**: [`docs/WAVE_3_FRONT_11/papers/`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_11/papers/)  
+**Location of Ingested PDFs**: [`docs/WAVE_3_FRONT_11/papers/`](../../WAVE_3_FRONT_11/papers)  
 **Target Substrate**: HYPOSTASES Multi-Agent Engine ($\sigma = (c, w, g, \rho_{\text{ext}})$)  
 **Rule 005 Invariant Compliance**: Pure Game-Theoretic & Probabilistic Rationality (Zero Artificial Human Cognitive Biases)
 

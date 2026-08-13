@@ -59,44 +59,38 @@ class SymbolicCompressionEngine:
         """Compresses continuous primitive state sigma = (c, w, g, rho_ext) into token stream L.
 
         Returns:
-            Tuple of (token_ids, code_length_bits, distortion_kl)
+            Tuple of (token_ids, code_length_bits, distortion_mse)
         """
-        # Extract continuous vector from state tuple
         c_state = np.asarray(state_tuple.get("c", [0.5] * 8), dtype=np.float64).flatten()
         w_state = np.asarray(state_tuple.get("w", [0.2] * 8), dtype=np.float64).flatten()
         g_state = np.asarray(state_tuple.get("g", [0.8] * 8), dtype=np.float64).flatten()
         rho_ext = np.asarray(state_tuple.get("rho_ext", [1.0] * 8), dtype=np.float64).flatten()
 
-        # Combine into state manifold
-        combined = (
+        combined_vec = np.asarray(
             c_state[:2].tolist()
             + w_state[:2].tolist()
             + g_state[:2].tolist()
-            + rho_ext[:2].tolist()
+            + rho_ext[:2].tolist(),
+            dtype=np.float64,
         )
-        combined_vec = np.asarray(combined, dtype=np.float64)
 
-        # Map via Visual-Epistemic Duality
         spatial_tokens = self.duality_mapper.encode_spatial_to_symbolic(combined_vec)
-
-        # Map via Symbolic Mapping Layer
         word_bank = self.mapping_transfer.sample_word_bank(combined_vec)
 
-        # Select token sequence
         token_ids = list(dict.fromkeys(spatial_tokens + word_bank))[:16]
 
         # Calculate MDL Code Length |H| (bits)
         code_length_bits = len(token_ids) * math.log2(self.vocab_size)
 
-        # Calculate Distortion / Surprisal KL Divergence
+        # Calculate Distortion / Surprisal Mean Squared Error (MSE Surrogate for Rate-Distortion)
         reconstructed = self.duality_mapper.decode_symbolic_to_spatial(spatial_tokens)
-        distortion_kl = float(np.mean((combined_vec - reconstructed) ** 2))
+        distortion_mse = float(np.mean((combined_vec - reconstructed) ** 2))
 
-        return token_ids, code_length_bits, distortion_kl
+        return token_ids, code_length_bits, distortion_mse
 
-    def compute_mdl_loss(self, code_length_bits: float, distortion_kl: float) -> float:
-        """Computes total MDL loss L_MDL = |H| + lambda_mdl * D_KL."""
-        return code_length_bits + self.lambda_mdl * distortion_kl
+    def compute_mdl_loss(self, code_length_bits: float, distortion_mse: float) -> float:
+        """Computes total Rate-Distortion MDL loss L_MDL = |H| + lambda_mdl * D_MSE."""
+        return code_length_bits + self.lambda_mdl * distortion_mse
 
     def compute_expected_free_energy(
         self, pragmatic_risk: float, epistemic_info_gain: float, ambiguity: float

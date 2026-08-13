@@ -102,7 +102,7 @@ def test_evocf_mutation(sample_agent_state: AgentState) -> None:
 
 
 def test_dubins_reachability_evaluation() -> None:
-    """Verifies Dubins reachability path calculation under curvature constraints (Cacace et al. 2020)."""
+    """Verifies Dubins reachability path calculation under curvature constraints (Dubins 1957)."""
     engine = CounterfactualEngine()
     start_pose = np.array([0.0, 0.0, 0.0])
     target_pose = np.array([3.0, 4.0, np.pi / 2])

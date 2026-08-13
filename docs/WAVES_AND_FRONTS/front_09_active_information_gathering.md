@@ -1,6 +1,6 @@
 # Front 09 — Active Information Gathering & Active Perception
 
-Master Spec Ref: [`docs/WAVE_1_FRONT_09/front_09_active_information_gathering_spec.md`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_1_FRONT_09/front_09_active_information_gathering_spec.md) | Ingested Literature: [`docs/WAVE_1_FRONT_09/papers/`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_1_FRONT_09/papers/)
+Master Spec Ref: [`docs/WAVE_1_FRONT_09/front_09_active_information_gathering_spec.md`](../WAVE_1_FRONT_09/front_09_active_information_gathering_spec.md) | Ingested Literature: [`docs/WAVE_1_FRONT_09/papers/`](../WAVE_1_FRONT_09/papers)
 
 ## Overview
 Observation becomes an intentional, goal-directed action. Agents deliberately trade immediate utility for uncertainty reduction — epistemic utility enters the decision calculus alongside material utility.
@@ -29,7 +29,7 @@ Following **Dodig-Crnkovic (2022)** (*Entropy*, Cognition as Morphological/Morph
 - **Rule 005 Compliance**: Epistemic decision dynamics operate strictly under optimal game-theoretic Bayesian state updates and computable projections without introducing artificial human biases or emotional irrationality hacks.
 
 ## Implementation Status
-- **Status**: **IMPLEMENTED** ([`src/hypostases/active_perception.py`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/src/hypostases/active_perception.py), [`epistemic_utility.py`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/src/hypostases/epistemic_utility.py), `test_active_perception.py`).
+- **Status**: **IMPLEMENTED** ([`src/hypostases/active_perception.py`](../../src/hypostases/active_perception.py), [`epistemic_utility.py`](../../src/hypostases/epistemic_utility.py), `test_active_perception.py`).
 
 ## Objective
 Trade immediate material utility for uncertainty reduction — minimizing posterior entropy over latent state $\sigma$ as an explicit sub-goal within the goal hierarchy $g$.

@@ -18,7 +18,7 @@ class VirtualEnvironmentSandbox:
     agent_state: AgentState
     pool_state: float
     xi: np.ndarray
-    kappa_max: float = 1.0  # Dynamic elastica curvature bound (Cacace et al. 2020)
+    kappa_max: float = 1.0  # Dynamic elastica curvature bound (Dubins 1957)
 
     def step(self, action: Action) -> float:
         """Simulate one discrete environment tick, return scalar utility delta Δu."""
@@ -166,7 +166,7 @@ class CounterfactualEngine:
         target_pose: np.ndarray,
         kappa_max: float = 1.0,
     ) -> float:
-        """Computes Dubins reachability path distance under curvature bound kappa_max (Cacace et al. 2020).
+        """Computes Dubins reachability path distance under curvature bound kappa_max (Dubins 1957).
 
         Returns estimated continuous path length under physical curvature constraints.
         """

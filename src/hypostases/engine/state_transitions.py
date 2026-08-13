@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import numpy as np
 
+import hypostases.engine.constants as const
 from hypostases.engine.constants import (
-    MOOD_DECAY_RATE,
-    PEER_BELIEF_ALPHA,
     SIGMA2_MAX,
     SIGMA2_MIN,
-    UTILITY_DECAY_RATE,
 )
 from hypostases.engine.types import Action, ActionType, AgentState, DeltaLog, FeedbackDelta
 
@@ -23,16 +21,18 @@ def _integrate_non_world(agent: AgentState, phi: FeedbackDelta) -> None:
         agent.c.mood = max(-1.0, min(1.0, agent.c.mood + phi.delta_c["mood"]))
 
     # Baseline mood decay toward zero (Phase 2.4)
-    agent.c.mood *= 1.0 - MOOD_DECAY_RATE
+    agent.c.mood *= 1.0 - const.MOOD_DECAY_RATE
 
     # Integrate Peer Beliefs (Theory of Mind & Bayesian Evidence Integration)
     for peer_name, val in phi.delta_peer_beliefs.items():
         prev = agent.w.peer_beliefs.get(peer_name, val)
         # Apply exponential smoothing as robust fallback baseline for direct scalar deltas
-        agent.w.peer_beliefs[peer_name] = PEER_BELIEF_ALPHA * val + (1.0 - PEER_BELIEF_ALPHA) * prev
+        agent.w.peer_beliefs[peer_name] = (
+            const.PEER_BELIEF_ALPHA * val + (1.0 - const.PEER_BELIEF_ALPHA) * prev
+        )
 
     # Integrate Goal Hierarchy latent utilities u with baseline decay regularization
-    agent.g.u = (1.0 - UTILITY_DECAY_RATE) * agent.g.u + phi.delta_g
+    agent.g.u = (1.0 - const.UTILITY_DECAY_RATE) * agent.g.u + phi.delta_g
 
     # Integrate External Power ρ_ext
     if "social_capital" in phi.delta_rho_ext:

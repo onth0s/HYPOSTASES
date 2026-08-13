@@ -4,7 +4,7 @@
 **Wave**: Wave 3 (Social Epistemology & Swarm Mechanics)  
 **Target Substrate**: HYPOSTASES Engine ($\sigma = (c, w, g, \rho_{\text{ext}})$)  
 **Rule 005 Invariant**: Pure Game-Theoretic & Probabilistic Rationality (Zero Artificial Human Cognitive Biases)  
-**Ingestion Directory**: [`papers/`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_06/papers/)
+**Ingestion Directory**: [`papers/`](../../WAVE_3_FRONT_06/papers)
 
 All files validated for `%PDF` magic bytes and content (pypdf first-page text extraction). Files are tracked locally under `.gitignore` (`!docs/*/papers/*.pdf`).
 
@@ -78,7 +78,7 @@ All files validated for `%PDF` magic bytes and content (pypdf first-page text ex
 
 ## Referenced but Not Ingested
 
-The following bibliography entries in [`pertinent_literature.md`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_06/pertinent_literature.md) have **no PDF in `papers/`** and are covered via the spec's summary mapping only:
+The following bibliography entries in [`pertinent_literature.md`](../../WAVE_3_FRONT_06/pertinent_literature.md) have **no PDF in `papers/`** and are covered via the spec's summary mapping only:
 
 - Bergemann & Morris (2019), *Information Design: A Unified Perspective*, JEL 57(1)
 - Sobel (1985), *A Theory of Credibility*, ReStud 52(4)

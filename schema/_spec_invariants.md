@@ -2,7 +2,7 @@
 
 Cross-cutting constraints that hold across **all** schemas and implementations. Every invariant here is a hard rule — violations indicate bugs, not edge cases.
 
-> Companion to [`invariants.yaml`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/schema/invariants.yaml)
+> Companion to [`invariants.yaml`](invariants.yaml)
 
 ---
 

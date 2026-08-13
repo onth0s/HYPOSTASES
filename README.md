@@ -2,7 +2,7 @@
 
 Agent-based modeling framework — formal specification (v4 Target), reference implementation, continuous substrate integration, vanguard game-theoretic mechanism design, cognitive expansion research fronts, and inverse inference engine.
 
-**Current Version**: `v0.4.0` | **Status**: 359/359 tests passing · `ruff` clean · Fully audited and refactored
+**Current Version**: `v0.4.0` | **Status**: 360/360 tests passing · `ruff` clean · Formal math & schema verified
 
 ## Project Structure
 
@@ -32,8 +32,8 @@ HYPOSTASES/
 │   ├── causal/                    # Structural Causal Models, do-calculus, NOTEARS discovery, RSCMs & policy planning
 │   ├── planning/                  # Explicit plan executor, plan library, plan repair
 │   ├── alphaevolve/               # Wave 5 AlphaEvolve AST mutator, MAP-Elites QD archives, reservoir & engine
-│   ├── active_perception.py       # Active sensing & variational free energy dynamics
-│   ├── counterfactual.py          # Multi-future rollouts & Dubins PDE reachability
+│   ├── active_perception/         # Active sensing & variational free energy dynamics package
+│   ├── counterfactual/            # Multi-future rollouts & Dubins PDE reachability package
 │   ├── epistemic_utility.py       # Shannon entropy, KL divergence & FEP utility
 │   ├── inference/                 # Inverse inference (SMC particle filter, hierarchical, summaries)
 │   ├── simulation/                # Multi-agent simulation & scenario registry
@@ -41,7 +41,7 @@ HYPOSTASES/
 │   ├── cli/                       # Command-line architecture (main, trace, infer, sweep, spec, sweep-memory)
 │   └── utils/                     # Package utilities (spec merging)
 │
-├── tests/                     # Test suite (225 tests covering engine, dynamics, planning, memory, causal models, inference)
+├── tests/                     # Test suite (360 tests covering formal math, engine, dynamics, planning, memory, causal models, inference)
 │
 ├── docs/                      # Cognitive Expansion Fronts & Compass Architecture
 │   ├── roadmap_compass.md         # Ratified High-Level Specification and Strategic Compass
@@ -91,20 +91,20 @@ All 14 cognitive expansion fronts maintain the core state invariant: $\sigma = (
 
 ### Front Implementation Status Matrix
 
-- **[Front 01: Hierarchical World Models](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_01_hierarchical_world_models.md)** `[IMPLEMENTED]`: Multi-level semantic representations (`Env -> Objects -> Relations -> Norms`), Gärdenfors conceptual spaces, Whittington et al. (2020) TEM factorization $G \otimes X$, and Burak & Fiete (2009) Continuous Attractor Network (CAN) grid velocity integration.
-- **[Front 02: Explicit Planning Layer](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_02_explicit_planning_layer.md)** `[IMPLEMENTED]`: Reusable `Plan` objects with interruption, repair, and plan libraries (`Goal -> Plan -> Action`).
-- **[Front 03: Memory Architecture](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_03_memory_architecture.md)** `[IMPLEMENTED]`: Structured `WorkingMemory`, `EpisodicMemory`, and `SkillArtifact` consolidation with Zelman et al. (2013) Kinematic Motion Primitives (kMPs) 2D Gaussian decomposition and Gutfreund et al. (1998) stiffening wave speed control (Rule 008 calibrated $K=4 / K=8$).
-- **[Front 04: Counterfactual Simulation](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_04_counterfactual_simulation.md)** `[IMPLEMENTED]`: Multi-future rollouts & expected utility evaluation (ICML/ICLR 2026 EvoCF), curvature-constrained elastica PDE rollouts, and Cacace et al. (2020) Dubins reachability distance pruning.
-- **[Front 05: Institution Layer](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_05_institution_layer.md)** `[PARTIAL]`: First-class institutional entities operating as agents with governance rules and authority.
-- **[Front 06: Communication as Bayesian Evidence](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_06_communication_bayesian_evidence.md)** `[PARTIAL]`: Messages as probabilistic likelihood evidence for belief posterior updates.
-- **[Front 07: Meta-Learning](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_07_meta_learning.md)** `[DEFERRED]`: Self-adaptation of internal exploration heuristics ($\xi$), search depths, and learning parameters.
-- **[Front 08: Causal World Models](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_08_causal_world_models.md)** `[IMPLEMENTED]`: Structural Causal Models (SCMs), Pearl's 3-rung hierarchy, symbolic $do$-calculus engine (Rules 1-3), 3-step counterfactual cycle (Abduction, Action, Prediction), NOTEARS continuous DAG optimization ($h(W) = \text{tr}(e^{W \circ W}) - d = 0$), cost-optimal interventional planner ($X^* = \arg\min \text{Cost}(X)$), and Relational SCMs (RSCMs) zero-shot cross-skeleton transfer.
-- **[Front 09: Active Information Gathering](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_09_active_information_gathering.md)** `[IMPLEMENTED]`: Epistemic actions (`INSPECT`, `PROBE`, `MONITOR`) trading material utility for variance reduction ($\Delta \sigma^2$) and Dodig-Crnkovic (2022) Variational Free Energy active inference.
-- **[Front 10: Mechanism Search](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_10_mechanism_search.md)** `[DEFERRED]`: Optimization over institutional rule spaces using the simulation harness as an oracle.
-- **[Front 11: Abductive Reasoning & Hypotheses](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_11_abductive_reasoning_hypothesis_objects.md)** `[DEFERRED]`: Explanations as explicit `Hypothesis` objects ($H_1, H_2, \dots$) and abductive inference.
-- **[Front 12: Scientific Discovery Loop](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_12_scientific_discovery_loop.md)** `[DEFERRED]`: Iterative hypothesis generation, experimental design, and empirical model refinement.
-- **[Front 13: Evolutionary Algorithm Discovery](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_5_FRONT_13/front_13_evolutionary_algorithm_discovery_alphaevolve_spec.md)** `[RATIFIED]`: AlphaEvolve engine with game-theoretic oracles, Quality-Diversity (MAP-Elites) archives, regularized aging evolution, and Müller & Hoffmann (2017) Morphological Computation reservoir co-evolution.
-- **[Front 14: Natural Language as Symbolic Compression](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/front_14_natural_language_symbolic_compression.md)** `[DEFERRED]`: Natural language as a lossy, high-density compression operator over continuous state $\sigma \in \mathbb{R}^d$.
+- **[Front 01: Hierarchical World Models](docs/WAVES_AND_FRONTS/front_01_hierarchical_world_models.md)** `[IMPLEMENTED]`: Multi-level semantic representations (`Env -> Objects -> Relations -> Norms`), Gärdenfors conceptual spaces, Whittington et al. (2020) TEM factorization $G \otimes X$, and Burak & Fiete (2009) Continuous Attractor Network (CAN) grid velocity integration (`world_model/`).
+- **[Front 02: Explicit Planning Layer](docs/WAVES_AND_FRONTS/front_02_explicit_planning_layer.md)** `[IMPLEMENTED]`: Reusable `Plan` objects with interruption, repair, and plan libraries (`Goal -> Plan -> Action`) (`planning/`).
+- **[Front 03: Memory Architecture](docs/WAVES_AND_FRONTS/WAVE_1_FRONT_03/front_03_memory_architecture_spec.md)** `[IMPLEMENTED]`: Structured `WorkingMemory`, `EpisodicMemory`, and `SkillArtifact` consolidation with Zelman et al. (2013, *Front. Comput. Neurosci.*) Kinematic Motion Primitives (kMPs) 2D Gaussian decomposition and Gutfreund et al. (1998, *J. Neurosci.*) stiffening wave control (`engine/memory.py`).
+- **[Front 04: Counterfactual Simulation](docs/WAVES_AND_FRONTS/front_04_counterfactual_simulation.md)** `[IMPLEMENTED]`: Multi-future rollouts & expected utility evaluation via Evolutionary Counterfactual Planning (EvoCF, ICLR 2026 MALGAI Workshop), curvature-constrained elastica PDE rollouts, and Dubins (1957) reachability distance pruning (`counterfactual/`).
+- **[Front 05: Institution Layer](docs/WAVES_AND_FRONTS/WAVE_3_FRONT_05/front_05_institution_layer_spec.md)** `[IMPLEMENTED]`: First-class institutional entities operating as agents with governance rules, dynamic authority, and fee scaling (`institutions/`).
+- **[Front 06: Communication as Bayesian Evidence](docs/WAVES_AND_FRONTS/WAVE_3_FRONT_06/front_06_communication_bayesian_evidence_spec.md)** `[IMPLEMENTED]`: Messages as probabilistic likelihood evidence for belief posterior updates and peer Theory of Mind tracking (`communication/`).
+- **[Front 07: Meta-Learning](docs/WAVES_AND_FRONTS/WAVE_4_FRONT_07/front_07_meta_learning_spec.md)** `[IMPLEMENTED]`: Self-adaptation of internal exploration heuristics ($\xi$), search depths, meta-gradient stability, and meta-parameters ($\theta_{\text{meta}}$) (`meta_learning/`).
+- **[Front 08: Causal World Models](docs/WAVES_AND_FRONTS/front_08_causal_world_models.md)** `[IMPLEMENTED]`: Structural Causal Models (SCMs), Pearl's 3-rung hierarchy, symbolic $do$-calculus engine (Rules 1-3), 3-step counterfactual cycle (Abduction, Action, Prediction), NOTEARS continuous DAG optimization ($h(W) = \text{tr}(e^{W \circ W}) - d = 0$), cost-optimal interventional planner ($X^* = \arg\min \text{Cost}(X)$), and Relational SCMs (RSCMs) zero-shot cross-skeleton transfer (`causal/`).
+- **[Front 09: Active Information Gathering](docs/WAVES_AND_FRONTS/front_09_active_information_gathering.md)** `[IMPLEMENTED]`: Epistemic actions (`INSPECT`, `PROBE`, `MONITOR`) trading material utility for variance reduction ($\Delta \sigma^2$) and Dodig-Crnkovic (2022) Variational Free Energy active inference (`active_perception/`).
+- **[Front 10: Mechanism Search](docs/WAVES_AND_FRONTS/WAVE_4_FRONT_10/front_10_mechanism_search_spec.md)** `[IMPLEMENTED]`: Optimization over institutional rule spaces using the simulation harness as a game-theoretic evaluation oracle (`mechanism_search/`).
+- **[Front 11: Abductive Reasoning & Hypotheses](docs/WAVES_AND_FRONTS/WAVE_3_FRONT_11/front_11_abductive_reasoning_hypothesis_objects_spec.md)** `[IMPLEMENTED]`: Explanations as explicit `Hypothesis` objects ($H_1, H_2, \dots$) and abductive belief updating (`abduction/`).
+- **[Front 12: Scientific Discovery Loop](docs/WAVES_AND_FRONTS/WAVE_4_FRONT_12/front_12_scientific_discovery_loop_spec.md)** `[IMPLEMENTED]`: Iterative hypothesis generation, active experimental design, and empirical model refinement (`scientific_discovery/`).
+- **[Front 13: Evolutionary Algorithm Discovery](docs/WAVES_AND_FRONTS/front_13_evolutionary_algorithm_discovery_alphaevolve.md)** `[IMPLEMENTED]`: AlphaEvolve engine with game-theoretic oracles, Quality-Diversity (MAP-Elites) archives, regularized aging evolution, AST code mutator, and FEC functional equivalence checking (`alphaevolve/`).
+- **[Front 14: Natural Language as Symbolic Compression](docs/WAVES_AND_FRONTS/WAVE_5_FRONT_14/front_14_natural_language_symbolic_compression_spec.md)** `[IMPLEMENTED]`: Natural language as a lossy, high-density compression operator over continuous state $\sigma \in \mathbb{R}^d$ paired with NLP belief decoder (`natural_language_compression/`, `nlp/`).
 
 ## Specification v4 Highlights
 
@@ -129,7 +129,7 @@ HYPOSTASES is fundamentally engineered to model **Machine Learning Agents and Au
 # Install package in development mode
 pip install -e ".[dev]"
 
-# Run full test suite (359 tests)
+# Run full test suite (360 tests)
 pytest
 
 # Code quality & formatting
@@ -183,13 +183,21 @@ hypostases sweep-memory --steps 20 --decay 0.9 --mode variance
 5. **Softmax Jacobian Attenuation (Pure Fixed-Point Attractor)**:
    Before emitting $\Phi$, `feedback()` scales each $\Delta g[k]$ by the marginal policy sensitivity $\pi_k(1-\pi_k)$ — the diagonal of the softmax Jacobian:
    $$\Delta g[k] \leftarrow \Delta g[k] \cdot \pi_k (1 - \pi_k)$$
-   As dimension $k$ dominates ($\pi_k \to 1$), $\Delta g[k] \to 0$ naturally. This yields **pure un-regularized fixed-point attractors** (`UTILITY_DECAY_RATE = 0.0`) without any artificial restoring force. Empirically verified across a $3 \times 3$ $\{\kappa, \lambda\}$ grid sweep:
+   Empirically evaluated across a pre-registered $3 \times 3$ $\{\kappa, \lambda\}$ grid sweep (`tests/test_condition1_grid_sweep.py`, 10 seeds `[100, 110)`, 500 steps, $N=5$ agents):
 
-   | $\kappa$ (Scarcity) | $\lambda$ (Governance) | Stationarity Ratio | Classification |
-   |---|---|---|---|
-   | `0.0` | `0.0–2.0` | **0.160–0.179** | Fixed-Point Attractor |
-   | `0.5` | `0.0–2.0` | **0.347–0.377** | Transition Regime |
-   | `1.0` | `0.0–2.0` | **0.554–0.652** | High-Pressure Adaptive Drift |
+   **Run A: Pure Un-Regularized Dynamics (`UTILITY_DECAY_RATE = 0.0`)**
+   | $\kappa$ (Scarcity) | $\lambda$ (Governance) | Stationarity Ratio ($V_{500}/V_{100}$) | Cosine Sim ($S_{\text{cos}}$) | Pre-Registered Classification |
+   |---|---|---|---|---|
+   | `0.0` | `0.0–2.0` | **0.348–0.407** | **0.802–0.838** | Non-Attracting / Regime Drift |
+   | `0.5` | `0.0–2.0` | **0.529–0.640** | **0.721–0.788** | Non-Attracting / Regime Drift |
+   | `1.0` | `0.0–2.0` | **0.582–0.672** | **0.728–0.808** | Non-Attracting / Regime Drift |
+
+   **Run B: Leaky Decay Regularized (`UTILITY_DECAY_RATE = 0.05`)**
+   | $\kappa$ (Scarcity) | $\lambda$ (Governance) | Stationarity Ratio ($V_{500}/V_{100}$) | Cosine Sim ($S_{\text{cos}}$) | Pre-Registered Classification |
+   |---|---|---|---|---|
+   | `0.0` | `0.0–2.0` | **0.015–0.023** | **0.938–0.944** | **Attractor Confirmed** |
+   | `0.5` | `0.0–2.0` | **0.014–0.023** | **0.937–0.944** | **Attractor Confirmed** |
+   | `1.0` | `0.0–2.0` | **0.014–0.024** | **0.937–0.944** | **Attractor Confirmed** |
 
 ## Multi-Agent Preset Scenarios (`scenarios.py`)
 

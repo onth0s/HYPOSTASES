@@ -9,7 +9,7 @@
 
 ## 1. Executive Synthesis & Architectural Integration
 
-The 12 ingested papers in [`docs/WAVE_4_FRONT_10/papers/`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_4_FRONT_10/papers/) establish the theoretical, mathematical, and algorithmic foundations for the **Mechanism Search Layer** in HYPOSTASES.
+The 12 ingested papers in [`docs/WAVE_4_FRONT_10/papers/`](../../WAVE_4_FRONT_10/papers) establish the theoretical, mathematical, and algorithmic foundations for the **Mechanism Search Layer** in HYPOSTASES.
 
 Mechanism Search transitions the HYPOSTASES engine from evaluating hand-designed static institutions to active computational optimization over the space of institutional rules, market mechanisms, auction designs, tax-subsidy schedules, and governance policies. The complete agent state tuple:
 

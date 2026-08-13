@@ -108,6 +108,31 @@ def test_formal_novelty_distance_positivity() -> None:
     assert dist >= 0.0
     assert np.isfinite(dist)
 
+    # Explicitly verify zero distance for identical point set
+    dist_same = novelty.compute_novelty(p1, [p1])
+    assert dist_same == 0.0
+
+
+def test_formal_fec_pruning_step() -> None:
+    """Verify theorem: FEC pruning prevents population queue growth on equivalent ASTs."""
+    engine = AlphaEvolveEngine(seed=42)
+
+    # Force identical AST compilation signature
+    signature = engine.fec_evaluator.evaluate_signature(
+        engine.mutator.compile_executable_function(engine.skeleton_code)
+    )
+
+    # Add duplicate signature entry to population queue
+    engine.population_queue[0]["signature"] = signature
+    initial_queue_len = len(engine.population_queue)
+
+    # Patch mutator to return un-mutated skeleton code to trigger equivalence
+    engine.mutator.mutate_ast_code = lambda code: code
+
+    res = engine.step_generation()
+    assert res["status"] == "fec_pruned"
+    assert len(engine.population_queue) == initial_queue_len
+
 
 def test_formal_morphological_reservoir_bounds() -> None:
     """Verify theorem: Morphological computation index MC_1 is bounded in [0, 1]."""

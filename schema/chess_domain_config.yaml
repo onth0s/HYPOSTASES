@@ -1,0 +1,27 @@
+# Chess Domain Specification and Plugin Configuration
+# Rule 006: Primacy of Data-Driven YAML Approach
+
+domain_id: "chess_v1"
+name: "Chess Pluggable Domain"
+version: "1.0.0"
+
+representation:
+  default_mode: "full"
+  modes:
+    full:
+      tensor_shape: [8, 8, 19]
+      description: "Full MDP representation with 12 piece planes + 7 auxiliary planes (turn, castling, en passant, halfmove)"
+    raw:
+      tensor_shape: [8, 8, 12]
+      description: "Minimal spatial piece occupancy (enables testing of emergent memory representations)"
+
+reward_structure:
+  shaping_enabled: false
+  win_reward: 1.0
+  loss_reward: -1.0
+  draw_reward: 0.0
+  non_terminal_reward: 0.0
+
+action_space:
+  type: "discrete_legal_moves"
+  max_legal_moves: 218

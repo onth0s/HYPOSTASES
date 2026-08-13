@@ -1,0 +1,32 @@
+# Chess Experiment Pre-Registration Configuration
+# Rule 006: Primacy of Data-Driven YAML Approach (Design Philosophy V Pre-Registration)
+
+experiment_id: "chess_dual_testing_grounds_v1"
+description: "Pre-registered parameters for Ground A (Self-Play) vs Ground B (Stockfish Benchmark)"
+
+training:
+  learning_rate: 0.01
+  efe_beta: 0.2
+  policy_temperature: 0.8
+  generations: 700 
+  games_per_generation: 50
+
+ground_a:
+  snapshot_interval_k: 20
+  games_per_pair: 10
+  max_moves_per_game: 200
+  base_elo_anchor: 800.0
+
+ground_b:
+  games_per_elo_estimate_n: 30
+  calibration_method: "UCI_Elo"
+  stockfish_fixed_level: 800
+  time_control_per_move: 0.1
+  parallel_workers: 10
+  stockfish_threads: 2
+  stockfish_path: "src/hypostases/plugins/domains/chess/stockfish.exe"
+
+pre_registration:
+  seeds: [42, 101, 202, 303, 404]
+  pass_criterion_monotonic_ratio: 0.80
+  representation_modes: ["full", "raw"]

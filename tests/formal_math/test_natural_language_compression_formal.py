@@ -6,8 +6,6 @@ Compliance: Rule 012 (Mandatory Formal Mathematical Implementation Verification)
 
 from __future__ import annotations
 
-import math
-
 import numpy as np
 import pytest
 
@@ -20,36 +18,40 @@ from hypostases.schemas.loader import load_natural_language_compression_config
 
 
 def test_formal_kraft_inequality_and_mdl_stochastic_complexity() -> None:
-    """Verifies Kraft Inequality sum(2^-len) <= 1 and Barron et al. (1998) Stochastic Complexity bounds."""
-    cfg = load_natural_language_compression_config()
-    vocab_size = cfg.get("vocabulary_config", {}).get("vocab_size", 512)
+    """Verifies Kraft Inequality and Rate-Distortion MDL Loss via SymbolicCompressionEngine."""
+    engine = SymbolicCompressionEngine()
+    state_tuple = {"c": [0.8] * 8, "w": [0.2] * 8, "g": [0.5] * 8, "rho_ext": [1.0] * 8}
 
-    # 1. Kraft Inequality verification for prefix-free symbol codebook
-    code_lengths = [math.log2(vocab_size) for _ in range(vocab_size)]
+    token_ids, code_len_bits, dist_mse = engine.compress_state(state_tuple)
+
+    # 1. Kraft Inequality verification over engine's prefix-free symbol codebook
+    code_lengths = [code_len_bits / max(len(token_ids), 1) for _ in range(engine.vocab_size)]
     kraft_sum = sum(2.0 ** (-len_val) for len_val in code_lengths)
     assert kraft_sum <= 1.0 + 1e-9
 
-    # 2. Stochastic Complexity asymptotic expansion: log(1/L) + (d/2)*log(n / 2pi)
-    d = 8  # parameter dimension
-    n = 100  # sample size
-    data_log_loss = 12.5
-
-    parametric_complexity = (d / 2.0) * math.log2(n / (2.0 * math.pi))
-    stochastic_complexity = data_log_loss + parametric_complexity
-    assert stochastic_complexity > data_log_loss
+    # 2. Rate-Distortion MDL Loss evaluation exercising compute_mdl_loss
+    mdl_loss = engine.compute_mdl_loss(code_len_bits, dist_mse)
+    assert mdl_loss > code_len_bits
+    assert np.isfinite(mdl_loss)
 
 
 def test_formal_shannon_rate_distortion_bound() -> None:
-    """Verifies Shannon (1948) Rate-Distortion function R(D) = 0.5 * log2(sigma^2 / D)."""
-    variance = 1.0  # Gaussian source variance
-    distortions = [0.1, 0.2, 0.5, 0.8]
+    """Verifies Shannon Rate-Distortion monotonicity directly exercising engine.compress_state()."""
+    engine = SymbolicCompressionEngine()
 
-    rates = [0.5 * math.log2(variance / D) for D in distortions]
+    # Low variance state vs High variance state
+    low_var_state = {"c": [0.1] * 8, "w": [0.1] * 8, "g": [0.1] * 8, "rho_ext": [0.1] * 8}
+    high_var_state = {"c": [5.0] * 8, "w": [5.0] * 8, "g": [5.0] * 8, "rho_ext": [5.0] * 8}
 
-    # Monotonicity check: as distortion D increases, rate R(D) must strictly decrease
-    for i in range(len(rates) - 1):
-        assert rates[i] > rates[i + 1]
-        assert rates[i] >= 0.0
+    tokens_low, len_low, dist_low = engine.compress_state(low_var_state)
+    tokens_high, len_high, dist_high = engine.compress_state(high_var_state)
+
+    loss_low = engine.compute_mdl_loss(len_low, dist_low)
+    loss_high = engine.compute_mdl_loss(len_high, dist_high)
+
+    assert loss_high > loss_low
+    assert dist_high >= 0.0
+    assert dist_low >= 0.0
 
 
 def test_formal_theorem_3_2_token_accuracy_lower_bound() -> None:
@@ -72,7 +74,7 @@ def test_formal_theorem_3_2_token_accuracy_lower_bound() -> None:
 
 
 def test_formal_giaquinto_topological_duality_invariance() -> None:
-    """Verifies Giaquinto (2007) Visual-Epistemic Topological Invariance."""
+    """Verifies Giaquinto (2007) Visual-Epistemic Topological Invariance exercising mapper directly."""
     cfg = load_natural_language_compression_config()
     mapper = VisualEpistemicDualityMapper(cfg)
 
@@ -93,7 +95,7 @@ def test_formal_giaquinto_topological_duality_invariance() -> None:
 
 
 def test_formal_friston_expected_free_energy_bounds() -> None:
-    """Verifies Friston et al. (2017) Expected Free Energy G(pi) decomposition under efe_mode: true."""
+    """Verifies Friston et al. (2017) Expected Free Energy G(pi) decomposition exercising engine."""
     engine = SymbolicCompressionEngine()
     assert engine.efe_mode is True
 

@@ -13,7 +13,7 @@
 - **Authors**: Gordana Dodig-Crnkovic
 - **Journal/Venue**: *Entropy*, 24(11), 1576 (2022)
 - **Key Concepts**: Info-computational paradigm, variational free energy minimization $F = D_{KL}(q(w) \parallel p(w)) - \mathbb{E}_q[\ln p(o \mid w)]$, embodied physical/abstract computation.
-- **Engine Relevance**: Direct theoretical foundation for `compute_variational_free_energy()` in [`epistemic_utility.py`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/src/hypostases/epistemic_utility.py).
+- **Engine Relevance**: Direct theoretical foundation for `compute_variational_free_energy()` in [`epistemic_utility.py`](../../../src/hypostases/epistemic_utility.py).
 
 ### 2. Friston et al. (2015)
 - **Title**: *Active Inference, Curiosity and Insight*

@@ -13,17 +13,17 @@ This specification synthesizes the theoretical mechanisms, mathematical formulat
 
 | Source Paper | Key Architectural Synthesis |
 |---|---|
-| [`adaplanner_adaptive_planning_from_feedback.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_2_FRONT_02/papers/adaplanner_adaptive_planning_from_feedback.pdf) | Dual-role Planner/Refiner, code-style prompting, in-plan vs. out-of-plan assertion checks, and "refine-then-resume" (`start_from=k`) sub-plan repair. |
-| [`goap_applying_goal_oriented_action_planning_2003.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_2_FRONT_02/papers/goap_applying_goal_oriented_action_planning_2003.pdf) | Decoupling goals from actions, state atom sets $W$, pre-condition $\phi_{\text{pre}}$ / effect $\phi_{\text{post}}$ matching, and A* backward chaining. |
-| [`goap_three_states_and_a_plan_fear_2006.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_2_FRONT_02/papers/goap_three_states_and_a_plan_fear_2006.pdf) | Dynamic plan validation at execution tick $t$; instant plan invalidation when $\text{precond}(a) \nsubseteq W_t$. |
-| [`htn_domain_repair_context_free_grammars_llm.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_2_FRONT_02/papers/htn_domain_repair_context_free_grammars_llm.pdf) | Grammar-based HTN domain model repair treating plan reduction trees as Context-Free Grammar (CFG) production rules. |
-| [`htn_planning_complexity_expressivity_erol.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_2_FRONT_02/papers/htn_planning_complexity_expressivity_erol.pdf) | Task Networks $TN = (T, S, C)$, compound task decomposition methods $M = (d, tn, \phi)$, and structural constraint enforcement. |
-| [`lats_language_agent_tree_search.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_2_FRONT_02/papers/lats_language_agent_tree_search.pdf) | Unifying tree search, state value functions $V(s)$, trajectory reflection memory $R$, and dynamic contingency sub-trees. |
-| [`plan_and_solve_prompting_zero_shot_cot.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_2_FRONT_02/papers/plan_and_solve_prompting_zero_shot_cot.pdf) | Two-phase Plan-and-Solve execution, explicit state variable maintenance, and step-by-step subgoal tracking. |
-| [`rap_reasoning_with_lm_planning_with_world_model.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_2_FRONT_02/papers/rap_reasoning_with_lm_planning_with_world_model.pdf) | Repurposing simulation forward rollouts (`counterfactual.py`) as a world model $P(s' \mid s, a)$, UCT action selection, and Q-value backpropagation. |
-| [`self_pr_self_guided_planning_repair_code_gen.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_2_FRONT_02/papers/self_pr_self_guided_planning_repair_code_gen.pdf) | Failure Feedback Analyzer, localized sub-graph plan patching, and execution exception handling. |
-| [`tree_of_thoughts_deliberate_problem_solving.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_2_FRONT_02/papers/tree_of_thoughts_deliberate_problem_solving.pdf) | Systematic candidate thought generation $G(s, k)$, state evaluation voting/scoring, and BFS/DFS search tree expansion. |
-| [`voyager_open_ended_embodied_agent_llms.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_2_FRONT_02/papers/voyager_open_ended_embodied_agent_llms.pdf) | Persistent skill & strategy library (`PlanLibrary`) indexing executable plan programs $T_\Pi$ by goal type and prerequisite state bounds. |
+| [`adaplanner_adaptive_planning_from_feedback.pdf`](../../WAVE_2_FRONT_02/papers/adaplanner_adaptive_planning_from_feedback.pdf) | Dual-role Planner/Refiner, code-style prompting, in-plan vs. out-of-plan assertion checks, and "refine-then-resume" (`start_from=k`) sub-plan repair. |
+| [`goap_applying_goal_oriented_action_planning_2003.pdf`](../../WAVE_2_FRONT_02/papers/goap_applying_goal_oriented_action_planning_2003.pdf) | Decoupling goals from actions, state atom sets $W$, pre-condition $\phi_{\text{pre}}$ / effect $\phi_{\text{post}}$ matching, and A* backward chaining. |
+| [`goap_three_states_and_a_plan_fear_2006.pdf`](../../WAVE_2_FRONT_02/papers/goap_three_states_and_a_plan_fear_2006.pdf) | Dynamic plan validation at execution tick $t$; instant plan invalidation when $\text{precond}(a) \nsubseteq W_t$. |
+| [`htn_domain_repair_context_free_grammars_llm.pdf`](../../WAVE_2_FRONT_02/papers/htn_domain_repair_context_free_grammars_llm.pdf) | Grammar-based HTN domain model repair treating plan reduction trees as Context-Free Grammar (CFG) production rules. |
+| [`htn_planning_complexity_expressivity_erol.pdf`](../../WAVE_2_FRONT_02/papers/htn_planning_complexity_expressivity_erol.pdf) | Task Networks $TN = (T, S, C)$, compound task decomposition methods $M = (d, tn, \phi)$, and structural constraint enforcement. |
+| [`lats_language_agent_tree_search.pdf`](../../WAVE_2_FRONT_02/papers/lats_language_agent_tree_search.pdf) | Unifying tree search, state value functions $V(s)$, trajectory reflection memory $R$, and dynamic contingency sub-trees. |
+| [`plan_and_solve_prompting_zero_shot_cot.pdf`](../../WAVE_2_FRONT_02/papers/plan_and_solve_prompting_zero_shot_cot.pdf) | Two-phase Plan-and-Solve execution, explicit state variable maintenance, and step-by-step subgoal tracking. |
+| [`rap_reasoning_with_lm_planning_with_world_model.pdf`](../../WAVE_2_FRONT_02/papers/rap_reasoning_with_lm_planning_with_world_model.pdf) | Repurposing simulation forward rollouts (`counterfactual.py`) as a world model $P(s' \mid s, a)$, UCT action selection, and Q-value backpropagation. |
+| [`self_pr_self_guided_planning_repair_code_gen.pdf`](../../WAVE_2_FRONT_02/papers/self_pr_self_guided_planning_repair_code_gen.pdf) | Failure Feedback Analyzer, localized sub-graph plan patching, and execution exception handling. |
+| [`tree_of_thoughts_deliberate_problem_solving.pdf`](../../WAVE_2_FRONT_02/papers/tree_of_thoughts_deliberate_problem_solving.pdf) | Systematic candidate thought generation $G(s, k)$, state evaluation voting/scoring, and BFS/DFS search tree expansion. |
+| [`voyager_open_ended_embodied_agent_llms.pdf`](../../WAVE_2_FRONT_02/papers/voyager_open_ended_embodied_agent_llms.pdf) | Persistent skill & strategy library (`PlanLibrary`) indexing executable plan programs $T_\Pi$ by goal type and prerequisite state bounds. |
 
 ---
 
@@ -106,10 +106,10 @@ Upon `OutOfPlanInterruption` at step $k$:
 
 ## 3. Core Module Specifications (`src/hypostases/planning/`)
 
-1. [`plan_types.py`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/src/hypostases/planning/plan_types.py): Data classes for `PlanNode`, `ContingencyBranch`, `PlanStatus`, and `Plan`.
-2. [`plan_executor.py`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/src/hypostases/planning/plan_executor.py): Closed-loop step executor, precondition checker, state deviation monitor, and in-plan info parser.
-3. [`plan_repair.py`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/src/hypostases/planning/plan_repair.py): Out-of-plan refiner, RAP MCTS search oracle integrated with `counterfactual.py`, and refine-then-resume breakpoint manager.
-4. [`plan_library.py`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/src/hypostases/planning/plan_library.py): Voyager-style strategy library indexing, A* goal-oriented template matching, skill acquisition, and YAML serialization loader.
+1. [`plan_types.py`](../../../src/hypostases/planning/plan_types.py): Data classes for `PlanNode`, `ContingencyBranch`, `PlanStatus`, and `Plan`.
+2. [`plan_executor.py`](../../../src/hypostases/planning/plan_executor.py): Closed-loop step executor, precondition checker, state deviation monitor, and in-plan info parser.
+3. [`plan_repair.py`](../../../src/hypostases/planning/plan_repair.py): Out-of-plan refiner, RAP MCTS search oracle integrated with `counterfactual.py`, and refine-then-resume breakpoint manager.
+4. [`plan_library.py`](../../../src/hypostases/planning/plan_library.py): Voyager-style strategy library indexing, A* goal-oriented template matching, skill acquisition, and YAML serialization loader.
 
 ---
 

@@ -4,7 +4,7 @@
 **Wave**: Wave 4 (Meta-Learning & Architectural Evolution)  
 **Target Substrate**: HYPOSTASES Engine ($\sigma = (c, w, g, \rho_{\text{ext}})$)  
 **Rule 005 Invariant**: Pure Game-Theoretic & Probabilistic Rationality (Zero Artificial Human Cognitive Biases)  
-**Ingestion Directory**: [`papers/`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_4_FRONT_07/papers/)
+**Ingestion Directory**: [`papers/`](../../WAVE_4_FRONT_07/papers)
 
 All 8 papers in `papers/` have been fully ingested, validated, and mathematically analyzed. In compliance with Rule 010, PDF assets are untracked in Git (`.gitignore`).
 

@@ -63,7 +63,7 @@
   - **State Coupling**: Expands read-only derived views over $\sigma$ without introducing non-computable state mutations.
 
   #### 2. Front 04 — Counterfactual Simulation (`docs/front_04_counterfactual_simulation.md`)
-  - **Core Concept**: Memory-grounded multi-future hypothetical rollouts and Monte Carlo tree evaluation (aligned with ICML/ICLR 2026 EvoCF).
+  - **Core Concept**: Memory-grounded multi-future hypothetical rollouts and Monte Carlo tree evaluation (aligned with Evolutionary Counterfactual (EvoCF) planning).
   - **Key Mechanism**: Internal forward rollouts using `step_env` / `feedback` / `evolve` without mutating physical state until selection.
 
   #### 3. Front 09 — Active Information Gathering (`docs/front_09_active_information_gathering.md`)

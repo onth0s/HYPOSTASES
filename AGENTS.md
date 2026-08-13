@@ -63,6 +63,17 @@ Implement dual persistence for meta-parameters ($\theta_{\text{meta}}$): (1) in-
 
 Every wave, front, and engine feature MUST be backed by explicit formal mathematical verification tests, not just unit/syntax surface assertions. Tests MUST empirically verify end-to-end mathematical theorems, limit behavior ($N \to \infty$), asymptotic convergence, game-theoretic equilibrium bounds, variational free energy bounds, and simplex projection invariants. To prevent giant monolithic test files, formal mathematical test suites MUST be modularly split into domain-specific test modules under `tests/formal_math/`.
 
+### 013 — Color All User-Facing Terminal Output with `rich`
+
+ALWAYS color and format all user-facing terminal outputs, experiment progress logs, CLI scripts, evaluation telemetry tables, and status reports using the `rich` library (`rich.console.Console`, `rich.table.Table`, `rich.panel.Panel`, `rich.progress.Progress`). Never output plain monochrome unformatted text for interactive CLI workflows or benchmark results.
+
+### 014 — Strict Execution Boundary for Heavy vs. Light Scripts
+
+The `scripts/` directory is partitioned into subdirectories based on computational cost:
+1. **`scripts/heavy/`**: Contains long-running, computationally expensive training routines, Monte Carlo sweeps, and multi-game tournaments. **AI agents must NEVER execute commands or scripts inside `scripts/heavy/`.** The `scripts/heavy/` folder is reserved exclusively for manual execution by the User.
+2. **`scripts/light/`**: Contains fast ($<10$ second) utility scripts, telemetry plotters, report generators, and diagnostic parsers. **AI agents ARE permitted to execute scripts inside `scripts/light/`** to display reports or verify telemetry outputs.
+
+
 
 
 

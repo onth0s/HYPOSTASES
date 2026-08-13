@@ -1,11 +1,11 @@
 # Front 13 — Evolutionary Algorithm Discovery (AlphaEvolve Engine)
 
 **Status**: `RATIFIED & IMPLEMENTED`  
-**Ratified Master Specification**: [`docs/WAVE_5_FRONT_13/front_13_evolutionary_algorithm_discovery_alphaevolve_spec.md`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_5_FRONT_13/front_13_evolutionary_algorithm_discovery_alphaevolve_spec.md)  
-**Literature & Papers Manifest**: [`docs/WAVE_5_FRONT_13/papers_manifest.md`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_5_FRONT_13/papers_manifest.md)  
-**Synthesized Pertinent Literature**: [`docs/WAVE_5_FRONT_13/pertinent_literature.md`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_5_FRONT_13/pertinent_literature.md)  
-**Declarative YAML Configuration**: [`schema/alphaevolve_config.yaml`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/schema/alphaevolve_config.yaml)  
-**Formal Math Verification**: [`tests/formal_math/test_alphaevolve_formal.py`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/tests/formal_math/test_alphaevolve_formal.py)
+**Ratified Master Specification**: [`docs/WAVE_5_FRONT_13/front_13_evolutionary_algorithm_discovery_alphaevolve_spec.md`](../WAVE_5_FRONT_13/front_13_evolutionary_algorithm_discovery_alphaevolve_spec.md)  
+**Literature & Papers Manifest**: [`docs/WAVE_5_FRONT_13/papers_manifest.md`](../WAVE_5_FRONT_13/papers_manifest.md)  
+**Synthesized Pertinent Literature**: [`docs/WAVE_5_FRONT_13/pertinent_literature.md`](../WAVE_5_FRONT_13/pertinent_literature.md)  
+**Declarative YAML Configuration**: [`schema/alphaevolve_config.yaml`](../../schema/alphaevolve_config.yaml)  
+**Formal Math Verification**: [`tests/formal_math/test_alphaevolve_formal.py`](../../tests/formal_math/test_alphaevolve_formal.py)
 
 ---
 

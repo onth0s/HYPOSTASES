@@ -1,6 +1,6 @@
 # Ingested Literature & Reference Inventory — Wave 3 Front 06: Communication as Bayesian Evidence
 
-**Location of Ingested PDFs**: [`docs/WAVE_3_FRONT_06/papers/`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_06/papers/)  
+**Location of Ingested PDFs**: [`docs/WAVE_3_FRONT_06/papers/`](../../WAVE_3_FRONT_06/papers)  
 **Target Substrate**: HYPOSTASES Multi-Agent Engine ($\sigma = (c, w, g, \rho_{\text{ext}})$)  
 **Rule 005 Invariant Compliance**: Pure Game-Theoretic & Probabilistic Rationality (Zero Artificial Human Cognitive Biases)
 
@@ -9,7 +9,7 @@
 ## Ingested Papers Summary & Technical Synthesis
 
 ### 1. Bayesian Persuasion & Information Design
-- **Ingested PDF**: [`kamenica_gentzkow_2011_bayesian_persuasion.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_06/papers/kamenica_gentzkow_2011_bayesian_persuasion.pdf)
+- **Ingested PDF**: [`kamenica_gentzkow_2011_bayesian_persuasion.pdf`](../../WAVE_3_FRONT_06/papers/kamenica_gentzkow_2011_bayesian_persuasion.pdf)
 - **Full Reference**: Kamenica, E., & Gentzkow, M. (2011). *Bayesian Persuasion*. **American Economic Review**, 101(6), 2590–2615.
 - **Key Formulas & Mechanisms**:
   - Sender chooses signal distribution $\pi(s \mid \omega)$ over realization space $S$.
@@ -20,7 +20,7 @@
   - Equivalence to straightforward recommendation signals $S \subseteq A$ where Receiver always follows recommendations.
 
 ### 2. Strategic Communication & Cheap Talk
-- **Ingested PDF**: [`crawford_sobel_1982_strategic_information_transmission.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_06/papers/crawford_sobel_1982_strategic_information_transmission.pdf)
+- **Ingested PDF**: [`crawford_sobel_1982_strategic_information_transmission.pdf`](../../WAVE_3_FRONT_06/papers/crawford_sobel_1982_strategic_information_transmission.pdf)
 - **Full Reference**: Crawford, V. P., & Sobel, J. (1982). *Strategic Information Transmission*. **Econometrica**, 50(6), 1431–1451.
 - **Key Formulas & Mechanisms**:
   - Preference misalignment bias $b_{\text{bias}} = \|g_j - g_i\|$.
@@ -31,7 +31,7 @@
   - Residual communication variance: $\sigma_m^2 = \frac{1}{12 N^2} + \frac{b^2(N^2 - 1)}{3}$.
 
 ### 3. Rational Speech Act (RSA) Informativeness
-- **Ingested PDF**: [`frank_goodman_2012_predicting_pragmatic_reasoning.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_06/papers/frank_goodman_2012_predicting_pragmatic_reasoning.pdf)
+- **Ingested PDF**: [`frank_goodman_2012_predicting_pragmatic_reasoning.pdf`](../../WAVE_3_FRONT_06/papers/frank_goodman_2012_predicting_pragmatic_reasoning.pdf)
 - **Full Reference**: Frank, M. C., & Goodman, N. D. (2012). *Predicting Pragmatic Reasoning in Language Games*. **Science**, 336(6084), 998.
 - **Key Formulas & Mechanisms**:
   - Surprisal-based informativeness: $I(w; r_S, C) = -\log p(x) = -\log(|w|^{-1})$.
@@ -40,7 +40,7 @@
   - Pragmatic listener Bayesian update: $P(r_S \mid w, C) \propto P(w \mid r_S, C) P(r_S)$.
 
 ### 4. Recursive Probabilistic Pragmatics & Uncertain RSA (uRSA)
-- **Ingested PDF**: [`goodman_frank_2016_pragmatic_language_interpretation.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_06/papers/goodman_frank_2016_pragmatic_language_interpretation.pdf)
+- **Ingested PDF**: [`goodman_frank_2016_pragmatic_language_interpretation.pdf`](../../WAVE_3_FRONT_06/papers/goodman_frank_2016_pragmatic_language_interpretation.pdf)
 - **Full Reference**: Goodman, N. D., & Frank, M. C. (2016). *Pragmatic Language Interpretation as Probabilistic Inference*. **Trends in Cognitive Sciences**, 20(11), 818–829.
 - **Key Formulas & Mechanisms**:
   - Literal Listener: $P_{\text{Lit}}(w \mid u) \propto \delta_{\llbracket u \rrbracket(w)} P(w)$.
@@ -49,7 +49,7 @@
   - Uncertain RSA (uRSA): Joint inference over world state $w$ and speaker traits/topic $s$: $P_L(w, s \mid u) \propto P_S(u \mid w, s) P(s) P(w)$.
 
 ### 5. Multi-Faceted Computational Trust & Reputation (ReGreT)
-- **Ingested PDF**: [`sabater_sierra_2005_computational_trust_reputation.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_06/papers/sabater_sierra_2005_computational_trust_reputation.pdf)
+- **Ingested PDF**: [`sabater_sierra_2005_computational_trust_reputation.pdf`](../../WAVE_3_FRONT_06/papers/sabater_sierra_2005_computational_trust_reputation.pdf)
 - **Full Reference**: Sabater, J., & Sierra, C. (2005). *Review on Computational Trust and Reputation Models*. **Artificial Intelligence Review**, 24(1), 33–60.
 - **Key Formulas & Mechanisms**:
   - Classification across Direct Interaction (DI), Direct Observation (DO), Witness Reputation ($R_W$), Neighborhood Reputation ($R_N$), System/Institutional Reputation ($R_I$).
@@ -57,7 +57,7 @@
   - Subjective Logic Beta-binomial $(\alpha, \beta)$ updates and multi-context trust reliability metrics.
 
 ### 6. Bayesian Learning in Social Networks & Information Aggregation
-- **Ingested PDF**: [`acemoglu_2011_bayesian_learning_social_networks.pdf`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_06/papers/acemoglu_2011_bayesian_learning_social_networks.pdf)
+- **Ingested PDF**: [`acemoglu_2011_bayesian_learning_social_networks.pdf`](../../WAVE_3_FRONT_06/papers/acemoglu_2011_bayesian_learning_social_networks.pdf)
 - **Full Reference**: Acemoglu, D., Dahleh, M. A., Lobel, I., & Ozdaglar, A. (2011). *Bayesian Learning in Social Networks*. **Econometrica**, 79(6), 1795–1827.
 - **Key Formulas & Mechanisms**:
   - Sequential decision over network topology $\{Q_n\}_{n \in \mathbb{N}}$.

@@ -39,7 +39,7 @@ Following **Whittington et al. (2020)** (*bioRxiv/Cell*, TEM model) and **Burak 
 - Enables the agent to reuse spatial navigation mechanics to navigate non-spatial conceptual, social, and relational hierarchies.
 
 ## Implementation Status
-- **Status**: **IMPLEMENTED** (`src/hypostases/world_model/`, [`tem_factorization.py`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/src/hypostases/world_model/tem_factorization.py), [`conceptual_spaces.py`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/src/hypostases/world_model/conceptual_spaces.py), [`hierarchical_world_model.py`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/src/hypostases/world_model/hierarchical_world_model.py)).
+- **Status**: **IMPLEMENTED** (`src/hypostases/world_model/`, [`tem_factorization.py`](../../src/hypostases/world_model/tem_factorization.py), [`conceptual_spaces.py`](../../src/hypostases/world_model/conceptual_spaces.py), [`hierarchical_world_model.py`](../../src/hypostases/world_model/hierarchical_world_model.py)).
 
 ## Targeted Capabilities
 - Geometric conceptual spaces & Voronoi tessellation

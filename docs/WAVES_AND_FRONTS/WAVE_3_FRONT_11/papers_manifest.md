@@ -4,7 +4,7 @@
 **Wave**: Wave 3 (Social Epistemology & Swarm Mechanics)  
 **Target Substrate**: HYPOSTASES Engine ($\sigma = (c, w, g, \rho_{\text{ext}})$)  
 **Rule 005 Invariant**: Pure Game-Theoretic & Probabilistic Rationality (Zero Artificial Human Cognitive Biases)  
-**Ingestion Directory**: [`papers/`](file:///c:/Users/Leonardo/001/00__DEV/HYPOSTASES/docs/WAVE_3_FRONT_11/papers/)
+**Ingestion Directory**: [`papers/`](../../WAVE_3_FRONT_11/papers)
 
 All 6 literature PDF files validated for `%PDF` header magic bytes and text extraction via `pypdf`. In accordance with Rule 010, PDF files are local agent-ingestion assets and remain ignored by Git.
 
