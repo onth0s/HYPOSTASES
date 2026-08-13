@@ -293,12 +293,6 @@ class GroundBStockfish:
                         else:
                             draws += 1
                         progress.update(task_id, advance=1)
-
-                        if verbose and completed_count == games_n:
-                            avg_l = float(np.mean(game_lengths)) if game_lengths else 0.0
-                            console.print(
-                                f"    --> Completed {games_n} Games | Results: [bold green]{wins}W[/bold green]-[bold red]{losses}L[/bold red]-[bold yellow]{draws}D[/bold yellow] (Avg Length: {avg_l:.1f} moves)"
-                            )
         finally:
             self._close_engine_pool(engines)
 

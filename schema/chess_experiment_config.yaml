@@ -17,7 +17,7 @@ training:
 ground_a:
   parallel_workers: 20
   snapshot_interval_k: 4
-  games_per_pair: 10
+  games_per_pair: 4
   max_moves_eval: 120
   base_elo_anchor: 800.0
 
