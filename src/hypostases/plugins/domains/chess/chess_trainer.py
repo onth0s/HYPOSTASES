@@ -81,8 +81,9 @@ def _worker_run_training_game(
         if board.turn == agent_color:
             chosen_move = agent.select_move(board, legal_moves)
             feats = agent.extract_move_features(board, chosen_move)
-            if len(theta_meta) >= 9:
-                feats = np.append(feats, 0.5)
+            if len(theta_meta) > len(feats):
+                pad = np.full(len(theta_meta) - len(feats), 0.5, dtype=np.float32)
+                feats = np.concatenate([feats, pad])
             trajectory_features.append(feats)
         else:
             chosen_move = opponent.select_move(board, legal_moves)
@@ -151,7 +152,9 @@ class ChessSelfPlayTrainer:
                 if trajectory_features and final_reward != 0.0:
                     mean_feat = np.mean(trajectory_features, axis=0)
                     grad = self.learning_rate * final_reward * mean_feat
-                    updated_agent.theta_meta = np.maximum(0.0, updated_agent.theta_meta + grad)
+                    new_theta = updated_agent.theta_meta + grad
+                    new_theta[:9] = np.maximum(0.0, new_theta[:9])
+                    updated_agent.theta_meta = new_theta
                 if progress is not None and task_id is not None:
                     progress.update(task_id, advance=1)
         else:
@@ -176,9 +179,9 @@ class ChessSelfPlayTrainer:
                         if trajectory_features and final_reward != 0.0:
                             mean_feat = np.mean(trajectory_features, axis=0)
                             grad = self.learning_rate * final_reward * mean_feat
-                            updated_agent.theta_meta = np.maximum(
-                                0.0, updated_agent.theta_meta + grad
-                            )
+                            new_theta = updated_agent.theta_meta + grad
+                            new_theta[:9] = np.maximum(0.0, new_theta[:9])
+                            updated_agent.theta_meta = new_theta
 
                         if progress is not None and task_id is not None:
                             progress.update(task_id, advance=1)
@@ -301,7 +304,9 @@ class ChessSelfPlayTrainer:
                         if trajectory_features and final_reward != 0.0:
                             mean_feat = np.mean(trajectory_features, axis=0)
                             grad = self.learning_rate * final_reward * mean_feat
-                            agent.theta_meta = np.maximum(0.0, agent.theta_meta + grad)
+                            new_theta = agent.theta_meta + grad
+                            new_theta[:9] = np.maximum(0.0, new_theta[:9])
+                            agent.theta_meta = new_theta
 
                         if gen_idx in task_ids:
                             progress.update(task_ids[gen_idx], advance=1)
