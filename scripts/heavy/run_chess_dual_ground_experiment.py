@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import sys
 from pathlib import Path
 from typing import Any
@@ -39,6 +40,17 @@ def _quiet_excepthook(kind: type, value: BaseException, tb: Any) -> None:
 
 
 sys.excepthook = _quiet_excepthook
+
+
+def _handle_sigint(signum: int, frame: Any) -> None:
+    """Instant termination on Ctrl+C without thread join hanging."""
+    console.print(
+        "\n[bold red][Experiment Interrupted by User (Ctrl+C)][/bold red] Instantly terminating process."
+    )
+    os._exit(130)
+
+
+signal.signal(signal.SIGINT, _handle_sigint)
 
 # Ensure UTF-8 output encoding for Windows terminals
 if hasattr(sys.stdout, "reconfigure"):
