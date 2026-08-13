@@ -21,6 +21,7 @@ import chess
 import chess.engine
 import numpy as np
 from rich.console import Console
+from rich.progress import BarColumn, MofNCompleteColumn, Progress, SpinnerColumn, TextColumn
 
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain
 from hypostases.plugins.domains.chess.ground_a_self_play import PolicySnapshot
@@ -230,9 +231,10 @@ class GroundBStockfish:
         engines, is_real = self._create_engine_pool(pool_size)
         engine_name = "Stockfish 18" if is_real else "MockStockfishEngine"
 
+        gen_formatted = f"{snapshot.generation:02d}"
         if verbose:
             console.print(
-                f"\n  [bold yellow][Ground B Parallel Benchmark][/bold yellow] Gen {snapshot.generation:>2} vs [bold cyan]{engine_name}[/bold cyan] ({games_n} games across {pool_size} persistent engine workers, {self.stockfish_threads} threads/engine)..."
+                f"\n  [bold yellow][Ground B Parallel Benchmark][/bold yellow] Gen {gen_formatted} vs [bold cyan]{engine_name}[/bold cyan] ({games_n} games across {pool_size} persistent engine workers, {self.stockfish_threads} threads/engine)..."
             )
 
         wins = 0
@@ -259,7 +261,21 @@ class GroundBStockfish:
                 engine_queue.put(eng)
 
         try:
-            with ThreadPoolExecutor(max_workers=pool_size) as executor:
+            with (
+                Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    BarColumn(),
+                    MofNCompleteColumn(),
+                    console=console,
+                    disable=not verbose,
+                ) as progress,
+                ThreadPoolExecutor(max_workers=pool_size) as executor,
+            ):
+                task_id = progress.add_task(
+                    f"[yellow]Ground B Benchmark (Gen {gen_formatted} vs {engine_name})[/yellow]",
+                    total=games_n,
+                )
                 futures = [executor.submit(worker_task, game_idx) for game_idx in range(games_n)]
 
                 for future in as_completed(futures):
@@ -273,6 +289,7 @@ class GroundBStockfish:
                             losses += 1
                         else:
                             draws += 1
+                        progress.update(task_id, advance=1)
 
                         if verbose and completed_count == games_n:
                             console.print(
