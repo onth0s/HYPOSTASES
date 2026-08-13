@@ -146,7 +146,13 @@ def evaluate_dual_grounds(
         result=tournament_result,
         base_elo=float(g_a_cfg["base_elo_anchor"]),
     )
-    internal_elos = [internal_elo_dict[g] for g in generations]
+    active_generations = sorted({g for pair in tournament_result.games for g in pair})
+    if not active_generations:
+        active_generations = generations
+
+    internal_elos = [
+        internal_elo_dict.get(g, float(g_a_cfg["base_elo_anchor"])) for g in active_generations
+    ]
 
     table_a = Table(
         title="Ground A Comprehensive Internal Elo & Performance Summary",
@@ -159,7 +165,7 @@ def evaluate_dual_grounds(
     table_a.add_column("Win Rate (%)", justify="right", style="green")
     table_a.add_column("Draw Rate (%)", justify="right", style="magenta")
 
-    for g, elo in zip(generations, internal_elos, strict=False):
+    for g, elo in zip(active_generations, internal_elos, strict=False):
         # Aggregate games for generation g across all matchups
         total_w = 0.0
         total_l = 0.0
@@ -193,7 +199,7 @@ def evaluate_dual_grounds(
             draw_pct = 100.0
 
         table_a.add_row(
-            f"Gen {g:0{len(str(max(generations)))}d}",
+            f"Gen {g:0{len(str(max(active_generations)))}d}",
             f"{elo:.1f}",
             f"{int(total_w)}W - {int(total_l)}L - {int(total_d)}D",
             f"{score_pct:.1f}%",

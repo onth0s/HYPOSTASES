@@ -37,7 +37,7 @@ ground_a:
 # ------------------------------------------------------------------------------
 ground_b:
   games_per_elo_estimate_n: 30        # Total benchmark games played per snapshot against Stockfish 18
-  eval_last_n_snapshots: 1            # Rapid iteration filter: evaluates baseline Gen 0 + last N trained snapshots (0 = all)
+  eval_last_n_snapshots: 2            # Rapid iteration filter: evaluates baseline Gen 0 + last N trained snapshots (0 = all)
   max_moves_eval: 120                 # Maximum move limit per benchmark game against Stockfish
   calibration_method: "UCI_Elo"       # Calibration mapping for Stockfish difficulty rating
   stockfish_fixed_level: 800          # Stockfish target skill rating in Elo (Skill Level 0 = ~800 Elo)
