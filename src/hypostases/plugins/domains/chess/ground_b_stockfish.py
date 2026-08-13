@@ -19,6 +19,7 @@ from typing import Any
 
 import chess
 import chess.engine
+import chess.pgn
 import numpy as np
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, SpinnerColumn, TextColumn
@@ -181,11 +182,21 @@ class GroundBStockfish:
         snapshot: PolicySnapshot,
         agent_is_white: bool,
         max_moves: int,
-    ) -> tuple[float, str, int]:
-        """Executes a single game using a provided persistent engine instance."""
+    ) -> tuple[float, str, int, chess.pgn.Game]:
+        """Executes a single game using a provided persistent engine instance and returns PGN."""
         limit = chess.engine.Limit(time=self.time_control)
         board = self.domain.initial_state()
         num_moves = 0
+
+        game_pgn = chess.pgn.Game()
+        game_pgn.headers["Event"] = "HYPOSTASES Ground B Stockfish Benchmark"
+        game_pgn.headers["White"] = (
+            f"HYPOSTASES Gen {snapshot.generation:02d}" if agent_is_white else "Stockfish 18"
+        )
+        game_pgn.headers["Black"] = (
+            "Stockfish 18" if agent_is_white else f"HYPOSTASES Gen {snapshot.generation:02d}"
+        )
+        node = game_pgn
 
         while not board.is_game_over() and num_moves < max_moves:
             legal_moves = self.domain.valid_actions(board)
@@ -200,10 +211,14 @@ class GroundBStockfish:
                     play_result.move if play_result.move in legal_moves else legal_moves[0]
                 )
 
+            node = node.add_variation(chosen_move)
             board, reward, done, info = self.domain.step(board, chosen_move)
             num_moves += 1
 
         outcome = board.outcome()
+        res_str = outcome.result() if outcome is not None else "*"
+        game_pgn.headers["Result"] = res_str
+
         if outcome is not None:
             agent_won = (
                 (outcome.winner == chess.WHITE)
@@ -211,13 +226,13 @@ class GroundBStockfish:
                 else (outcome.winner == chess.BLACK)
             )
             if agent_won:
-                return 1.0, "W", num_moves
+                return 1.0, "W", num_moves, game_pgn
             elif outcome.winner is None:
-                return 0.5, "D", num_moves
+                return 0.5, "D", num_moves, game_pgn
             else:
-                return 0.0, "L", num_moves
+                return 0.0, "L", num_moves, game_pgn
         else:
-            return 0.5, "D", num_moves
+            return 0.5, "D", num_moves, game_pgn
 
     def evaluate_snapshot(
         self,
@@ -244,13 +259,14 @@ class GroundBStockfish:
         total_score = 0.0
         completed_count = 0
         game_lengths: list[int] = []
+        winning_pgns: list[chess.pgn.Game] = []
         lock = Lock()
 
         engine_queue: Queue[Any] = Queue()
         for eng in engines:
             engine_queue.put(eng)
 
-        def worker_task(game_idx: int) -> tuple[float, str, int]:
+        def worker_task(game_idx: int) -> tuple[float, str, int, chess.pgn.Game]:
             eng = engine_queue.get()
             try:
                 return self._play_single_game_with_engine(
@@ -281,11 +297,13 @@ class GroundBStockfish:
                 futures = [executor.submit(worker_task, game_idx) for game_idx in range(games_n)]
 
                 for future in as_completed(futures):
-                    score, res_char, moves = future.result()
+                    score, res_char, moves, pgn_game = future.result()
                     with lock:
                         completed_count += 1
                         total_score += score
                         game_lengths.append(moves)
+                        if score >= 0.5:
+                            winning_pgns.append(pgn_game)
                         if res_char == "W":
                             wins += 1
                         elif res_char == "L":
@@ -295,6 +313,15 @@ class GroundBStockfish:
                         progress.update(task_id, advance=1)
         finally:
             self._close_engine_pool(engines)
+
+        # Export non-loss PGNs (Wins & Draws) to exports/ground_b_winning_games.pgn
+        if winning_pgns:
+            export_dir = Path("exports")
+            export_dir.mkdir(exist_ok=True)
+            pgn_file_path = export_dir / "ground_b_winning_games.pgn"
+            with open(pgn_file_path, "a", encoding="utf-8") as f:
+                for pgn_game in winning_pgns:
+                    print(pgn_game, file=f, end="\n\n")
 
         score_ratio = total_score / float(games_n)
         estimated_elo = self.logistic_elo_fit(score_ratio, self.reference_elo)

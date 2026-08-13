@@ -9,7 +9,7 @@ training:
   efe_beta: 0.2
   policy_temperature: 0.8
   min_temperature: 0.20
-  feature_basis_k: 9
+  feature_basis_k: 10
   initial_priors: "random"
   max_moves_training: 35
   early_adjudication_material: 6.0
@@ -25,7 +25,7 @@ ground_a:
 
 ground_b:
   games_per_elo_estimate_n: 30
-  eval_last_n_snapshots: 2
+  eval_last_n_snapshots: 1
   max_moves_eval: 120
   calibration_method: "UCI_Elo"
   stockfish_fixed_level: 800

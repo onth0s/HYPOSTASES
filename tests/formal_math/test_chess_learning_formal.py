@@ -64,8 +64,9 @@ def test_formal_meta_gradient_update_invariants() -> None:
     # Train for 1 generation
     trained_agent = trainer.train_generation(agent=initial_agent, games_per_gen=5, max_moves=20)
 
-    # Invariant 1: Meta-parameters remain non-negative
-    assert np.all(trained_agent.theta_meta >= 0.0)
+    # Invariant 1: Feature valuations & temperature remain non-negative, beta_efe in [0.01, 0.99]
+    assert np.all(trained_agent.theta_meta[:9] >= 0.0)
+    assert 0.01 <= trained_agent.beta_efe <= 0.99
 
     # Invariant 2: No NaNs or Infs
     assert not np.any(np.isnan(trained_agent.theta_meta))

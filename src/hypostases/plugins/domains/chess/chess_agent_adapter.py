@@ -33,32 +33,51 @@ class ChessAgentAdapter:
             theta_meta: Meta-parameter weight vector for value estimation.
         """
         self.domain = domain or ChessDomain(representation_mode="full")
-        self.beta_efe = beta_efe
+        self._beta_efe = max(0.01, min(0.99, beta_efe))
         self._temperature = max(0.05, temperature)
 
         # Agent state σ = (c, w, g, ρ_ext)
         self.characteristics = Characteristics(skill=0.8, resilience=0.7)
         self.goal_hierarchy = GoalHierarchy()  # Latent utility weights u ∈ ℝ^{n_k}
 
-        # Meta-parameters θ_meta ∈ ℝ^K for feature valuation & learned policy temperature
+        # Meta-parameters θ_meta ∈ ℝ^K for feature valuation, temperature, and learned beta_efe
         if isinstance(theta_meta, str) and theta_meta.lower() == "random":
-            k_dim = 9
+            k_dim = 10
             self.theta_meta = np.random.uniform(0.3, 1.0, size=k_dim).astype(np.float32)
-            self.theta_meta[-1] = self._temperature
+            self.theta_meta[8] = self._temperature
+            self.theta_meta[9] = float(np.log(self._beta_efe / (1.0 - self._beta_efe)))
         elif isinstance(theta_meta, str) and theta_meta.lower() == "uniform":
-            k_dim = 9
+            k_dim = 10
             self.theta_meta = np.ones(k_dim, dtype=np.float32)
-            self.theta_meta[-1] = self._temperature
+            self.theta_meta[8] = self._temperature
+            self.theta_meta[9] = float(np.log(self._beta_efe / (1.0 - self._beta_efe)))
         elif isinstance(theta_meta, int):
             self.theta_meta = np.ones(theta_meta, dtype=np.float32)
-            self.theta_meta[-1] = self._temperature
+            self.theta_meta[8] = self._temperature
+            if theta_meta >= 10:
+                self.theta_meta[9] = float(np.log(self._beta_efe / (1.0 - self._beta_efe)))
         elif theta_meta is None:
-            # Default: random uniform initialization
-            k_dim = 9
+            # Default: random uniform initialization (K=10)
+            k_dim = 10
             self.theta_meta = np.random.uniform(0.3, 1.0, size=k_dim).astype(np.float32)
-            self.theta_meta[-1] = self._temperature
+            self.theta_meta[8] = self._temperature
+            self.theta_meta[9] = float(np.log(self._beta_efe / (1.0 - self._beta_efe)))
         else:
             self.theta_meta = np.array(theta_meta, dtype=np.float32)
+
+    @property
+    def beta_efe(self) -> float:
+        if len(self.theta_meta) >= 10:
+            sig = float(1.0 / (1.0 + np.exp(-self.theta_meta[9])))
+            return max(0.01, min(0.99, sig))
+        return self._beta_efe
+
+    @beta_efe.setter
+    def beta_efe(self, val: float) -> None:
+        clamped = max(0.01, min(0.99, val))
+        self._beta_efe = clamped
+        if len(self.theta_meta) >= 10:
+            self.theta_meta[9] = float(np.log(clamped / (1.0 - clamped)))
 
     @property
     def temperature(self) -> float:
