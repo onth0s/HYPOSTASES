@@ -129,20 +129,25 @@ class GroundBStockfish:
                 engine = chess.engine.SimpleEngine.popen_uci(self.stockfish_path)
                 uci_options: dict[str, Any] = {"Threads": self.stockfish_threads}
 
-                # Configure UCI calibrated strength
+                # Stockfish 18 UCI_Elo range is [1320, 3190]
+                if self.reference_elo >= 1320:
+                    target_elo = int(np.clip(self.reference_elo, 1320, 3190))
+                    uci_options.update({"UCI_LimitStrength": True, "UCI_Elo": target_elo})
+                else:
+                    # Map lower Elo (< 1320) to UCI Skill Level [0, 20]
+                    skill_level = int(np.clip((self.reference_elo - 800) / 26.0, 0, 20))
+                    uci_options.update({"Skill Level": skill_level})
+
                 try:
-                    uci_options.update(
-                        {"UCI_LimitStrength": True, "UCI_Elo": int(self.reference_elo)}
-                    )
                     engine.configure(uci_options)
                 except Exception:
-                    # Fallback to Skill Level if UCI_Elo unsupported
-                    skill_level = int(np.clip(self.reference_elo / 100.0, 0, 20))
-                    uci_options.update({"Skill Level": skill_level})
-                    engine.configure(uci_options)
+                    engine.configure({"Threads": self.stockfish_threads, "Skill Level": 0})
+
                 return engine, True
-            except Exception:
-                pass
+            except Exception as err:
+                console.print(
+                    f"[bold red][Ground B Warning][/bold red] Stockfish launch error: {err}"
+                )
 
         return MockStockfishEngine(target_elo=self.reference_elo), False
 
