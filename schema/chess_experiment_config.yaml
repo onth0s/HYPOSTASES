@@ -11,8 +11,8 @@ training:
   min_temperature: 0.20
   max_moves_training: 35
   early_adjudication_material: 6.0
-  generations: 8
-  games_per_generation: 16
+  generations: 16
+  games_per_generation: 24
 
 ground_a:
   parallel_workers: 20

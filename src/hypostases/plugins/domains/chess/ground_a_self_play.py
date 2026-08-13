@@ -272,6 +272,7 @@ class GroundASelfPlay:
 
                 progress.update(task_id, advance=1)
 
+        digits = len(str(max(snapshot_ids))) if snapshot_ids else 2
         for (g1, g2), stats in pair_matchup_stats.items():
             pair_key = (g1, g2)
             result.wins[pair_key] = stats["score_g1"]
@@ -282,7 +283,7 @@ class GroundASelfPlay:
             avg_len = float(np.mean(stats["lengths"])) if stats["lengths"] else 0.0
             if verbose:
                 console.print(
-                    f"  [bold green][Ground A Matchup][/bold green] Gen {g1:>2} vs Gen {g2:>2} | Gen {g1}: [bold white]{stats['g1_wins']}W[/bold white] - Gen {g2}: [bold white]{stats['g2_wins']}W[/bold white] - Draws: [yellow]{stats['draws']}D[/yellow] (Score: [bold cyan]{stats['score_g1']:.1f}/{games_per_pair}[/bold cyan], Avg Length: {avg_len:.1f} moves)"
+                    f"  [bold green][Ground A Matchup][/bold green] Gen {g1:0{digits}d} vs Gen {g2:0{digits}d} | Gen {g1:0{digits}d}: [bold white]{stats['g1_wins']}W[/bold white] - Gen {g2:0{digits}d}: [bold white]{stats['g2_wins']}W[/bold white] - Draws: [yellow]{stats['draws']}D[/yellow] (Score: [bold cyan]{stats['score_g1']:.1f}/{games_per_pair}[/bold cyan], Avg Length: {avg_len:.1f} moves)"
                 )
 
         return result
