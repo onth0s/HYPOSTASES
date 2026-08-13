@@ -41,6 +41,7 @@ class StockfishBenchmarkResult:
     draws: int
     estimated_elo: float
     reference_elo: float
+    avg_game_length: float = 0.0
 
 
 class MockStockfishEngine:
@@ -180,7 +181,7 @@ class GroundBStockfish:
         snapshot: PolicySnapshot,
         agent_is_white: bool,
         max_moves: int,
-    ) -> tuple[float, str]:
+    ) -> tuple[float, str, int]:
         """Executes a single game using a provided persistent engine instance."""
         limit = chess.engine.Limit(time=self.time_control)
         board = self.domain.initial_state()
@@ -210,13 +211,13 @@ class GroundBStockfish:
                 else (outcome.winner == chess.BLACK)
             )
             if agent_won:
-                return 1.0, "W"
+                return 1.0, "W", num_moves
             elif outcome.winner is None:
-                return 0.5, "D"
+                return 0.5, "D", num_moves
             else:
-                return 0.0, "L"
+                return 0.0, "L", num_moves
         else:
-            return 0.5, "D"
+            return 0.5, "D", num_moves
 
     def evaluate_snapshot(
         self,
@@ -242,13 +243,14 @@ class GroundBStockfish:
         draws = 0
         total_score = 0.0
         completed_count = 0
+        game_lengths: list[int] = []
         lock = Lock()
 
         engine_queue: Queue[Any] = Queue()
         for eng in engines:
             engine_queue.put(eng)
 
-        def worker_task(game_idx: int) -> tuple[float, str]:
+        def worker_task(game_idx: int) -> tuple[float, str, int]:
             eng = engine_queue.get()
             try:
                 return self._play_single_game_with_engine(
@@ -279,10 +281,11 @@ class GroundBStockfish:
                 futures = [executor.submit(worker_task, game_idx) for game_idx in range(games_n)]
 
                 for future in as_completed(futures):
-                    score, res_char = future.result()
+                    score, res_char, moves = future.result()
                     with lock:
                         completed_count += 1
                         total_score += score
+                        game_lengths.append(moves)
                         if res_char == "W":
                             wins += 1
                         elif res_char == "L":
@@ -292,18 +295,20 @@ class GroundBStockfish:
                         progress.update(task_id, advance=1)
 
                         if verbose and completed_count == games_n:
+                            avg_l = float(np.mean(game_lengths)) if game_lengths else 0.0
                             console.print(
-                                f"    --> Completed {games_n} Games | Results: [bold green]{wins}W[/bold green]-[bold red]{losses}L[/bold red]-[bold yellow]{draws}D[/bold yellow]"
+                                f"    --> Completed {games_n} Games | Results: [bold green]{wins}W[/bold green]-[bold red]{losses}L[/bold red]-[bold yellow]{draws}D[/bold yellow] (Avg Length: {avg_l:.1f} moves)"
                             )
         finally:
             self._close_engine_pool(engines)
 
         score_ratio = total_score / float(games_n)
         estimated_elo = self.logistic_elo_fit(score_ratio, self.reference_elo)
+        avg_len = float(np.mean(game_lengths)) if game_lengths else 0.0
 
         if verbose:
             console.print(
-                f"    [bold yellow]Final Score:[/bold yellow] {wins}W-{losses}L-{draws}D ({score_ratio * 100:.1f}%), Est. Elo: [bold cyan]{estimated_elo:.1f}[/bold cyan]"
+                f"    [bold yellow]Final Score:[/bold yellow] {wins}W-{losses}L-{draws}D ({score_ratio * 100:.1f}%), Est. Elo: [bold cyan]{estimated_elo:.1f}[/bold cyan] (Avg Length: {avg_len:.1f} moves)"
             )
 
         return StockfishBenchmarkResult(
@@ -315,6 +320,7 @@ class GroundBStockfish:
             draws=draws,
             estimated_elo=estimated_elo,
             reference_elo=self.reference_elo,
+            avg_game_length=avg_len,
         )
 
     @staticmethod
