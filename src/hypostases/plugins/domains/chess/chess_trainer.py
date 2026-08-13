@@ -205,8 +205,9 @@ class ChessSelfPlayTrainer:
             for gen in range(1, total_generations + 1):
                 agent.temperature = max(0.05, self.initial_temperature * (0.9**gen))
 
+                formatted_theta = "[" + " ".join(f"{v:04.2f}" for v in agent.theta_meta) + "]"
                 task_id = progress.add_task(
-                    f"[cyan]Gen {gen:0{digits}d}/{total_generations}[/cyan] [yellow]theta={np.round(agent.theta_meta, 2)}[/yellow] [magenta]temp={agent.temperature:.3f}[/magenta]",
+                    f"[cyan]Gen {gen:0{digits}d}/{total_generations}[/cyan] [yellow]theta={formatted_theta}[/yellow] [magenta]temp={agent.temperature:.3f}[/magenta]",
                     total=games_per_generation,
                 )
 
