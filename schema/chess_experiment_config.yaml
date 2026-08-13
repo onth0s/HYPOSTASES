@@ -10,33 +10,33 @@ description: "Pre-registered parameters for Ground A (Self-Play) vs Ground B (St
 # 1. Training Parameters (Active Sensing Expected Free Energy & Meta-RL)
 # ------------------------------------------------------------------------------
 training:
-  learning_rate: 0.01                 # Meta-RL policy gradient learning rate η (Δθ_meta = η * R * f_bar)
-  efe_beta: 0.2                       # Initial pragmatic vs epistemic balance β in U_total = (1-β)U_pragmatic + βU_epistemic
+  learning_rate: 0.015                 # Meta-RL policy gradient learning rate η (Δθ_meta = η * R * f_bar)
+  efe_beta: 0.3                       # Initial pragmatic vs epistemic balance β in U_total = (1-β)U_pragmatic + βU_epistemic
   policy_temperature: 0.8             # Initial policy exploration temperature τ_0 for softmax action sampling
   min_temperature: 0.20               # Soft temperature floor ensuring stochastic exploration
   feature_basis_k: 10                 # Meta-parameter vector dimension K (8 tactical features + 1 temperature + 1 beta_efe)
   initial_priors: "uniform"            # Prior mode for θ_meta: "random" (isotropic uniform U(0.3,1.0)), "uniform" (ones), or list
   max_moves_training: 35              # Move cap per self-play training game to eliminate long-tail draw maneuvering
   early_adjudication_material: 6.0    # Resignation threshold: adjudicates Win/Loss after move 15 if material lead >= 6.0
-  generations: 48                     # Total self-play training generations to execute
-  games_per_generation: 24            # Number of self-play games executed per generation
+  generations: 80                     # Total self-play training generations to execute
+  games_per_generation: 4            # Number of self-play games executed per generation
 
 # ------------------------------------------------------------------------------
 # 2. Ground A Parameters (Internal Self-Play Snapshot Tournament)
 # ------------------------------------------------------------------------------
 ground_a:
   parallel_workers: 20                # Multiprocessing worker pool size (bypasses Python GIL for 100% CPU usage)
-  snapshot_interval_k: 4              # Staging interval: saves a policy snapshot every K generations (e.g. Gen 0, 4, 8, 12, 16)
+  snapshot_interval_k: 20              # Staging interval: saves a policy snapshot every K generations (e.g. Gen 0, 4, 8, 12, 16)
   eval_last_n_snapshots: 2            # Rapid iteration filter: evaluates baseline Gen 0 + last N trained snapshots (0 = all)
-  games_per_pair: 20                   # Number of head-to-head games per snapshot pair (5 snapshots -> 10 pairs * 4 = 40 games)
+  games_per_pair: 8                   # Number of head-to-head games per snapshot pair (5 snapshots -> 10 pairs * 4 = 40 games)
   max_moves_eval: 120                 # Maximum move limit per evaluation game in Ground A tournament
-  base_elo_anchor: 800.0              # Anchor Elo rating assigned to Gen 0 for Bradley-Terry Bradley-Terry fitting
+  base_elo_anchor: 400.0              # Anchor Elo rating assigned to Gen 0 for Bradley-Terry Bradley-Terry fitting
 
 # ------------------------------------------------------------------------------
 # 3. Ground B Parameters (External Benchmark vs. Stockfish 18 Reference Engine)
 # ------------------------------------------------------------------------------
 ground_b:
-  games_per_elo_estimate_n: 30        # Total benchmark games played per snapshot against Stockfish 18
+  games_per_elo_estimate_n: 8        # Total benchmark games played per snapshot against Stockfish 18
   eval_last_n_snapshots: 2            # Rapid iteration filter: evaluates baseline Gen 0 + last N trained snapshots (0 = all)
   max_moves_eval: 120                 # Maximum move limit per benchmark game against Stockfish
   calibration_method: "UCI_Elo"       # Calibration mapping for Stockfish difficulty rating
@@ -50,6 +50,6 @@ ground_b:
 # 4. Pre-Registration Scientific Ratification Criteria
 # ------------------------------------------------------------------------------
 pre_registration:
-  seeds: [42, 101, 202, 303, 404]     # Pre-registered random seed suite for experimental reproducibility
+  seeds: [42, 69, 420, 1488, 666]     # Pre-registered random seed suite for experimental reproducibility
   pass_criterion_monotonic_ratio: 0.80 # Pass threshold for monotonic internal/external Elo trajectory ratio
   representation_modes: ["full", "raw"]
