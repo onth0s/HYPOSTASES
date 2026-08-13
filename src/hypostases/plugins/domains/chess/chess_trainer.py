@@ -222,8 +222,14 @@ class ChessSelfPlayTrainer:
             theta_meta=initial_priors,
         )
 
+        def _format_agent_theta(cur_agent: ChessAgentAdapter) -> str:
+            vals = list(cur_agent.theta_meta)
+            if len(vals) >= 10:
+                vals[9] = cur_agent.beta_efe
+            return "[" + " ".join(f"{v:04.2f}" for v in vals) + "]"
+
         if verbose:
-            formatted_gen0 = "[" + " ".join(f"{v:04.2f}" for v in agent.theta_meta) + "]"
+            formatted_gen0 = _format_agent_theta(agent)
             console.print(
                 f"\n[bold cyan][HYPOSTASES Trainer][/bold cyan] Initialized Gen 0 Agent ([bold yellow]theta_meta = {formatted_gen0}[/bold yellow])"
             )
@@ -271,11 +277,9 @@ class ChessSelfPlayTrainer:
                 def _submit_game(game_id: int) -> None:
                     gen_idx = (game_id // games_per_generation) + 1
                     if gen_idx not in task_ids and gen_idx <= total_generations:
-                        formatted_theta = (
-                            "[" + " ".join(f"{v:04.2f}" for v in agent.theta_meta) + "]"
-                        )
+                        formatted_theta = _format_agent_theta(agent)
                         task_ids[gen_idx] = progress.add_task(
-                            f"[cyan]Gen {gen_idx:0{digits}d}/{total_generations}[/cyan] [yellow]theta={formatted_theta}[/yellow] [magenta]temp={agent.temperature:.3f}[/magenta]",
+                            f"[cyan]Gen {gen_idx:0{digits}d}/{total_generations}[/cyan] [yellow]theta={formatted_theta}[/yellow] [magenta]temp={agent.temperature:.3f}[/magenta] [blue]beta={agent.beta_efe:.2f}[/blue]",
                             total=games_per_generation,
                         )
 
@@ -317,7 +321,7 @@ class ChessSelfPlayTrainer:
                             completed_per_gen[gen_idx] == games_per_generation
                             and gen_idx % snapshot_interval_k == 0
                         ):
-                            chk_theta = "[" + " ".join(f"{v:04.2f}" for v in agent.theta_meta) + "]"
+                            chk_theta = _format_agent_theta(agent)
                             console.print(
                                 f"    --> [bold green][CHECKPOINT SAVED][/bold green] Gen {gen_idx:0{digits}d} Checkpoint Staged ([bold yellow]theta_meta = {chk_theta}[/bold yellow])"
                             )
