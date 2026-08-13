@@ -155,26 +155,48 @@ class GroundASelfPlay:
         snapshots: list[PolicySnapshot],
         games_per_pair: int = 10,
         max_moves: int = 200,
+        eval_last_n_snapshots: int = 0,
         seed: int = 42,
         verbose: bool = False,
     ) -> TournamentResult:
-        """Runs parallel round-robin tournament between all provided policy snapshots."""
+        """Runs parallel tournament between snapshots (round-robin if eval_last_n_snapshots=0, or Gen 0 vs LAST + sequential recent steps)."""
         random.seed(seed)
         np.random.seed(seed)
 
         snapshot_ids = [s.generation for s in snapshots]
         result = TournamentResult(snapshot_ids=snapshot_ids)
 
+        pairs = []
+        if eval_last_n_snapshots > 0 and len(snapshots) > 2:
+            gen_0 = snapshots[0]
+            gen_last = snapshots[-1]
+            # 1. Anchor matchup: Gen 0 vs Gen LAST
+            if gen_0.generation != gen_last.generation:
+                pairs.append((gen_0, gen_last))
+
+            # 2. Sequential recent steps: (LAST-1 vs LAST), (LAST-2 vs LAST-1)... for N steps
+            n_bound = min(eval_last_n_snapshots + 1, len(snapshots))
+            recent = snapshots[-n_bound:]
+            for idx in range(len(recent) - 1):
+                s1, s2 = recent[idx], recent[idx + 1]
+                pair_tuple = (s1, s2)
+                inv_tuple = (s2, s1)
+                if (
+                    pair_tuple not in pairs
+                    and inv_tuple not in pairs
+                    and s1.generation != s2.generation
+                ):
+                    pairs.append(pair_tuple)
+        else:
+            for i, s1 in enumerate(snapshots):
+                for j, s2 in enumerate(snapshots):
+                    if i < j:
+                        pairs.append((s1, s2))
+
         if verbose:
             console.print(
-                f"\n[Ground A] Starting Parallel Self-Play Tournament ({len(snapshots)} snapshots across {self.max_workers} workers)..."
+                f"\n[Ground A] Starting Parallel Self-Play Tournament ({len(snapshots)} snapshots, {len(pairs)} matchups across {self.max_workers} workers)..."
             )
-
-        pairs = []
-        for i, s1 in enumerate(snapshots):
-            for j, s2 in enumerate(snapshots):
-                if i < j:
-                    pairs.append((s1, s2))
 
         total_games = len(pairs) * games_per_pair
 

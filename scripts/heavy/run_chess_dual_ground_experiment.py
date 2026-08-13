@@ -123,18 +123,6 @@ def evaluate_dual_grounds(
 
     generations = [s.generation for s in snapshots]
 
-    # Filter Ground A snapshot contenders based on YAML config (e.g. eval_last_n_snapshots: 2)
-    g_a_last_n = g_a_cfg.get("eval_last_n_snapshots")
-    if g_a_last_n is not None and isinstance(g_a_last_n, int) and g_a_last_n > 0:
-        gen_0 = snapshots[0]
-        recent_a = snapshots[-g_a_last_n:]
-        a_snapshots = [gen_0] if gen_0 not in recent_a else []
-        a_snapshots.extend(recent_a)
-    else:
-        a_snapshots = snapshots
-
-    a_generations = [s.generation for s in a_snapshots]
-
     # --- Ground A Execution ---
     console.print(
         Panel.fit(
@@ -146,17 +134,19 @@ def evaluate_dual_grounds(
         chess_domain=chess_domain,
         max_workers=int(g_a_cfg.get("parallel_workers", 20)),
     )
+    g_a_last_n = int(g_a_cfg.get("eval_last_n_snapshots", 0))
     tournament_result = ground_a.run_snapshot_tournament(
-        snapshots=a_snapshots,
+        snapshots=snapshots,
         games_per_pair=g_a_cfg["games_per_pair"],
         max_moves=g_a_cfg.get("max_moves_eval", 120),
+        eval_last_n_snapshots=g_a_last_n,
         verbose=True,
     )
     internal_elo_dict = GroundASelfPlay.compute_internal_elo(
         result=tournament_result,
         base_elo=float(g_a_cfg["base_elo_anchor"]),
     )
-    internal_elos = [internal_elo_dict[g] for g in a_generations]
+    internal_elos = [internal_elo_dict[g] for g in generations]
 
     table_a = Table(
         title="Ground A Comprehensive Internal Elo & Performance Summary",
@@ -169,7 +159,7 @@ def evaluate_dual_grounds(
     table_a.add_column("Win Rate (%)", justify="right", style="green")
     table_a.add_column("Draw Rate (%)", justify="right", style="magenta")
 
-    for g, elo in zip(a_generations, internal_elos, strict=False):
+    for g, elo in zip(generations, internal_elos, strict=False):
         # Aggregate games for generation g across all matchups
         total_w = 0.0
         total_l = 0.0
@@ -203,7 +193,7 @@ def evaluate_dual_grounds(
             draw_pct = 100.0
 
         table_a.add_row(
-            f"Gen {g:0{len(str(max(a_generations)))}d}",
+            f"Gen {g:0{len(str(max(generations)))}d}",
             f"{elo:.1f}",
             f"{int(total_w)}W - {int(total_l)}L - {int(total_d)}D",
             f"{score_pct:.1f}%",
