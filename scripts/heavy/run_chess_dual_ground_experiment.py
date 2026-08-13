@@ -212,7 +212,7 @@ def main() -> None:
         console.print(
             "\n[bold red][Experiment Interrupted by User (Ctrl+C)] Gracefully shutting down.[/bold red]"
         )
-        sys.exit(130)
+        os._exit(130)
 
     os.makedirs("exports", exist_ok=True)
     export_path = Path("exports/chess_experiment_results.json")
