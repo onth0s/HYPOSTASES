@@ -23,6 +23,7 @@ ground_a:
 
 ground_b:
   games_per_elo_estimate_n: 30
+  eval_last_n_snapshots: 2
   max_moves_eval: 120
   calibration_method: "UCI_Elo"
   stockfish_fixed_level: 800

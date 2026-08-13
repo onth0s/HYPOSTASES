@@ -218,11 +218,21 @@ def evaluate_dual_grounds(
         chess_domain=chess_domain,
     )
 
+    # Filter Ground B snapshot contenders based on YAML config (e.g. eval_last_n_snapshots: 2)
+    eval_last_n = g_b_cfg.get("eval_last_n_snapshots")
+    if eval_last_n is not None and isinstance(eval_last_n, int) and eval_last_n > 0:
+        gen_0 = snapshots[0]
+        recent_snaps = snapshots[-eval_last_n:]
+        b_snapshots = [gen_0] if gen_0 not in recent_snaps else []
+        b_snapshots.extend(recent_snaps)
+    else:
+        b_snapshots = snapshots
+
     external_elos = []
     scores_ratio = []
     win_loss_draw_stats = []
 
-    for snapshot in snapshots:
+    for snapshot in b_snapshots:
         res = ground_b.evaluate_snapshot(
             snapshot=snapshot,
             games_n=g_b_cfg["games_per_elo_estimate_n"],
@@ -234,6 +244,7 @@ def evaluate_dual_grounds(
         win_loss_draw_stats.append({"wins": res.wins, "losses": res.losses, "draws": res.draws})
 
     # --- Programmatic Ratification Metrics ---
+    eval_gens = [s.generation for s in b_snapshots]
     mono_a_count = sum(
         1 for i in range(len(internal_elos) - 1) if internal_elos[i + 1] > internal_elos[i]
     )
@@ -244,9 +255,13 @@ def evaluate_dual_grounds(
     )
     mono_b_ratio = mono_b_count / float(max(1, len(external_elos) - 1))
 
-    if len(internal_elos) > 1 and np.std(internal_elos) > 0 and np.std(external_elos) > 0:
-        corr_matrix = np.corrcoef(internal_elos, external_elos)
-        pearson_r = float(corr_matrix[0, 1])
+    if len(external_elos) > 1 and np.std(external_elos) > 0:
+        matching_internal = [internal_elo_dict[g] for g in eval_gens]
+        if np.std(matching_internal) > 0:
+            corr_matrix = np.corrcoef(matching_internal, external_elos)
+            pearson_r = float(corr_matrix[0, 1])
+        else:
+            pearson_r = 0.0
     else:
         pearson_r = 0.0
 
