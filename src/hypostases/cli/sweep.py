@@ -15,7 +15,13 @@ from __future__ import annotations
 import argparse
 import json
 
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+
 from hypostases.simulation import run_sweep_benchmark
+
+console = Console()
 
 
 def run_sweep(
@@ -23,31 +29,65 @@ def run_sweep(
     n_particles: int,
     seeds: list[int],
 ) -> list[dict]:
-    eval_results = run_sweep_benchmark(
+    return run_sweep_benchmark(
         steps_list=steps_list,
         n_particles=n_particles,
         seeds=seeds,
     )
-    return eval_results
 
 
 def format_sweep_output(eval_results: list[dict], output_format: str = "table") -> None:
     if output_format == "json":
-        print(json.dumps(eval_results, indent=2))
-    else:
-        print("=== HYPOSTASES Phase A: Diagnostic Sweep (Specification §12.7) ===")
-        print(
-            f"{'n_steps':>8} | {'n_particles':>12} | {'median_Z':>10} | {'dir_ok':>8} | {'passed':>8}"
+        console.print_json(json.dumps(eval_results))
+        return
+
+    console.print()
+    console.print(
+        Panel(
+            f"[bold]Conditions tested:[/bold] {len(eval_results)}  "
+            f"[bold]Seeds:[/bold] {eval_results[0]['n_seeds'] if eval_results else '—'}",
+            title="[bold cyan]HYPOSTASES Phase A: Diagnostic Sweep[/bold cyan]  [dim](Specification §12.7)[/dim]",
+            border_style="cyan",
         )
-        print("-" * 55)
-        for r in eval_results:
-            print(
-                f"{r['n_steps']:>8} | {r['n_particles']:>12} | {r['cond2_median_z']:>10.3f} | "
-                f"{r['cond1_count']}/{r['n_seeds']:>6} | {r['passed']!s:>8}"
-            )
+    )
+
+    table = Table(
+        show_header=True,
+        header_style="bold magenta",
+        border_style="dim",
+        row_styles=["", "dim"],
+    )
+    table.add_column("n_steps", justify="right", style="cyan", width=9)
+    table.add_column("n_particles", justify="right", style="yellow", width=13)
+    table.add_column("median Z", justify="right", width=11)
+    table.add_column("dir_ok", justify="center", width=10)
+    table.add_column("passed", justify="center", width=10)
+
+    for r in eval_results:
+        passed = r["passed"]
+        median_z = r["cond2_median_z"]
+        z_style = "bold green" if median_z > 1.0 else "bold red"
+        passed_str = "[bold green]✓ PASS[/bold green]" if passed else "[bold red]✗ FAIL[/bold red]"
+        table.add_row(
+            str(r["n_steps"]),
+            str(r["n_particles"]),
+            f"[{z_style}]{median_z:.3f}[/{z_style}]",
+            f"{r['cond1_count']}/{r['n_seeds']}",
+            passed_str,
+        )
+
+    console.print(table)
+
+    n_passed = sum(1 for r in eval_results if r["passed"])
+    n_total = len(eval_results)
+    all_passed = n_passed == n_total
+    summary_style = "bold green" if all_passed else "bold yellow"
+    console.print(
+        f"\n[{summary_style}]{'✓ All conditions passed' if all_passed else f'{n_passed}/{n_total} conditions passed'}[/{summary_style}]"
+    )
 
 
-def add_subparser(subparsers: argparse._SubParsersAction) -> None:
+def add_subparser(subparsers: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
     parser = subparsers.add_parser(
         "sweep", help="Run diagnostic / formal 3-condition sweep (Part VII §12.7)"
     )

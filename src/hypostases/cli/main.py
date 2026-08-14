@@ -14,7 +14,11 @@ from __future__ import annotations
 import argparse
 import sys
 
+from rich.console import Console
+
 from hypostases.cli import infer, spec, sweep, sweep_memory, trace, train
+
+console = Console()
 
 
 def main() -> None:
@@ -35,7 +39,7 @@ def main() -> None:
     if hasattr(args, "func"):
         args.func(args)
     else:
-        parser.print_help()
+        console.print(parser.format_help())
         sys.exit(1)
 
 
