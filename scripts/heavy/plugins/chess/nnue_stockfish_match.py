@@ -19,9 +19,9 @@ from rich.table import Table
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain
 from hypostases.plugins.domains.chess.ground_a_self_play import PolicySnapshot
 from hypostases.plugins.domains.chess.ground_b_stockfish import GroundBStockfish
+from hypostases.plugins.domains.chess.nnue_net import NNUENet, extract_halfkp_features
+from hypostases.plugins.domains.chess.nnue_training import generate_and_audit_dataset, train_nnue
 from hypostases.world_model.alphabeta_search import AlphaBetaSearch, SearchConfig
-from hypostases.world_model.nnue_net import NNUENet, extract_halfkp_features
-from hypostases.world_model.nnue_training import generate_and_audit_dataset, train_nnue
 
 console = Console()
 DEFAULT_CONFIG_PATH = Path("src/hypostases/plugins/domains/chess/stockfish_match_config.yaml")

@@ -7,8 +7,8 @@ import chess
 import numpy as np
 
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain
-from hypostases.world_model.nnue_net import Accumulator, NNUENet, extract_halfkp_features
-from hypostases.world_model.nnue_training import train_nnue
+from hypostases.plugins.domains.chess.nnue_net import Accumulator, NNUENet, extract_halfkp_features
+from hypostases.plugins.domains.chess.nnue_training import train_nnue
 
 
 def test_halfkp_feature_bounds() -> None:

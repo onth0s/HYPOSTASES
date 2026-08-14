@@ -39,7 +39,7 @@ from hypostases.plugins.domains.chess.chess_trainer import (
     load_endgame_curriculum,
 )
 
-CURRICULUM_PATH = Path("schema/chess/endgame_curriculum.yaml")
+CURRICULUM_PATH = Path("src/hypostases/plugins/domains/chess/schemas/endgame_curriculum.yaml")
 
 
 # ---------------------------------------------------------------------------

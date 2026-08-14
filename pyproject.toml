@@ -14,14 +14,19 @@ license = {text = "MIT"}
 dependencies = [
     "numpy>=1.24",
     "pyyaml>=6.0",
-    "chess>=1.10.0",
     "rich>=13.0",
 ]
 
 [project.optional-dependencies]
+chess = [
+    "chess>=1.10.0",
+]
 dev = [
     "ruff>=0.5",
     "pytest>=8.0",
+]
+all = [
+    "hypostases[chess]",
 ]
 
 [project.urls]

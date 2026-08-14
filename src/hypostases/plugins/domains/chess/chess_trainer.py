@@ -184,12 +184,23 @@ def _should_material_adjudicate(
     return _has_non_king_material(board, losing_side)
 
 
-def load_endgame_curriculum(path: str | Path = "schema/chess/endgame_curriculum.yaml") -> list[str]:
+DEFAULT_CURRICULUM_PATH = Path(__file__).parent / "schemas" / "endgame_curriculum.yaml"
+
+
+def load_endgame_curriculum(
+    path: str | Path | None = None,
+) -> list[str]:
     """Loads mate-able endgame preset FENs from a YAML curriculum file (Rule 006).
 
     Filters to legal positions with White to move and not in check.
     """
-    curriculum_path = Path(path)
+    if path is None:
+        curriculum_path = DEFAULT_CURRICULUM_PATH
+        if not curriculum_path.exists():
+            curriculum_path = Path("schema/chess/endgame_curriculum.yaml")
+    else:
+        curriculum_path = Path(path)
+
     if not curriculum_path.exists():
         return []
 
@@ -232,7 +243,7 @@ def _worker_run_training_game(
 
     Returns (final_reward, trajectory_features, discounted_labels, num_moves, mat_bal, termination).
     """
-    from hypostases.world_model.nnue_net import NNUENet, extract_halfkp_features
+    from hypostases.plugins.domains.chess.nnue_net import NNUENet, extract_halfkp_features
 
     random.seed(seed_val)
     np.random.seed(seed_val)
@@ -592,7 +603,7 @@ class ChessSelfPlayTrainer:
         initial_priors: Any = "random",
         value_gamma: float = 0.97,
         curriculum_probability: float = 0.25,
-        curriculum_path: str | Path = "schema/chess/endgame_curriculum.yaml",
+        curriculum_path: str | Path | None = None,
         resign_value_threshold: float = -3.0,
         resign_confirm_moves: int = 6,
         nnue_epochs: int = 30,
@@ -640,8 +651,8 @@ class ChessSelfPlayTrainer:
 
             return policy
 
-        from hypostases.world_model.nnue_net import NNUENet
-        from hypostases.world_model.nnue_training import train_nnue
+        from hypostases.plugins.domains.chess.nnue_net import NNUENet
+        from hypostases.plugins.domains.chess.nnue_training import train_nnue
 
         nnue_net = NNUENet(seed=seed)
 

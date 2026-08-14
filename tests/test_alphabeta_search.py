@@ -7,9 +7,9 @@ import chess
 
 from hypostases.plugins.domains.chess.chess_agent_adapter import _make_nnue_evaluator
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain
+from hypostases.plugins.domains.chess.nnue_net import NNUENet, extract_halfkp_features
+from hypostases.plugins.domains.chess.nnue_training import bootstrap_eval
 from hypostases.world_model.alphabeta_search import AlphaBetaSearch, SearchConfig
-from hypostases.world_model.nnue_net import NNUENet, extract_halfkp_features
-from hypostases.world_model.nnue_training import bootstrap_eval
 
 
 def test_alphabeta_tie_breaking_determinism() -> None:

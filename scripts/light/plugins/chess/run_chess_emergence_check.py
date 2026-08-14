@@ -14,7 +14,7 @@ from rich.table import Table
 
 from hypostases.plugins.domains.chess.chess_agent_adapter import ChessAgentAdapter
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain
-from hypostases.world_model.nnue_net import NNUENet
+from hypostases.plugins.domains.chess.nnue_net import NNUENet
 
 console = Console()
 

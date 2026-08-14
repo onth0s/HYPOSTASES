@@ -267,3 +267,32 @@ assert_schema_completeness()           # Audits schema branches for state-indepe
 ```
 
 The static auditor (`audit_schemas.py`) detects branches that degenerate to state-independent constants and raises warnings unless decorated with `@declared_simplification` (Directive 003).
+
+## Pluggable Domain Architecture & Segmentation
+
+The HYPOSTASES engine is fully domain-agnostic. All game or environment plugins strictly adhere to the `Domain` protocol interface (`hypostases.domains.Domain`) and register with `DomainRegistry`.
+
+### Core Installation vs Plugin Installation
+- **Core Engine (Domain-Agnostic & Headless)**:
+  ```bash
+  pip install -e .
+  ```
+- **With Chess Domain Plugin**:
+  ```bash
+  pip install -e .[chess]
+  ```
+
+### Registering and Accessing Domains via `DomainRegistry`
+
+Domain plugins automatically register themselves when imported:
+
+```python
+from hypostases.domains import DomainRegistry
+import hypostases.plugins.domains.chess  # Registers 'chess'
+
+# Dynamically instantiate domain by string identifier
+domain = DomainRegistry.get("chess", representation_mode="full")
+initial_state = domain.initial_state()
+valid_moves = domain.valid_actions(initial_state)
+```
+

@@ -6,6 +6,7 @@ Subcommands:
   - hypostases infer: Run inverse inference particle filter
   - hypostases sweep: Run diagnostic / formal 3-condition sweep
   - hypostases spec merge: Merge specification markdown parts
+  - hypostases train: Train a domain agent via self-play RL
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from hypostases.cli import infer, spec, sweep, sweep_memory, trace
+from hypostases.cli import infer, spec, sweep, sweep_memory, trace, train
 
 
 def main() -> None:
@@ -28,6 +29,7 @@ def main() -> None:
     sweep.add_subparser(subparsers)
     sweep_memory.add_subparser(subparsers)
     spec.add_subparser(subparsers)
+    train.add_subparser(subparsers)
 
     args = parser.parse_args()
     if hasattr(args, "func"):

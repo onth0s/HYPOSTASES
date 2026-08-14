@@ -14,8 +14,8 @@ import numpy as np
 
 from hypostases.engine.types import Characteristics, GoalCategory, GoalHierarchy
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain
+from hypostases.plugins.domains.chess.nnue_net import Accumulator, extract_halfkp_features
 from hypostases.world_model.alphabeta_search import AlphaBetaSearch, SearchConfig
-from hypostases.world_model.nnue_net import Accumulator, extract_halfkp_features
 
 # Max-magnitude scale per tactical feature (used to normalize u_linear so the
 # handcrafted garnish is not dominated by large-scale features like capture_delta).

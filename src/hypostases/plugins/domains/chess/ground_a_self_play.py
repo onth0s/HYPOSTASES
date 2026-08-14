@@ -15,6 +15,7 @@ import signal
 from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, field
+from datetime import UTC
 from pathlib import Path
 from typing import Any
 
@@ -52,7 +53,7 @@ def _worker_run_ground_a_game(
     """Top-level worker running one Ground A self-play game between two policy snapshots."""
     import random
 
-    from hypostases.world_model.nnue_net import NNUENet
+    from hypostases.plugins.domains.chess.nnue_net import NNUENet
 
     random.seed(game_seed)
     np.random.seed(game_seed)
@@ -242,6 +243,7 @@ class GroundASelfPlay:
         evaluate_generations: list[int] | None = None,
         eval_last_n_snapshots: int = 0,
         export_pgn_dir: str | Path | None = "exports/pgn/ground_a",
+        timestamp_runs: bool = True,
     ) -> TournamentResult:
         """Runs a parallel mini round-robin tournament between the evaluated generations.
 
@@ -254,6 +256,16 @@ class GroundASelfPlay:
         """
         random.seed(seed)
         np.random.seed(seed)
+
+        pgn_out_dir: Path | None = None
+        if export_pgn_dir:
+            pgn_out_dir = Path(export_pgn_dir)
+            if timestamp_runs:
+                from datetime import datetime
+
+                ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+                pgn_out_dir = pgn_out_dir / f"run_{ts}"
+            pgn_out_dir.mkdir(parents=True, exist_ok=True)
 
         snapshot_ids = [s.generation for s in snapshots]
         result = TournamentResult(snapshot_ids=snapshot_ids)
@@ -351,12 +363,8 @@ class GroundASelfPlay:
                 stats["lengths"].append(moves)
                 result.termination_counts[reason] = result.termination_counts.get(reason, 0) + 1
 
-                if export_pgn_dir:
-                    from pathlib import Path
-
-                    out_dir = Path(export_pgn_dir)
-                    out_dir.mkdir(parents=True, exist_ok=True)
-                    pgn_file = out_dir / f"ground_a_gen{g1:02d}_vs_gen{g2:02d}.pgn"
+                if pgn_out_dir:
+                    pgn_file = pgn_out_dir / f"ground_a_gen{g1:02d}_vs_gen{g2:02d}.pgn"
                     with open(pgn_file, "a", encoding="utf-8") as f:
                         f.write(pgn_text + "\n\n")
 

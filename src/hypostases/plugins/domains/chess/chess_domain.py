@@ -12,8 +12,10 @@ import chess
 import numpy as np
 
 from hypostases.domains.base import Domain
+from hypostases.domains.registry import DomainRegistry
 
 
+@DomainRegistry.register("chess")
 class ChessDomain(Domain):
     """Pluggable Chess domain implementation conforming to the Domain Protocol."""
 

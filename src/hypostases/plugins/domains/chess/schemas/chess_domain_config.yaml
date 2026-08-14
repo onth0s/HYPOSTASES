@@ -25,4 +25,3 @@ reward_structure:
 action_space:
   type: "discrete_legal_moves"
   max_legal_moves: 218
-  

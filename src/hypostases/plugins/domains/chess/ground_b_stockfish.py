@@ -13,6 +13,7 @@ import shutil
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
+from datetime import UTC
 from pathlib import Path
 from queue import Queue
 from threading import Lock
@@ -225,7 +226,7 @@ class GroundBStockfish:
         node = game_pgn
 
         from hypostases.plugins.domains.chess.chess_agent_adapter import ChessAgentAdapter
-        from hypostases.world_model.nnue_net import NNUENet
+        from hypostases.plugins.domains.chess.nnue_net import NNUENet
 
         agent = ChessAgentAdapter(
             domain=self.domain,
@@ -333,6 +334,7 @@ class GroundBStockfish:
         seed: int = 42,
         verbose: bool = False,
         export_pgn_dir: str | Path | None = "exports/pgn/ground_b",
+        timestamp_runs: bool = True,
     ) -> StockfishBenchmarkResult:
         """Evaluates a policy snapshot against Stockfish over N games reusing a persistent engine pool."""
         pool_size = min(self.max_workers, games_n)
@@ -445,9 +447,15 @@ class GroundBStockfish:
         # Export all Ground B PGN games
         if export_pgn_dir and all_pgns:
             out_dir = Path(export_pgn_dir)
+            if timestamp_runs:
+                from datetime import datetime
+
+                ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+                out_dir = out_dir / f"run_{ts}"
             out_dir.mkdir(parents=True, exist_ok=True)
             pgn_file_path = out_dir / f"ground_b_gen{snapshot.generation:02d}_vs_stockfish.pgn"
-            with open(pgn_file_path, "w", encoding="utf-8") as f:
+            mode = "w" if timestamp_runs else "a"
+            with open(pgn_file_path, mode, encoding="utf-8") as f:
                 for pgn_game in all_pgns:
                     print(pgn_game, file=f, end="\n\n")
 

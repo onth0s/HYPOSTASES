@@ -11,7 +11,7 @@ import chess
 import numpy as np
 
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain
-from hypostases.world_model.nnue_net import NNUENet, extract_halfkp_features
+from hypostases.plugins.domains.chess.nnue_net import NNUENet, extract_halfkp_features
 
 DATASET_REPORT_PATH = Path("scratch/HYPOSTASES_NNUE_CONVERGENCE_AUDIT.md")
 
