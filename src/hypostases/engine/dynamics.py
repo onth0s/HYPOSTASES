@@ -209,6 +209,14 @@ def step_env(
       - "pro-rata": Requests served from pool_before_adj; shares added to pool after requests.
       - "priority": Greedy allocation sorted by priorities (highest first).
       - "lottery": Greedy allocation in shuffled random order.
+
+    Directive 003 Branch Audit (Part III §5.8):
+      - Operator branches are state-dependent allocation policies sharing the same
+        delta_log contract; unknown operator names raise ValueError (closed set).
+      - PUNISH actions: folded into the punishment ledger (target penalty accumulation),
+        independent of the concurrency operator — a fixed env-stage cross-cutting branch.
+      - Withdraw deductions (fee/degrade) scale with withdraw_prevalence under
+        enable_withdraw_fee/enable_withdraw_degrade flags (state-dependent governance).
     """
     n_agents = max(1, len(agent_actions))
     withdraws_count = sum(1 for _, act in agent_actions if act.action_type == ActionType.WITHDRAW)
@@ -276,6 +284,15 @@ def _feedback_request(
     delta_log: DeltaLog,
     agent_name: str,
 ) -> tuple[DeltaCharacteristics, np.ndarray, DeltaPowerExternal]:
+    """Part II §3.3: REQUEST primitive deltas.
+
+    Directive 003 Branch Audit (Part III §5.8):
+      - reserve: state-dependent, env grant draw granted_amt for this agent.
+      - mood: state-dependent, resilience-weighted shortfall penalty.
+      - social_capital: constant REQUEST_SOCIAL_COST (declared simplification).
+      - survival utility: state-dependent on fill_ratio (granted_amt / requested amount).
+      - acquisition utility: state-dependent on fill_ratio.
+    """
     granted_amt = delta_log.get("granted", {}).get(agent_name, 0.0)
     shortfall = max(0.0, action.amount - granted_amt)
 
@@ -297,6 +314,14 @@ def _feedback_share(
     agent: AgentState,
     action: Action,
 ) -> tuple[DeltaCharacteristics, np.ndarray, DeltaPowerExternal]:
+    """Part II §3.3: SHARE primitive deltas.
+
+    Directive 003 Branch Audit (Part III §5.8):
+      - reserve: action-specified constant cost (-action.amount); no agent-state dependence (declared simplification).
+      - mood: state-dependent, sociality-weighted SHARE_MOOD_BONUS.
+      - social_capital: constant SHARE_SOCIAL_GAIN (declared simplification).
+      - relational utility: state-dependent on sociality.
+    """
     delta_c: DeltaCharacteristics = {
         "reserve": -action.amount,
         "mood": SHARE_MOOD_BONUS * agent.c.sociality,
@@ -312,6 +337,15 @@ def _feedback_withdraw(
     action: Action,
     delta_log: DeltaLog,
 ) -> tuple[DeltaCharacteristics, np.ndarray, DeltaPowerExternal]:
+    """Part II §3.3: WITHDRAW primitive deltas.
+
+    Directive 003 Branch Audit (Part III §5.8):
+      - reserve: zero resource exchange (declared simplification for status signaling; spec §5.8).
+      - mood: state-dependent, sociality-weighted WITHDRAW_MOOD_PENALTY.
+      - social_capital: constant WITHDRAW_SOCIAL_COST (declared simplification).
+      - status utility: state-dependent on sociality; sign flips under the withdraw-fee regime
+        (delta_log.enable_withdraw_fee), capturing governance-scaled crowding-out.
+    """
     delta_c: DeltaCharacteristics = {
         "reserve": 0.0,
         "mood": -WITHDRAW_MOOD_PENALTY * agent.c.sociality,
@@ -330,6 +364,15 @@ def _feedback_punish(
     agent: AgentState,
     action: Action,
 ) -> tuple[DeltaCharacteristics, np.ndarray, DeltaPowerExternal]:
+    """Part II §3.3: PUNISH primitive deltas.
+
+    Directive 003 Branch Audit (Part III §5.8):
+      - reserve: constant PUNISH_RESERVE_COST (declared simplification — fixed cost, no state dependence).
+      - mood: state-dependent, sociality-weighted PUNISH_MOOD_GAIN.
+      - social_capital: constant 0.1 flat reputational credit (declared simplification).
+      - utility deltas: zero — punishment carries no direct goal-utility delta (declared simplification;
+        its effect propagates via the env-stage target penalty PUNISH_TARGET_PENALTY).
+    """
     delta_c: DeltaCharacteristics = {
         "reserve": -PUNISH_RESERVE_COST,
         "mood": PUNISH_MOOD_GAIN * agent.c.sociality,
@@ -409,10 +452,18 @@ def feedback(
     """Part II §3.3, Part IV §6.7b: Feedback Stage emitting primitive deltas.
 
     Directive 003 Branch Audit (Part III §5.8):
+      - EPISTEMIC actions (INSPECT/PROBE/MONITOR/QUERY/EXPERIMENT/VERIFY/OBSERVE/SPY):
+        Delegated to execute_epistemic_action against ground_truth_val=pool_after (active perception).
       - ActionType.REQUEST: State-dependent reserve gain and resilience-weighted mood penalty.
       - ActionType.SHARE: State-dependent reserve cost, sociality-weighted mood/capital, and RELATIONAL utility gain.
       - ActionType.WITHDRAW: State-dependent sociality mood penalty and social capital cost.
+      - ActionType.PUNISH: Constant reserve cost, sociality-weighted mood gain, flat social capital credit, zero utility deltas.
+      - Fallback (else): Zero deltas for unrecognized action types — unreachable for valid ActionType enum
+        members (all 12 are covered by EPISTEMIC_ACTION_TYPES + the four primitive branches);
+        declared simplification as defensive guard.
       - Peer beliefs: Explicitly tracks observed grant draws per peer agent.
+      - Cross-cutting: punishment target penalty and inequity-aversion deprivation applied in
+        _apply_cross_cutting_c; crowding-out hysteresis shift applied in _apply_crowding_out.
     """
     if action.action_type in EPISTEMIC_ACTION_TYPES:
         from hypostases.active_perception import execute_epistemic_action

@@ -7,9 +7,8 @@ Rule 014 Ref: Light script under scripts/light/.
 from __future__ import annotations
 
 import argparse
-import sys
-import chess
 
+import chess
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt

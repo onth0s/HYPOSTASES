@@ -6,6 +6,7 @@ Spec Ref: scratch/DISSONANCES.md D-006 (Expanded Dataset Audit with Game Phase &
 from __future__ import annotations
 
 from pathlib import Path
+
 import chess
 import numpy as np
 
@@ -461,45 +462,53 @@ def train_nnue(
             # ReLU activations
             z1 = np.dot(concat_input, net.W_l1) + net.b_l1
             h1 = net.clipped_relu(z1)
-            pred = float(np.dot(h1, net.W_l2) + net.b_l2)
+            pred = float((np.dot(h1, net.W_l2) + net.b_l2)[0])
 
             err = pred - label
             total_loss += err**2
 
             # Gradients
-            dL_dout = 2.0 * err
-            dL_dW_l2 = dL_dout * h1[:, None]
-            dL_db_l2 = np.array([dL_dout], dtype=np.float32)
+            dl_dout = 2.0 * err
+            dl_dw_l2 = dl_dout * h1[:, None]
+            dl_db_l2 = np.array([dl_dout], dtype=np.float32)
 
-            dL_dh1 = dL_dout * net.W_l2.flatten() * (h1 > 0)
-            concat_input = np.concatenate([acc.white_acc, acc.black_acc, aux])
-            dL_dW_l1 = np.outer(concat_input, dL_dh1)
-            dL_db_l1 = dL_dh1
+            dl_dh1 = dl_dout * net.W_l2.flatten() * (h1 > 0)
+            dl_dw_l1 = np.outer(concat_input, dl_dh1)
+            dl_db_l1 = dl_dh1
 
             # Backprop into accumulators
-            dL_dconcat = np.dot(net.W_l1, dL_dh1)
-            dL_dw_acc = dL_dconcat[:256]
-            dL_db_acc = dL_dconcat[256:512]
+            dl_dconcat = np.dot(net.W_l1, dl_dh1)
+            dl_dw_acc = dl_dconcat[:256]
+            dl_db_acc = dl_dconcat[256:512]
 
             # Parameter updates with gradient clipping
             grad_clip = 1.0
-            dL_dW_l2 = np.clip(dL_dW_l2, -grad_clip, grad_clip)
-            dL_db_l2 = np.clip(dL_db_l2, -grad_clip, grad_clip)
-            dL_dW_l1 = np.clip(dL_dW_l1, -grad_clip, grad_clip)
-            dL_db_l1 = np.clip(dL_db_l1, -grad_clip, grad_clip)
+            dl_dw_l2 = np.clip(dl_dw_l2, -grad_clip, grad_clip)
+            dl_db_l2 = np.clip(dl_db_l2, -grad_clip, grad_clip)
+            dl_dw_l1 = np.clip(dl_dw_l1, -grad_clip, grad_clip)
+            dl_db_l1 = np.clip(dl_db_l1, -grad_clip, grad_clip)
 
-            net.W_l2 -= lr * dL_dW_l2
-            net.b_l2 -= lr * dL_db_l2
-            net.W_l1 -= lr * dL_dW_l1
-            net.b_l1 -= lr * dL_db_l1
+            net.W_l2 -= lr * dl_dw_l2
+            net.b_l2 -= lr * dl_db_l2
+            net.W_l1 -= lr * dl_dw_l1
+            net.b_l1 -= lr * dl_db_l1
 
-            # Feature matrix updates with clipping
-            dL_dw_acc = np.clip(dL_dw_acc, -grad_clip, grad_clip)
-            dL_db_acc = np.clip(dL_db_acc, -grad_clip, grad_clip)
-            for idx in w_feats:
-                net.W_white[idx] -= lr * dL_dw_acc * 0.01
-            for idx in b_feats:
-                net.W_black[idx] -= lr * dL_db_acc * 0.01
+            # Feature matrix updates with clipping.
+            # The forward pass uses the side-to-move accumulator as the "us" input, so the
+            # sparse gradient routing must follow the same perspective: when black is to move
+            # the "us" accumulator is built from W_black[b_feats] and "them" from W_white[w_feats].
+            dl_dw_acc = np.clip(dl_dw_acc, -grad_clip, grad_clip)
+            dl_db_acc = np.clip(dl_db_acc, -grad_clip, grad_clip)
+            if is_white_turn:
+                for idx in w_feats:
+                    net.W_white[idx] -= lr * dl_dw_acc
+                for idx in b_feats:
+                    net.W_black[idx] -= lr * dl_db_acc
+            else:
+                for idx in b_feats:
+                    net.W_black[idx] -= lr * dl_dw_acc
+                for idx in w_feats:
+                    net.W_white[idx] -= lr * dl_db_acc
 
         epoch_loss = total_loss / max(len(dataset), 1)
         final_loss = epoch_loss

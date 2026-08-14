@@ -10,40 +10,57 @@ description: "Pre-registered parameters for Ground A (Self-Play) vs Ground B (St
 # 1. Training Parameters (Active Sensing Expected Free Energy & Meta-RL)
 # ------------------------------------------------------------------------------
 training:
-  learning_rate: 0.015                 # Meta-RL policy gradient learning rate η (Δθ_meta = η * R * f_bar)
-  efe_beta: 0.2                       # Initial pragmatic vs epistemic balance β in U_total = (1-β)U_pragmatic + βU_epistemic
+  learning_rate: 0.05                  # Meta-RL policy gradient learning rate η (Δθ_meta = η * R * f_bar); raised 0.015->0.05 for the batch-normalized REINFORCE estimator (Rule 003 calibration change)
+  efe_beta: 0.05                      # Recalibrated epistemic weight β for chess (bounded EFE entropy term; see adapter)
   policy_temperature: 0.8             # Initial policy exploration temperature τ_0 for softmax action sampling
   min_temperature: 0.20               # Soft temperature floor ensuring stochastic exploration
   feature_basis_k: 10                 # Meta-parameter vector dimension K (8 tactical features + 1 temperature + 1 beta_efe)
   initial_priors: "uniform"            # Prior mode for θ_meta: "random" (isotropic uniform U(0.3,1.0)), "uniform" (ones), or list
-  max_moves_training: 35              # Move cap per self-play training game to eliminate long-tail draw maneuvering
-  early_adjudication_material: 6.0    # Resignation threshold: adjudicates Win/Loss after move 15 if material lead >= 6.0
-  generations: 8                     # Total self-play training generations to execute
-  games_per_generation: 20            # Number of self-play games executed per generation
+  max_moves_training: 200             # Move cap per self-play training game; long enough to reach real outcomes, bounded vs the 150-ply (75-move) rule grind
+  early_adjudication_material: 8.0    # Fallback material adjudication (only after move 15, non-curriculum games): Win/Loss if |material| >= 8 (decisive-but-not-extreme edges adjudicate early)
+  adjudicate_bare_king_requires_mate: true # Never adjudicate when the losing side has a bare king and the winner holds mating material (KQK/KRK/etc. must play to mate so conversion is learned)
+  search_depth: 3                    # Alpha-beta search depth for move selection (training + eval); global node budget (4096) keeps middlegame ~250ms
+  resign_value_threshold: -3.0        # Value-based resignation: side resigns when NNUE value < threshold (requires value net)
+  resign_confirm_moves: 6             # Consecutive hopeless plies (per color) required before resignation is accepted
+  value_gamma: 0.97                   # Discount factor for discounted-outcome value labels γ^(remaining plies)
+  curriculum_probability: 0.25        # Fraction of training games seeded from schema/chess/endgame_curriculum.yaml presets
+  nnue_epochs: 15                     # NNUE SGD epochs executed per generation completion
+  nnue_learning_rate: 0.003           # NNUE SGD learning rate
+  replay_capacity: 4000               # FIFO replay buffer capacity (opening + curriculum positions combined)
+  generations: 24                     # Total self-play training generations to execute
+  games_per_generation: 32            # Number of self-play games executed per generation
+  log_game_details: false             # Print every per-game submit/result line (default off; GEN SUMMARY + progress bars remain)
 
 # ------------------------------------------------------------------------------
 # 2. Ground A Parameters (Internal Self-Play Snapshot Tournament)
 # ------------------------------------------------------------------------------
 ground_a:
   parallel_workers: 20                # Multiprocessing worker pool size (bypasses Python GIL for 100% CPU usage)
-  snapshot_interval_k: 20              # Staging interval: saves a policy snapshot every K generations (e.g. Gen 0, 4, 8, 12, 16)
-  eval_last_n_snapshots: 2            # Rapid iteration filter: evaluates baseline Gen 0 + last N trained snapshots (0 = all)
-  games_per_pair: 8                   # Number of head-to-head games per snapshot pair (5 snapshots -> 10 pairs * 4 = 40 games)
-  max_moves_eval: 120                 # Maximum move limit per evaluation game in Ground A tournament
-  base_elo_anchor: 400.0              # Anchor Elo rating assigned to Gen 0 for Bradley-Terry Bradley-Terry fitting
+  snapshot_interval_k: 2              # Storage cadence: snapshot saved every K generations (1 = store every gen)
+  evaluate_generations: [6, 12, 18, 24]  # Explicit generations to compare (mini round-robin, any spacing; decoupled from cadence)
+  eval_last_n_snapshots: 0            # Fallback alias: last N stored snapshots (0 = all). Ignored when evaluate_generations is set.
+  games_per_pair: 12                  # Number of head-to-head games per snapshot pair (4 gens -> 6 pairs * 12 = 72 games)
+  max_moves_eval: 360                 # Maximum move limit per evaluation game in Ground A tournament
+  eval_temperature: 0.05              # Greedy policy temperature held fixed across evaluated snapshots (isolates skill from τ decay)
+  search_depth: 3                     # Alpha-beta depth used by evaluated snapshots (aligned with training)
+  base_elo_anchor: 400.0              # Anchor Elo rating assigned to oldest evaluated generation for Bradley-Terry fitting
 
 # ------------------------------------------------------------------------------
 # 3. Ground B Parameters (External Benchmark vs. Stockfish 18 Reference Engine)
 # ------------------------------------------------------------------------------
 ground_b:
-  games_per_elo_estimate_n: 8        # Total benchmark games played per snapshot against Stockfish 18
-  eval_last_n_snapshots: 2            # Rapid iteration filter: evaluates baseline Gen 0 + last N trained snapshots (0 = all)
-  max_moves_eval: 120                 # Maximum move limit per benchmark game against Stockfish
+  games_per_elo_estimate_n: 24       # Total benchmark games played per snapshot against Stockfish 18
+  evaluate_generations: [12, 24]   # Explicit generations to benchmark (aligned with Ground A for Pearson correlation)
+  eval_last_n_snapshots: 0            # Fallback alias: last N stored snapshots (0 = all). Ignored when evaluate_generations is set.
+  max_moves_eval: 360                 # Maximum move limit per benchmark game against Stockfish
   calibration_method: "UCI_Elo"       # Calibration mapping for Stockfish difficulty rating
   stockfish_fixed_level: 800          # Stockfish target skill rating in Elo (Skill Level 0 = ~800 Elo)
-  time_control_per_move: 0.1          # Time limit per engine move (seconds)
+  time_control_per_move: 0.02         # Time limit per engine move (seconds). Weakened to 20ms to break the 0-win wall (Rule 003 calibration change)
   parallel_workers: 20                # Concurrent Stockfish engine worker instances
   stockfish_threads: 2                # CPU threads allocated per individual Stockfish process worker
+  stockfish_multipv: 1                # MultiPV randomization (>=4 weakens Stockfish: adds a config-gated weaker reference tier)
+  eval_temperature: 0.05              # Greedy policy temperature held fixed across benchmarked snapshots
+  search_depth: 3                     # Alpha-beta depth used by benchmarked snapshots (aligned with training)
   stockfish_path: "src/hypostases/plugins/domains/chess/stockfish.exe" # Path to local Stockfish binary executable
 
 # ------------------------------------------------------------------------------

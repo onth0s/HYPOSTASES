@@ -17,7 +17,9 @@ import pytest
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain
 from hypostases.plugins.domains.chess.ground_a_self_play import (
     GroundASelfPlay,
+    PolicySnapshot,
     TournamentResult,
+    _select_tournament_pairs,
 )
 from hypostases.plugins.domains.chess.ground_b_stockfish import GroundBStockfish
 
@@ -92,6 +94,59 @@ def test_formal_bradley_terry_transitivity_and_monotonicity() -> None:
 
     # Invariant 2: Monotonic ordering Elo(Gen 0) < Elo(Gen 5) < Elo(Gen 10)
     assert ratings[0] < ratings[5] < ratings[10]
+
+
+def test_formal_tournament_pairing_selection() -> None:
+    """Verifies Ground A pairing selection invariants: explicit evaluate_generations list
+    (decoupled from snapshot cadence), mini round-robin cardinality C(n,2), unknown
+    generations dropped, and no self-play."""
+
+    def _mk_snap(gen: int) -> PolicySnapshot:
+        return PolicySnapshot(
+            generation=gen,
+            policy_fn=lambda board, moves: moves[0],
+            theta_meta=np.ones(8, dtype=np.float32),
+        )
+
+    snaps = [_mk_snap(g) for g in [0, 4, 8, 12, 16]]
+
+    # No list: full round robin C(5,2) = 10, each generation plays every other once
+    pairs = _select_tournament_pairs(snaps)
+    assert len(pairs) == 10
+    gen_counts: dict[int, int] = {}
+    for s1, s2 in pairs:
+        gen_counts[s1.generation] = gen_counts.get(s1.generation, 0) + 1
+        gen_counts[s2.generation] = gen_counts.get(s2.generation, 0) + 1
+    for gen in [0, 4, 8, 12, 16]:
+        assert gen_counts[gen] == 4
+
+    # Explicit list: only those generations, any spacing (no Gen 0, no cadence coupling)
+    pairs = _select_tournament_pairs(snaps, evaluate_generations=[8, 12, 16])
+    pair_gens = sorted((s1.generation, s2.generation) for s1, s2 in pairs)
+    assert pair_gens == [(8, 12), (8, 16), (12, 16)]
+
+    # List cardinality invariant: C(n, 2) mini round-robin pairs
+    pairs = _select_tournament_pairs(snaps, evaluate_generations=[4, 8, 12, 16])
+    assert len(pairs) == 6
+
+    # List beats last-N fallback when both are given
+    pairs = _select_tournament_pairs(snaps, evaluate_generations=[4, 16], eval_last_n_snapshots=2)
+    pair_gens = sorted((s1.generation, s2.generation) for s1, s2 in pairs)
+    assert pair_gens == [(4, 16)]
+
+    # Unknown generations are dropped, never crash
+    pairs = _select_tournament_pairs(snaps, evaluate_generations=[7, 8, 16])
+    pair_gens = sorted((s1.generation, s2.generation) for s1, s2 in pairs)
+    assert pair_gens == [(8, 16)]
+
+    # Fallback alias: last N stored snapshots
+    pairs = _select_tournament_pairs(snaps, eval_last_n_snapshots=2)
+    pair_gens = sorted((s1.generation, s2.generation) for s1, s2 in pairs)
+    assert pair_gens == [(12, 16)]
+
+    all_pairs = [(s1.generation, s2.generation) for s1, s2 in pairs]
+    assert len(set(all_pairs)) == len(all_pairs)  # No duplicated matchups
+    assert all(a != b for a, b in all_pairs)  # No self-play
 
 
 def test_formal_state_tensor_invariants() -> None:

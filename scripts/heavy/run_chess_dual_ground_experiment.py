@@ -10,7 +10,9 @@ into genuine chess competence against calibrated Stockfish 18 reference.
 
 from __future__ import annotations
 
+import contextlib
 import json
+import multiprocessing
 import os
 import signal
 import sys
@@ -42,11 +44,23 @@ def _quiet_excepthook(kind: type, value: BaseException, tb: Any) -> None:
 sys.excepthook = _quiet_excepthook
 
 
+def _kill_worker_children() -> None:
+    """Terminates all live multiprocessing child processes (pool workers).
+
+    Called immediately before os._exit(130) so Ctrl+C never orphans the spawned
+    worker processes: they ignore SIGINT and would otherwise outlive the parent.
+    """
+    with contextlib.suppress(Exception):
+        for p in multiprocessing.active_children():
+            p.terminate()
+
+
 def _handle_sigint(signum: int, frame: Any) -> None:
     """Instant termination on Ctrl+C without thread join hanging."""
     console.print(
         "\n[bold red][Experiment Interrupted by User (Ctrl+C)][/bold red] Instantly terminating process."
     )
+    _kill_worker_children()
     os._exit(130)
 
 
@@ -89,17 +103,18 @@ def evaluate_dual_grounds(
         t_cfg = config.get("training", {})
         trainer = ChessSelfPlayTrainer(
             learning_rate=float(t_cfg.get("learning_rate", 0.01)),
-            beta_efe=float(t_cfg.get("efe_beta", 0.2)),
+            beta_efe=float(t_cfg.get("efe_beta", 0.05)),
             initial_temperature=float(t_cfg.get("policy_temperature", 0.8)),
+            value_gamma=float(t_cfg.get("value_gamma", 0.97)),
             chess_domain=chess_domain,
         )
 
-        total_gens = int(t_cfg.get("generations", 20))
+        total_gens = int(t_cfg.get("generations", 24))
         k_interval = int(g_a_cfg["snapshot_interval_k"])
-        games_per_gen = int(t_cfg.get("games_per_generation", 15))
+        games_per_gen = int(t_cfg.get("games_per_generation", 32))
         min_temp = float(t_cfg.get("min_temperature", 0.20))
-        max_moves_train = int(t_cfg.get("max_moves_training", 35))
-        early_adj_mat = float(t_cfg.get("early_adjudication_material", 6.0))
+        max_moves_train = int(t_cfg.get("max_moves_training", 400))
+        early_adj_mat = float(t_cfg.get("early_adjudication_material", 15.0))
         initial_priors = t_cfg.get("initial_priors", "random")
 
         console.print(
@@ -116,10 +131,24 @@ def evaluate_dual_grounds(
             max_moves_training=max_moves_train,
             early_adjudication_material=early_adj_mat,
             initial_priors=initial_priors,
+            value_gamma=float(t_cfg.get("value_gamma", 0.97)),
+            curriculum_probability=float(t_cfg.get("curriculum_probability", 0.25)),
+            resign_value_threshold=float(t_cfg.get("resign_value_threshold", -3.0)),
+            resign_confirm_moves=int(t_cfg.get("resign_confirm_moves", 6)),
+            nnue_epochs=int(t_cfg.get("nnue_epochs", 30)),
+            nnue_learning_rate=float(t_cfg.get("nnue_learning_rate", 0.003)),
+            replay_capacity=int(t_cfg.get("replay_capacity", 6000)),
+            search_depth=int(t_cfg.get("search_depth", 3)),
+            adjudicate_bare_king_requires_mate=bool(
+                t_cfg.get("adjudicate_bare_king_requires_mate", True)
+            ),
+            log_game_details=bool(t_cfg.get("log_game_details", False)),
             verbose=True,
         )
+        train_telemetry = trainer.telemetry
     else:
         snapshots = custom_snapshots
+        train_telemetry = None
 
     generations = [s.generation for s in snapshots]
 
@@ -135,11 +164,15 @@ def evaluate_dual_grounds(
         max_workers=int(g_a_cfg.get("parallel_workers", 20)),
     )
     g_a_last_n = int(g_a_cfg.get("eval_last_n_snapshots", 0))
+    g_a_eval_gens = g_a_cfg.get("evaluate_generations")
     tournament_result = ground_a.run_snapshot_tournament(
         snapshots=snapshots,
         games_per_pair=g_a_cfg["games_per_pair"],
         max_moves=g_a_cfg.get("max_moves_eval", 120),
         eval_last_n_snapshots=g_a_last_n,
+        evaluate_generations=g_a_eval_gens,
+        eval_temperature=float(g_a_cfg.get("eval_temperature", 0.05)),
+        search_depth=int(g_a_cfg.get("search_depth", 3)),
         verbose=True,
     )
     internal_elo_dict = GroundASelfPlay.compute_internal_elo(
@@ -225,22 +258,30 @@ def evaluate_dual_grounds(
         time_control=float(g_b_cfg["time_control_per_move"]),
         stockfish_threads=stockfish_threads,
         max_workers=max_workers,
+        stockfish_multipv=int(g_b_cfg.get("stockfish_multipv", 1)),
+        eval_temperature=float(g_b_cfg.get("eval_temperature", 0.05)),
+        search_depth=int(g_b_cfg.get("search_depth", 3)),
         chess_domain=chess_domain,
     )
 
-    # Filter Ground B snapshot contenders based on YAML config (e.g. eval_last_n_snapshots: 2)
-    eval_last_n = g_b_cfg.get("eval_last_n_snapshots")
-    if eval_last_n is not None and isinstance(eval_last_n, int) and eval_last_n > 0:
-        gen_0 = snapshots[0]
-        recent_snaps = snapshots[-eval_last_n:]
-        b_snapshots = [gen_0] if gen_0 not in recent_snaps else []
-        b_snapshots.extend(recent_snaps)
+    # Select Ground B snapshot contenders aligned with the Ground A evaluated generations
+    available_by_gen = {s.generation: s for s in snapshots}
+    b_eval_gens = g_b_cfg.get("evaluate_generations")
+    if b_eval_gens:
+        b_snapshots = [available_by_gen[g] for g in b_eval_gens if g in available_by_gen]
     else:
+        eval_last_n = g_b_cfg.get("eval_last_n_snapshots")
+        if eval_last_n is not None and isinstance(eval_last_n, int) and eval_last_n > 0:
+            b_snapshots = snapshots[-eval_last_n:]
+        else:
+            b_snapshots = snapshots
+    if not b_snapshots:
         b_snapshots = snapshots
 
     external_elos = []
     scores_ratio = []
     win_loss_draw_stats = []
+    b_results = []
 
     for snapshot in b_snapshots:
         res = ground_b.evaluate_snapshot(
@@ -249,9 +290,18 @@ def evaluate_dual_grounds(
             max_moves=g_b_cfg.get("max_moves_eval", 120),
             verbose=True,
         )
+        b_results.append(res)
         external_elos.append(res.estimated_elo)
         scores_ratio.append(res.score)
-        win_loss_draw_stats.append({"wins": res.wins, "losses": res.losses, "draws": res.draws})
+        win_loss_draw_stats.append(
+            {
+                "wins": res.wins,
+                "losses": res.losses,
+                "draws": res.draws,
+                "capped": res.capped,
+                "effective_games": res.effective_games,
+            }
+        )
 
     # --- Programmatic Ratification Metrics ---
     eval_gens = [s.generation for s in b_snapshots]
@@ -259,29 +309,45 @@ def evaluate_dual_grounds(
         internal_elo_dict.get(g, float(g_a_cfg["base_elo_anchor"])) for g in eval_gens
     ]
 
-    mono_a_count = sum(
-        1
-        for i in range(len(matching_internal) - 1)
-        if matching_internal[i + 1] > matching_internal[i]
-    )
-    mono_a_ratio = mono_a_count / float(max(1, len(matching_internal) - 1))
+    # Binary external scores (0-win wall: not discriminative) ...
+    external_elos = [res.estimated_elo for res in b_results]
+    # ... and continuous external signals (discriminative even at a 0-win wall)
+    continuous_external = [
+        (res.avg_sf_eval_agent if res.avg_sf_eval_agent is not None else float(res.avg_game_length))
+        for res in b_results
+    ]
+    survival_lengths = [res.avg_game_length for res in b_results]
+    material_gaps = [
+        res.avg_material_gap_agent if res.avg_material_gap_agent is not None else 0.0
+        for res in b_results
+    ]
 
-    mono_b_count = sum(
-        1 for i in range(len(external_elos) - 1) if external_elos[i + 1] > external_elos[i]
-    )
-    mono_b_ratio = mono_b_count / float(max(1, len(external_elos) - 1))
+    def _monotonic_ratio(series: list[float]) -> float:
+        if len(series) < 2:
+            return 1.0
+        count = sum(1 for i in range(len(series) - 1) if series[i + 1] > series[i])
+        return count / float(len(series) - 1)
 
-    if len(external_elos) > 1 and np.std(external_elos) > 0 and np.std(matching_internal) > 0:
-        corr_matrix = np.corrcoef(matching_internal, external_elos)
+    mono_a_ratio = _monotonic_ratio(matching_internal)
+    mono_b_ratio = _monotonic_ratio(external_elos)
+    mono_b_cont_ratio = _monotonic_ratio(continuous_external)
+
+    if (
+        len(continuous_external) > 1
+        and np.std(continuous_external) > 0
+        and np.std(matching_internal) > 0
+    ):
+        corr_matrix = np.corrcoef(matching_internal, continuous_external)
         pearson_r = float(corr_matrix[0, 1])
     else:
         pearson_r = 0.0
 
-    # --- Verdict Evaluation ---
+    # --- Verdict Evaluation (continuous external signals; binary 0-win wall flagged) ---
     pass_threshold = float(pre_reg["pass_criterion_monotonic_ratio"])
-    if mono_a_ratio >= pass_threshold and mono_b_ratio >= pass_threshold and pearson_r >= 0.80:
+    wall_detected = all(res.score == 0.0 for res in b_results)
+    if mono_a_ratio >= pass_threshold and mono_b_cont_ratio >= pass_threshold and pearson_r >= 0.80:
         verdict = "[bold green]VERDICT: LEARNING_CONFIRMED (PASS)[/bold green]"
-    elif mono_a_ratio >= pass_threshold and (mono_b_ratio < 0.50 or pearson_r < 0.30):
+    elif mono_a_ratio >= pass_threshold and (mono_b_cont_ratio < 0.50 or pearson_r < 0.30):
         verdict = "[bold red]VERDICT: SELF_PLAY_COLLAPSE (FALSIFIED)[/bold red]"
     else:
         verdict = "[bold red]VERDICT: NO_LEARNING (FAIL)[/bold red]"
@@ -290,15 +356,25 @@ def evaluate_dual_grounds(
         "experiment_id": config["experiment_id"],
         "generations": generations,
         "generations_evaluated": eval_gens,
-        "internal_elo_ground_a": internal_elos,
+        "internal_elo_ground_a": matching_internal,
         "external_elo_ground_b": external_elos,
         "stockfish_score_ratios": scores_ratio,
         "win_loss_draw_stats": win_loss_draw_stats,
+        "continuous_external": {
+            "avg_sf_eval_agent": continuous_external,
+            "avg_game_length": survival_lengths,
+            "avg_material_gap_agent": material_gaps,
+            "wall_detected": wall_detected,
+        },
+        "ground_a_termination_counts": dict(tournament_result.termination_counts),
+        "train_telemetry": train_telemetry,
         "metrics": {
             "ground_a_monotonicity_ratio": mono_a_ratio,
-            "ground_b_monotonicity_ratio": mono_b_ratio,
+            "ground_b_monotonicity_ratio_binary": mono_b_ratio,
+            "ground_b_monotonicity_ratio_continuous": mono_b_cont_ratio,
             "pearson_correlation_r": pearson_r,
             "pass_threshold": pass_threshold,
+            "wall_detected": wall_detected,
         },
         "verdict": verdict,
     }
@@ -322,6 +398,7 @@ def main() -> None:
         console.print(
             "\n[bold red][Experiment Interrupted by User (Ctrl+C)] Gracefully shutting down.[/bold red]"
         )
+        _kill_worker_children()
         os._exit(130)
 
     os.makedirs("exports", exist_ok=True)
@@ -339,12 +416,18 @@ def main() -> None:
         f"{results['metrics']['ground_a_monotonicity_ratio'] * 100:.1f}%",
     )
     table_res.add_row(
-        "Ground B Monotonicity",
-        f"{results['metrics']['ground_b_monotonicity_ratio'] * 100:.1f}%",
+        "Ground B Monotonicity (Continuous)",
+        f"{results['metrics']['ground_b_monotonicity_ratio_continuous'] * 100:.1f}%",
     )
     table_res.add_row(
-        "Pearson Correlation (r)", f"{results['metrics']['pearson_correlation_r']:.3f}"
+        "Ground B Monotonicity (Binary Elo)",
+        f"{results['metrics']['ground_b_monotonicity_ratio_binary'] * 100:.1f}%",
     )
+    table_res.add_row(
+        "Pearson Correlation (r)",
+        f"{results['metrics']['pearson_correlation_r']:.3f}",
+    )
+    table_res.add_row("Stockfish 0-Win Wall Detected", str(results["metrics"]["wall_detected"]))
     table_res.add_row("Final Verdict", results["verdict"])
 
     console.print(table_res)

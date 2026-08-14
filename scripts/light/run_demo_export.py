@@ -2,9 +2,14 @@
 
 import random
 
+from rich.console import Console
+from rich.panel import Panel
+
 from hypostases.meta_learning.meta_optimizer import MetaLearner
 from hypostases.meta_learning.meta_state import MetaParameterVector
 from hypostases.simulation.exporter import RunExporter
+
+console = Console()
 
 
 def main():
@@ -15,7 +20,7 @@ def main():
     manifest_path = exporter.initialize_run(
         scenario_name="Active_Sensing_Swarm_Demo", seed=42, agent_names=agent_names
     )
-    print(f"Initialized run manifest: {manifest_path}")
+    console.print(f"[green]Initialized run manifest:[/green] {manifest_path}")
 
     # Set up meta-learners for both agents
     meta_learners = {
@@ -46,7 +51,7 @@ def main():
         # Save checkpoint snapshot every 5 ticks
         if tick % 5 == 0:
             chk_path = exporter.save_checkpoint(tick, tick_meta)
-            print(f"Saved checkpoint at tick {tick}: {chk_path}")
+            console.print(f"[yellow]Saved checkpoint at tick {tick}:[/yellow] {chk_path}")
 
     # Finalize run
     summary_path = exporter.finalize_run(
@@ -57,7 +62,9 @@ def main():
             "status": "SUCCESS",
         }
     )
-    print(f"Finalized run summary: {summary_path}")
+    console.print(
+        Panel(f"[green]Finalized run summary:[/green] {summary_path}", title="Demo Export")
+    )
 
 
 if __name__ == "__main__":

@@ -21,6 +21,8 @@ class SearchConfig:
     time_budget_ms: float = 100.0
     tt_size_mb: int = 16
     quiescence_depth: int = 4
+    max_quiescence_nodes: int = 0
+    max_total_nodes: int = 0
     telemetry_mode: TelemetryMode = TelemetryMode.FAST
 
 
@@ -52,10 +54,44 @@ class AlphaBetaSearch:
         self.quiescence_evaluator = quiescence_evaluator or evaluator
         self.tt: dict[str, tuple[int, float, str]] = {}  # state_key -> (depth, eval, flag)
         self.recorder = TelemetryRecorder(mode=self.config.telemetry_mode)
+        self._qnode_remaining: int | None = (
+            self.config.max_quiescence_nodes if self.config.max_quiescence_nodes > 0 else None
+        )
+        self._node_remaining: int | None = (
+            self.config.max_total_nodes if self.config.max_total_nodes > 0 else None
+        )
+
+    def _reset_qnode_budget(self) -> None:
+        """Resets the per-search quiescence node budget from the current config."""
+        self._qnode_remaining = (
+            self.config.max_quiescence_nodes if self.config.max_quiescence_nodes > 0 else None
+        )
+
+    def _reset_node_budget(self) -> None:
+        """Resets the per-search global node budget from the current config."""
+        self._node_remaining = (
+            self.config.max_total_nodes if self.config.max_total_nodes > 0 else None
+        )
+
+    def _node_budget_exhausted(self) -> bool:
+        """Decrements the global node budget; True when the budget is exhausted.
+
+        Once exhausted, all subsequent search/expansion/evaluation work is skipped
+        and a neutral 0.0 value is returned, so the expensive deep expansion work is
+        capped at roughly `max_total_nodes` budget points. A trailing breadth pass
+        over already-scheduled sibling nodes may still visit shallow nodes, so this
+        bounds cost but does not impose a hard node-count cap.
+        """
+        if self._node_remaining is None:
+            return False
+        self._node_remaining -= 1
+        return self._node_remaining < 0
 
     def search(self, state: Any) -> tuple[Any | None, float, SearchTelemetry]:
         """Performs domain-agnostic iterative deepening negamax search."""
         self.recorder = TelemetryRecorder(mode=self.config.telemetry_mode)
+        self._reset_qnode_budget()
+        self._reset_node_budget()
         start_time = time.perf_counter() * 1000.0
 
         valid_actions = self.domain.valid_actions(state)
@@ -69,7 +105,7 @@ class AlphaBetaSearch:
 
         for depth in range(1, self.config.max_depth + 1):
             elapsed_ms = (time.perf_counter() * 1000.0) - start_time
-            if elapsed_ms >= self.config.time_budget_ms:
+            if elapsed_ms >= self.config.time_budget_ms or self._node_budget_exhausted():
                 break
 
             self.recorder.telemetry.max_pv_depth = depth
@@ -81,7 +117,7 @@ class AlphaBetaSearch:
             ordered_actions = self.ordering_fn(state, valid_actions)
 
             for action in ordered_actions:
-                next_state, _, done, _ = self.domain.step(state, action)
+                next_state, _, _done, _ = self.domain.step(state, action)
 
                 val = -self._negamax(
                     next_state,
@@ -106,6 +142,38 @@ class AlphaBetaSearch:
 
         return best_action, best_eval, self.recorder.get_telemetry()
 
+    def search_root_children(self, state: Any) -> list[tuple[Any, float]]:
+        """Single depth-limited negamax pass returning (action, eval) for every root child.
+
+        Performs one search of depth `max_depth` (no iterative deepening re-search) and
+        returns the value of each root action from the perspective of the side to move at
+        `state`. Root children are searched with full (-inf, inf) windows so every returned
+        eval is exact — safe to feed into a per-move policy (e.g. softmax mixing) rather
+        than only keeping the best move. The transposition table persists across calls.
+        """
+        self.recorder = TelemetryRecorder(mode=self.config.telemetry_mode)
+        self._reset_qnode_budget()
+        self._reset_node_budget()
+        start_time = time.perf_counter() * 1000.0
+
+        valid_actions = self.domain.valid_actions(state)
+        if not valid_actions:
+            return []
+
+        children: list[tuple[Any, float]] = []
+        ordered_actions = self.ordering_fn(state, valid_actions)
+        for action in ordered_actions:
+            next_state, _, _done, _ = self.domain.step(state, action)
+            val = -self._negamax(
+                next_state,
+                self.config.max_depth - 1,
+                -float("inf"),
+                float("inf"),
+                start_time,
+            )
+            children.append((action, float(val)))
+        return children
+
     def _negamax(
         self,
         state: Any,
@@ -115,6 +183,9 @@ class AlphaBetaSearch:
         start_time: float,
     ) -> float:
         self.recorder.record_node(is_quiescence=False)
+
+        if self._node_budget_exhausted():
+            return 0.0
 
         elapsed_ms = (time.perf_counter() * 1000.0) - start_time
         if elapsed_ms >= self.config.time_budget_ms:
@@ -173,6 +244,12 @@ class AlphaBetaSearch:
         beta: float,
     ) -> float:
         self.recorder.record_node(is_quiescence=True)
+        if self._node_budget_exhausted():
+            return 0.0
+        if self._qnode_remaining is not None:
+            self._qnode_remaining -= 1
+            if self._qnode_remaining < 0:
+                return self._evaluate(state)
         stand_pat = self._evaluate(state)
 
         if q_depth <= 0:
@@ -198,5 +275,7 @@ class AlphaBetaSearch:
         return alpha
 
     def _evaluate(self, state: Any) -> float:
+        if self._node_budget_exhausted():
+            return 0.0
         self.recorder.record_leaf_eval()
         return self.recorder.measure("dense_forward_ns", self.evaluator, state)

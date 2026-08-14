@@ -5,12 +5,15 @@ representative trajectory to determine whether Δg growth is linear, superlinear
 or plateaus naturally.
 
 NOT a test — pure logging diagnostic. Run with:
-    python scripts/diag_delta_g_growth.py
+    python scripts/light/diag_delta_g_growth.py
 """
 
 from __future__ import annotations
 
 import numpy as np
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
 
 import hypostases.engine.constants as const
 from hypostases.engine.dynamics import feedback, pi_decision, step_env
@@ -25,6 +28,8 @@ SEED = 100
 N_STEPS = 500
 N_AGENTS = 5
 REPORT_EVERY = 25
+
+console = Console()
 
 rng = np.random.default_rng(SEED)
 xi = np.array([0.2, 0.2, 0.2, 0.2])
@@ -67,22 +72,32 @@ for step in range(1, N_STEPS + 1):
     u_norms.append(mean_u_norm)
 
     if step % REPORT_EVERY == 0:
-        print(f"  step={step:4d}: mean ‖Δg‖={mean_dg:.6f}  mean ‖u‖={mean_u_norm:.6f}")
+        console.print(f"  step={step:4d}: mean ||dg||={mean_dg:.6f}  mean ||u||={mean_u_norm:.6f}")
 
 # Report summary statistics
 arr = np.array(delta_g_norms)
 u_arr = np.array(u_norms)
 
-print("\n=== DIAGNOSTIC 2: ‖Δg_t‖ growth summary ===")
-print(f"  ‖Δg‖ min={arr.min():.6f}  max={arr.max():.6f}  mean={arr.mean():.6f}")
-print(f"  ||Dg|| t=1-100 mean:  {arr[:100].mean():.6f}")
-print(f"  ||Dg|| t=401-500 mean: {arr[400:].mean():.6f}")
-
 growth_ratio = arr[400:].mean() / (arr[:100].mean() + 1e-9)
-print(f"  tail/initial ratio: {growth_ratio:.4f}  (>1 = accelerating, <1 = decelerating)")
-
-print(f"\n  ‖u‖ at t=1: {u_arr[0]:.4f}")
-print(f"  ‖u‖ at t=100: {u_arr[99]:.4f}")
-print(f"  ‖u‖ at t=500: {u_arr[499]:.4f}")
 u_growth = u_arr[499] / (u_arr[0] + 1e-9)
-print(f"  ‖u‖ growth factor over 500 steps: {u_growth:.4f}x")
+
+summary_table = Table(
+    title="DIAGNOSTIC 2: ||dg_t|| growth summary", style="magenta", show_header=True
+)
+summary_table.add_column("Metric", style="cyan")
+summary_table.add_column("Value", style="green")
+summary_table.add_row("||dg|| min", f"{arr.min():.6f}")
+summary_table.add_row("||dg|| max", f"{arr.max():.6f}")
+summary_table.add_row("||dg|| mean", f"{arr.mean():.6f}")
+summary_table.add_row("||dg|| t=1-100 mean", f"{arr[:100].mean():.6f}")
+summary_table.add_row("||dg|| t=401-500 mean", f"{arr[400:].mean():.6f}")
+summary_table.add_row(
+    "tail/initial ratio",
+    f"{growth_ratio:.4f}  (>1 = accelerating, <1 = decelerating)",
+)
+summary_table.add_row("||u|| at t=1", f"{u_arr[0]:.4f}")
+summary_table.add_row("||u|| at t=100", f"{u_arr[99]:.4f}")
+summary_table.add_row("||u|| at t=500", f"{u_arr[499]:.4f}")
+summary_table.add_row("||u|| growth factor over 500 steps", f"{u_growth:.4f}x")
+
+console.print(Panel(summary_table, title="[bold]||dg_t|| Growth Characterization[/bold]"))

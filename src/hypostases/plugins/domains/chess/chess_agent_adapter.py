@@ -7,11 +7,61 @@ and pragmatic-epistemic utility dynamics.
 
 from __future__ import annotations
 
+from typing import Any
+
 import chess
 import numpy as np
 
 from hypostases.engine.types import Characteristics, GoalCategory, GoalHierarchy
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain
+from hypostases.world_model.alphabeta_search import AlphaBetaSearch, SearchConfig
+from hypostases.world_model.nnue_net import Accumulator, extract_halfkp_features
+
+# Max-magnitude scale per tactical feature (used to normalize u_linear so the
+# handcrafted garnish is not dominated by large-scale features like capture_delta).
+FEATURE_SCALES = np.array([9.0, 1.0, 1.0, 10.0, 0.95, 1.0, 10.0, 1.0], dtype=np.float32)
+
+# Search budget for the single-search policy: shallow depth-3 lookahead with a hard
+# quiescence node cap AND a global node budget so tactical middlegame positions
+# cannot explode. Measured (2026-08-14): depth-3 middlegame is ~2000ms unbounded
+# (~11k leaf evals) vs ~250ms bounded at 4096 total nodes; depth-2 is ~220ms.
+SEARCH_DEPTH = 3
+SEARCH_QUIESCENCE_DEPTH = 2
+SEARCH_MAX_QUIESCENCE_NODES = 256
+SEARCH_MAX_TOTAL_NODES = 4096
+SEARCH_TIME_BUDGET_MS = 2000.0
+
+
+def _make_nnue_evaluator(nnue_net: Any) -> Any:
+    """Builds a leaf evaluator doing a single HalfKP extraction per position.
+
+    Side to move is checkmated => -100.0; any other game-over => 0.0; otherwise a
+    single feature extraction feeds the accumulator and dense forward pass.
+    """
+
+    def evaluate(s: chess.Board) -> float:
+        if s.is_checkmate():
+            return -100.0
+        if s.is_game_over():
+            return 0.0
+        w_feats, b_feats, aux = extract_halfkp_features(s)
+        acc = Accumulator()
+        for idx in w_feats:
+            acc.white_acc += nnue_net.W_white[idx]
+        for idx in b_feats:
+            acc.black_acc += nnue_net.W_black[idx]
+        return nnue_net.forward(acc, aux)
+
+    return evaluate
+
+
+def _capture_ordering(state: chess.Board, actions: list[chess.Move]) -> list[chess.Move]:
+    """Capture-first, check-second move ordering for alpha-beta pruning."""
+    return sorted(
+        actions,
+        key=lambda a: (int(state.is_capture(a)), int(state.gives_check(a))),
+        reverse=True,
+    )
 
 
 class ChessAgentAdapter:
@@ -64,6 +114,13 @@ class ChessAgentAdapter:
             self.theta_meta[9] = float(np.log(self._beta_efe / (1.0 - self._beta_efe)))
         else:
             self.theta_meta = np.array(theta_meta, dtype=np.float32)
+
+        # Persistent search engine cache: one AlphaBetaSearch (with a transposition table
+        # surviving across plies) per (nnue_net, depth) combination. Rebuilt whenever a
+        # different net instance is supplied (e.g. a fresh net for a new training game).
+        self._searcher: AlphaBetaSearch | None = None
+        self._search_net: Any | None = None
+        self._search_depth: int = 0
 
     @property
     def beta_efe(self) -> float:
@@ -173,11 +230,20 @@ class ChessAgentAdapter:
         )
 
     def evaluate_efe_utility(
-        self, board: chess.Board, move: chess.Move, depth: int = 2, nnue_net: Any | None = None
+        self,
+        board: chess.Board,
+        move: chess.Move,
+        depth: int = SEARCH_DEPTH,
+        nnue_net: Any | None = None,
     ) -> tuple[float, float, float]:
         """Evaluates pragmatic, epistemic, and total Expected Free Energy utility with search lookahead.
 
         U_total = (1 - β) * U_pragmatic + β * U_epistemic
+
+        Pragmatic evaluation uses a depth-parameterized alpha-beta negamax search with
+        quiescence (capture-first ordering) and the NNUE value net as leaf evaluator.
+        The epistemic term is normalized by max legal branching and kept bounded in
+        [0, 1] so it only weakly biases play (recalibrated EFE mode, AGENTS.md 009).
         """
         test_board = board.copy()
         test_board.push(move)
@@ -185,46 +251,119 @@ class ChessAgentAdapter:
         if test_board.is_checkmate():
             return 100.0, 100.0, 0.0
 
-        # Pragmatic evaluation via NNUENet + AlphaBetaSearch if available
+        # Extract linear tactical features weighted by theta_meta (feature-normalized)
+        features = self.extract_move_features(board, move)
+        goal_categories = list(GoalCategory)
+        u_survival = self.goal_hierarchy.u[goal_categories.index(GoalCategory.SURVIVAL)]
+        u_acquisition = self.goal_hierarchy.u[goal_categories.index(GoalCategory.ACQUISITION)]
+        u_linear = float(
+            np.dot(self.theta_meta[: len(features)], features / FEATURE_SCALES[: len(features)])
+            * (u_survival + u_acquisition)
+        )
+
+        # Pragmatic evaluation via NNUENet + alpha-beta negamax with quiescence
         if nnue_net is not None:
-            from hypostases.world_model.alphabeta_search import AlphaBetaSearch, SearchConfig
-            from hypostases.world_model.nnue_net import extract_halfkp_features
-
-            def nnue_evaluator(s: chess.Board) -> float:
-                acc = nnue_net.create_accumulator(s)
-                _, _, aux = extract_halfkp_features(s)
-                return nnue_net.forward(acc, aux)
-
-            config = SearchConfig(max_depth=depth, time_budget_ms=50.0)
-            searcher = AlphaBetaSearch(domain=self.domain, evaluator=nnue_evaluator, config=config)
-            _, pragmatic_score, _ = searcher.search(test_board)
-            u_pragmatic = float(pragmatic_score)
-        else:
-            features = self.extract_move_features(board, move)
-            goal_categories = list(GoalCategory)
-            u_survival = self.goal_hierarchy.u[goal_categories.index(GoalCategory.SURVIVAL)]
-            u_acquisition = self.goal_hierarchy.u[goal_categories.index(GoalCategory.ACQUISITION)]
-            u_pragmatic = float(
-                np.dot(self.theta_meta[: len(features)], features) * (u_survival + u_acquisition)
+            config = SearchConfig(
+                max_depth=max(1, depth),
+                time_budget_ms=SEARCH_TIME_BUDGET_MS,
+                quiescence_depth=SEARCH_QUIESCENCE_DEPTH,
+                max_quiescence_nodes=SEARCH_MAX_QUIESCENCE_NODES,
+                max_total_nodes=SEARCH_MAX_TOTAL_NODES,
             )
+            searcher = AlphaBetaSearch(
+                domain=self.domain,
+                evaluator=_make_nnue_evaluator(nnue_net),
+                config=config,
+                ordering_fn=_capture_ordering,
+            )
+            # search() returns the value from the perspective of the side to move at
+            # test_board (the opponent after `move`), so negate for the agent's view.
+            _, opponent_value, _ = searcher.search(test_board)
+            u_nnue = float(-opponent_value)
+            u_pragmatic = u_nnue + 0.1 * u_linear
+        else:
+            u_pragmatic = u_linear
 
-        # Epistemic utility: Information gain from future branch entropy
-        epistemic_entropy = np.log(len(list(test_board.legal_moves)) + 1.0)
-        u_epistemic = float(epistemic_entropy * self.characteristics.skill)
+        # Bounded epistemic utility: normalized by max legal branching -> [0, 1]
+        u_epistemic = self.epistemic_utility(test_board)
 
         # Total expected utility with active perception beta mixing
         u_total = (1.0 - self.beta_efe) * u_pragmatic + self.beta_efe * u_epistemic
 
         return u_total, u_pragmatic, u_epistemic
 
+    def epistemic_utility(self, board: chess.Board) -> float:
+        """Bounded epistemic utility for a position: normalized by max branching -> [0, 1]."""
+        n_legal = len(list(board.legal_moves))
+        epistemic_entropy = np.log(n_legal + 1.0) / np.log(31.0)
+        return float(epistemic_entropy * self.characteristics.skill)
+
+    def _goal_scale(self) -> float:
+        goal_categories = list(GoalCategory)
+        u_survival = self.goal_hierarchy.u[goal_categories.index(GoalCategory.SURVIVAL)]
+        u_acquisition = self.goal_hierarchy.u[goal_categories.index(GoalCategory.ACQUISITION)]
+        return float(u_survival + u_acquisition)
+
+    def _move_utility(
+        self,
+        board: chess.Board,
+        move: chess.Move,
+        child_eval: float,
+        use_linear_garnish: bool,
+    ) -> float:
+        """Computes U_total = (1-β)·U_pragmatic + β·U_epistemic for a root move.
+
+        With a value net, U_pragmatic = child_eval + 0.1·U_linear (search dominates); without
+        a net, U_pragmatic = U_linear (handcrafted features only).
+        """
+        features = self.extract_move_features(board, move)
+        u_linear = float(
+            np.dot(self.theta_meta[: len(features)], features / FEATURE_SCALES[: len(features)])
+            * self._goal_scale()
+        )
+        test_board = board.copy()
+        test_board.push(move)
+        u_pragmatic = child_eval + (0.1 * u_linear if use_linear_garnish else u_linear)
+        u_epistemic = self.epistemic_utility(test_board)
+        return (1.0 - self.beta_efe) * u_pragmatic + self.beta_efe * u_epistemic
+
+    def _get_searcher(self, nnue_net: Any, depth: int) -> AlphaBetaSearch:
+        """Returns a cached AlphaBetaSearch bound to `nnue_net`, rebuilt when the net changes."""
+        if (
+            self._searcher is None
+            or self._search_net is not nnue_net
+            or self._search_depth != depth
+        ):
+            config = SearchConfig(
+                max_depth=max(1, depth),
+                time_budget_ms=SEARCH_TIME_BUDGET_MS,
+                quiescence_depth=SEARCH_QUIESCENCE_DEPTH,
+                max_quiescence_nodes=SEARCH_MAX_QUIESCENCE_NODES,
+                max_total_nodes=SEARCH_MAX_TOTAL_NODES,
+            )
+            self._searcher = AlphaBetaSearch(
+                domain=self.domain,
+                evaluator=_make_nnue_evaluator(nnue_net),
+                config=config,
+                ordering_fn=_capture_ordering,
+            )
+            self._search_net = nnue_net
+            self._search_depth = depth
+        return self._searcher
+
     def select_move(
         self,
         board: chess.Board,
         legal_moves: list[chess.Move],
-        depth: int = 2,
+        depth: int = SEARCH_DEPTH,
         nnue_net: Any | None = None,
     ) -> chess.Move:
-        """Selects a legal move using active sensing softmax policy distribution with EFE lookahead search."""
+        """Selects a legal move using active sensing softmax policy distribution with EFE lookahead search.
+
+        With a value net present, a single depth-limited alpha-beta search over the root
+        (one pass, no per-move re-searches) yields an exact eval per child; those evals
+        are mixed with the tactical/linear and epistemic terms before softmax sampling.
+        """
         if not legal_moves:
             raise ValueError("No legal moves available in state.")
 
@@ -235,10 +374,16 @@ class ChessAgentAdapter:
             if test_board.is_checkmate():
                 return move
 
-        utilities = []
-        for move in legal_moves:
-            u_tot, _, _ = self.evaluate_efe_utility(board, move, depth=depth, nnue_net=nnue_net)
-            utilities.append(u_tot)
+        if nnue_net is not None:
+            searcher = self._get_searcher(nnue_net, depth)
+            children = searcher.search_root_children(board)
+            child_eval = dict(children)
+            utilities = [
+                self._move_utility(board, move, child_eval.get(move, 0.0), True)
+                for move in legal_moves
+            ]
+        else:
+            utilities = [self._move_utility(board, move, 0.0, False) for move in legal_moves]
 
         u_arr = np.array(utilities, dtype=np.float32)
 

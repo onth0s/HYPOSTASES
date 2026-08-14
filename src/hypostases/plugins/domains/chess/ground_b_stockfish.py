@@ -10,6 +10,7 @@ from __future__ import annotations
 import contextlib
 import os
 import shutil
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
@@ -24,6 +25,7 @@ import numpy as np
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, SpinnerColumn, TextColumn
 
+from hypostases.plugins.domains.chess.chess_agent_adapter import SEARCH_DEPTH
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain
 from hypostases.plugins.domains.chess.ground_a_self_play import PolicySnapshot
 
@@ -35,7 +37,7 @@ class StockfishBenchmarkResult:
     """Benchmark results for a snapshot against Stockfish reference."""
 
     generation: int
-    score: float  # Score ratio in [0, 1] (wins + 0.5 draws) / N
+    score: float  # Score ratio in [0, 1] (wins + 0.5 draws) / effective games
     games_played: int
     wins: int
     losses: int
@@ -43,6 +45,11 @@ class StockfishBenchmarkResult:
     estimated_elo: float
     reference_elo: float
     avg_game_length: float = 0.0
+    capped: int = 0
+    effective_games: int = 0
+    avg_sf_eval_agent: float | None = None  # mean SF eval (agent perspective) over games
+    last_sf_eval_agent: float | None = None  # mean of last SF eval (agent perspective) per game
+    avg_material_gap_agent: float | None = None  # mean final material balance (agent perspective)
 
 
 class MockStockfishEngine:
@@ -103,6 +110,9 @@ class GroundBStockfish:
         stockfish_threads: int = 1,
         max_workers: int | None = None,
         chess_domain: ChessDomain | None = None,
+        stockfish_multipv: int = 1,
+        eval_temperature: float | None = None,
+        search_depth: int = SEARCH_DEPTH,
     ) -> None:
         if max_workers is None:
             max_workers = os.cpu_count() or 8
@@ -121,6 +131,9 @@ class GroundBStockfish:
         self.reference_elo = reference_elo
         self.time_control = time_control
         self.stockfish_threads = max(1, stockfish_threads)
+        self.stockfish_multipv = max(1, stockfish_multipv)
+        self.eval_temperature = eval_temperature
+        self.search_depth = max(1, search_depth)
         self.max_workers = max(1, max_workers)
         self.domain = chess_domain or ChessDomain()
 
@@ -142,6 +155,11 @@ class GroundBStockfish:
                     # Map lower Elo (< 1320) to UCI Skill Level [0, 20]
                     skill_level = int(np.clip((self.reference_elo - 800) / 26.0, 0, 20))
                     uci_options.update({"Skill Level": skill_level})
+
+                # MultiPV randomization: >1 weakens Stockfish by forcing it to spread
+                # its evaluation across top-N candidate moves (config-gated weaker tier).
+                if self.stockfish_multipv > 1:
+                    uci_options["MultiPV"] = self.stockfish_multipv
 
                 try:
                     engine.configure(uci_options)
@@ -184,8 +202,14 @@ class GroundBStockfish:
         snapshot: PolicySnapshot,
         agent_is_white: bool,
         max_moves: int,
-    ) -> tuple[float, str, int, chess.pgn.Game]:
-        """Executes a single game using a provided persistent engine instance and returns PGN."""
+    ) -> dict[str, Any]:
+        """Executes a single game using a provided persistent engine instance and returns PGN + continuous signals.
+
+        Continuous signals (make Ground B discriminative even at a 0-win wall):
+          avg_sf_eval_agent / last_sf_eval_agent: Stockfish eval in agent perspective
+            (centipawns; higher = agent keeps the position closer).
+          material_gap_agent: final material balance in agent perspective.
+        """
         limit = chess.engine.Limit(time=self.time_control)
         board = self.domain.initial_state()
         num_moves = 0
@@ -206,7 +230,9 @@ class GroundBStockfish:
         agent = ChessAgentAdapter(
             domain=self.domain,
             beta_efe=0.2,
-            temperature=snapshot.temperature,
+            temperature=snapshot.temperature
+            if self.eval_temperature is None
+            else self.eval_temperature,
             theta_meta=snapshot.theta_meta,
         )
         net = NNUENet() if snapshot.nnue_weights is not None else None
@@ -218,26 +244,41 @@ class GroundBStockfish:
             net.W_l2 = snapshot.nnue_weights["W_l2"]
             net.b_l2 = snapshot.nnue_weights["b_l2"]
 
+        sf_evals_agent: list[float] = []
+
         while not board.is_game_over() and num_moves < max_moves:
             legal_moves = self.domain.valid_actions(board)
             if not legal_moves:
                 break
 
             if (board.turn == chess.WHITE) == agent_is_white:
-                chosen_move = agent.select_move(board, legal_moves, depth=2, nnue_net=net)
+                chosen_move = agent.select_move(
+                    board, legal_moves, depth=self.search_depth, nnue_net=net
+                )
             else:
                 play_result = engine.play(board, limit)
                 chosen_move = (
                     play_result.move if play_result.move in legal_moves else legal_moves[0]
                 )
+                # Capture Stockfish's evaluation in agent perspective
+                info = play_result.info
+                if isinstance(info, dict):
+                    score = info.get("score")
+                    if score is not None:
+                        with contextlib.suppress(AttributeError, ValueError):
+                            sf_evals_agent.append(
+                                score.pov(agent_is_white).score(mate_score=100000)
+                            )
 
             node = node.add_variation(chosen_move)
-            board, reward, done, info = self.domain.step(board, chosen_move)
+            board, _reward, _done, _info = self.domain.step(board, chosen_move)
             num_moves += 1
 
         outcome = board.outcome()
         res_str = outcome.result() if outcome is not None else "*"
         game_pgn.headers["Result"] = res_str
+
+        material_gap = self._material_balance(board, agent_is_white)
 
         if outcome is not None:
             agent_won = (
@@ -246,13 +287,43 @@ class GroundBStockfish:
                 else (outcome.winner == chess.BLACK)
             )
             if agent_won:
-                return 1.0, "W", num_moves, game_pgn
+                result_char = "W"
+                score = 1.0
             elif outcome.winner is None:
-                return 0.5, "D", num_moves, game_pgn
+                result_char = "D"
+                score = 0.5
             else:
-                return 0.0, "L", num_moves, game_pgn
+                result_char = "L"
+                score = 0.0
         else:
-            return 0.5, "D", num_moves, game_pgn
+            result_char = "C"
+            score = 0.0
+
+        return {
+            "score": score,
+            "res_char": result_char,
+            "moves": num_moves,
+            "pgn": game_pgn,
+            "avg_sf_eval_agent": float(np.mean(sf_evals_agent)) if sf_evals_agent else None,
+            "last_sf_eval_agent": float(sf_evals_agent[-1]) if sf_evals_agent else None,
+            "material_gap_agent": float(material_gap),
+        }
+
+    @staticmethod
+    def _material_balance(board: chess.Board, agent_is_white: bool) -> float:
+        """Computes final material balance from the agent's perspective."""
+        piece_vals = {
+            chess.PAWN: 1.0,
+            chess.KNIGHT: 3.0,
+            chess.BISHOP: 3.25,
+            chess.ROOK: 5.0,
+            chess.QUEEN: 9.0,
+        }
+        balance = 0.0
+        for p_type, val in piece_vals.items():
+            balance += len(board.pieces(p_type, chess.WHITE)) * val
+            balance -= len(board.pieces(p_type, chess.BLACK)) * val
+        return balance if agent_is_white else -balance
 
     def evaluate_snapshot(
         self,
@@ -261,6 +332,7 @@ class GroundBStockfish:
         max_moves: int = 200,
         seed: int = 42,
         verbose: bool = False,
+        export_pgn_dir: str | Path | None = "exports/pgn/ground_b",
     ) -> StockfishBenchmarkResult:
         """Evaluates a policy snapshot against Stockfish over N games reusing a persistent engine pool."""
         pool_size = min(self.max_workers, games_n)
@@ -276,17 +348,21 @@ class GroundBStockfish:
         wins = 0
         losses = 0
         draws = 0
+        capped = 0
         total_score = 0.0
         completed_count = 0
         game_lengths: list[int] = []
-        winning_pgns: list[chess.pgn.Game] = []
+        sf_eval_means: list[float] = []
+        sf_eval_lasts: list[float] = []
+        material_gaps: list[float] = []
+        all_pgns: list[chess.pgn.Game] = []
         lock = Lock()
 
         engine_queue: Queue[Any] = Queue()
         for eng in engines:
             engine_queue.put(eng)
 
-        def worker_task(game_idx: int) -> tuple[float, str, int, chess.pgn.Game]:
+        def worker_task(game_idx: int) -> dict[str, Any]:
             eng = engine_queue.get()
             try:
                 return self._play_single_game_with_engine(
@@ -301,7 +377,7 @@ class GroundBStockfish:
         # Progress bar showing live score, games finished, and elapsed time per game
         progress_columns = [
             SpinnerColumn(),
-            TextColumn("[bold yellow]Ground B Match[/bold yellow]"),
+            TextColumn("[progress.description]{task.description}"),
             BarColumn(),
             MofNCompleteColumn(),
             TextColumn(
@@ -328,22 +404,34 @@ class GroundBStockfish:
                 futures = [executor.submit(worker_task, game_idx) for game_idx in range(games_n)]
 
                 for future in as_completed(futures):
-                    score, res_char, moves, pgn_game = future.result()
+                    game_result = future.result()
+                    score = game_result["score"]
+                    res_char = game_result["res_char"]
+                    moves = game_result["moves"]
+                    pgn_game = game_result["pgn"]
                     with lock:
                         completed_count += 1
-                        total_score += score
                         game_lengths.append(moves)
-                        if score >= 0.5:
-                            winning_pgns.append(pgn_game)
+                        all_pgns.append(pgn_game)
+                        if game_result["avg_sf_eval_agent"] is not None:
+                            sf_eval_means.append(game_result["avg_sf_eval_agent"])
+                        if game_result["last_sf_eval_agent"] is not None:
+                            sf_eval_lasts.append(game_result["last_sf_eval_agent"])
+                        material_gaps.append(game_result["material_gap_agent"])
                         if res_char == "W":
                             wins += 1
+                            total_score += score
                         elif res_char == "L":
                             losses += 1
-                        else:
+                            total_score += score
+                        elif res_char == "D":
                             draws += 1
+                            total_score += score
+                        else:
+                            capped += 1
                         progress.update(task_id, advance=1, wins=wins, losses=losses, draws=draws)
                         console.print(
-                            f"  [cyan][Game {completed_count}/{games_n} Completed][/cyan] Result: [bold]{res_char}[/bold] | Moves: {moves} | Score: {wins}W-{losses}L-{draws}D"
+                            f"  [cyan][Game {completed_count}/{games_n} Completed][/cyan] Result: [bold]{res_char}[/bold] | Moves: {moves} | Score: {wins}W-{losses}L-{draws}D [bold magenta]({capped} capped)[/bold magenta]"
                         )
         except KeyboardInterrupt:
             console.print(
@@ -354,23 +442,28 @@ class GroundBStockfish:
         finally:
             self._close_engine_pool(engines)
 
-        # Export non-loss PGNs (Wins & Draws) to exports/ground_b_winning_games.pgn
-        if winning_pgns:
-            export_dir = Path("exports")
-            export_dir.mkdir(exist_ok=True)
-            pgn_file_path = export_dir / "ground_b_winning_games.pgn"
-            with open(pgn_file_path, "a", encoding="utf-8") as f:
-                for pgn_game in winning_pgns:
+        # Export all Ground B PGN games
+        if export_pgn_dir and all_pgns:
+            out_dir = Path(export_pgn_dir)
+            out_dir.mkdir(parents=True, exist_ok=True)
+            pgn_file_path = out_dir / f"ground_b_gen{snapshot.generation:02d}_vs_stockfish.pgn"
+            with open(pgn_file_path, "w", encoding="utf-8") as f:
+                for pgn_game in all_pgns:
                     print(pgn_game, file=f, end="\n\n")
 
-        score_ratio = total_score / float(games_n)
+        effective_games = games_n - capped
+        score_ratio = total_score / float(effective_games) if effective_games > 0 else 0.0
         estimated_elo = self.logistic_elo_fit(score_ratio, self.reference_elo)
         avg_len = float(np.mean(game_lengths)) if game_lengths else 0.0
 
         if verbose:
             console.print(
-                f"    [bold yellow]Final Score:[/bold yellow] {wins}W-{losses}L-{draws}D ({score_ratio * 100:.1f}%), Est. Elo: [bold cyan]{estimated_elo:.1f}[/bold cyan] (Avg Length: {avg_len:.1f} moves)"
+                f"    [bold yellow]Final Score:[/bold yellow] {wins}W-{losses}L-{draws}D ({score_ratio * 100:.1f}%) | Capped: {capped} | Est. Elo: [bold cyan]{estimated_elo:.1f}[/bold cyan] (Avg Length: {avg_len:.1f} moves)"
             )
+            if sf_eval_means:
+                console.print(
+                    f"    [bold cyan]Continuous:[/bold cyan] Avg SF eval (agent) [bold]{np.mean(sf_eval_means):+.0f}[/bold] | Last [bold]{np.mean(sf_eval_lasts):+.0f}[/bold] | Material gap [bold]{np.mean(material_gaps):+.1f}[/bold]"
+                )
 
         return StockfishBenchmarkResult(
             generation=snapshot.generation,
@@ -382,6 +475,11 @@ class GroundBStockfish:
             estimated_elo=estimated_elo,
             reference_elo=self.reference_elo,
             avg_game_length=avg_len,
+            capped=capped,
+            effective_games=effective_games,
+            avg_sf_eval_agent=float(np.mean(sf_eval_means)) if sf_eval_means else None,
+            last_sf_eval_agent=float(np.mean(sf_eval_lasts)) if sf_eval_lasts else None,
+            avg_material_gap_agent=float(np.mean(material_gaps)) if material_gaps else None,
         )
 
     @staticmethod

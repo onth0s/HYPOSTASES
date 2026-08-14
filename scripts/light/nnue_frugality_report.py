@@ -6,9 +6,9 @@ Spec Ref: DISSONANCES.md D-002, D-003, D-005, D-013
 from __future__ import annotations
 
 import time
+
 import chess
 import numpy as np
-
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table

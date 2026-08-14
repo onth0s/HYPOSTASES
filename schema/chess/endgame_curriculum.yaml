@@ -1,0 +1,70 @@
+# ==============================================================================
+# HYPOSTASES Chess Endgame Curriculum Presets
+# Rule 006: Primacy of Data-Driven YAML Approach
+# Rule 003: Branch audit — each preset is a state-dependent training seed
+#           (mate-in-N verified with bundled Stockfish @ depth 22), NOT a
+#           declared simplification of the game model.
+# ==============================================================================
+#
+# Purpose: seed a fraction of self-play training games from mate-able/winning
+# endgame positions so that mate conversion and king-proximity patterns appear
+# in the value-net training distribution (fixes the "no checkmate ever learned"
+# pathology of pure from-start self-play).
+#
+# Constraints verified for every preset:
+#   * Position is legal (python-chess `Board.is_valid()`).
+#   * Side to move is White and is NOT in check.
+#   * `mate_in`: full-move distance to a forced mate as reported by Stockfish 18
+#     at depth 22 (verified 2026-08-14). `mate_in: null` + `winning: true`
+#     means the position is clearly winning (SF eval >= +5.0 pawns) but not a
+#     forced mate within the verification horizon.
+#
+# Declared simplification (Rule 003 branch audit): KBBK / KBNK endgames are
+# NOT included. They are forced mates but require 19-33 moves of precise play
+# and cannot be verified at shallow search depth, so they would produce capped
+# (material-tanh) labels instead of mate-conversion signal in early training.
+
+curriculum:
+  description: "Mate-able and winning endgame conversion presets for NNUE value training"
+  side_to_move: "white"
+  presets:
+    - id: kqk_kg6qh5
+      fen: "4k3/8/6K1/7Q/8/8/8/8 w - - 0 1"
+      material: "KQK"
+      mate_in: 7
+      winning: true
+    - id: kqk_kg2qf3
+      fen: "4k3/8/8/8/8/5Q2/6K1/8 w - - 0 1"
+      material: "KQK"
+      mate_in: 7
+      winning: true
+    - id: krk_kg6rh7
+      fen: "4k3/7R/6K1/8/8/8/8/8 w - - 0 1"
+      material: "KRK"
+      mate_in: 6
+      winning: true
+    - id: krk_kg6rc7
+      fen: "4k3/2R5/6K1/8/8/8/8/8 w - - 0 1"
+      material: "KRK"
+      mate_in: 8
+      winning: true
+    - id: krk_kg2ra1
+      fen: "4k3/8/8/8/8/8/6K1/R7 w - - 0 1"
+      material: "KRK"
+      mate_in: 12
+      winning: true
+    - id: krkp_kg2re5e6
+      fen: "4k3/8/4P3/4R3/8/8/6K1/8 w - - 0 1"
+      material: "KRKP"
+      mate_in: 6
+      winning: true
+    - id: kpk_opposition
+      fen: "4k3/8/4K3/4P3/8/8/8/8 w - - 0 1"
+      material: "KPK"
+      mate_in: null
+      winning: true
+    - id: kpk_far
+      fen: "8/8/8/4K3/4P3/8/8/4k3 w - - 0 1"
+      material: "KPK"
+      mate_in: null
+      winning: true

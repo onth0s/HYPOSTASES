@@ -1,8 +1,10 @@
 """Ground A — Self-Play Training and Snapshot Tournament Evaluation.
 
 Tests policy improvement against internal past selves without external reference.
-Computes Bradley-Terry (Bayeselo-style) internal Elo scale anchored at generation 0 = 1000.
-Logs draw-rate and game-length collapse metrics.
+Computes Bradley-Terry (Bayeselo-style) internal Elo scale anchored at the oldest
+evaluated generation = 1000. Logs draw-rate and game-length collapse metrics.
+The compared generations are configured via an explicit evaluate_generations list,
+decoupled from the snapshot storage cadence.
 """
 
 from __future__ import annotations
@@ -13,6 +15,7 @@ import signal
 from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 import chess
@@ -20,7 +23,10 @@ import numpy as np
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, SpinnerColumn, TextColumn
 
-from hypostases.plugins.domains.chess.chess_agent_adapter import ChessAgentAdapter
+from hypostases.plugins.domains.chess.chess_agent_adapter import (
+    SEARCH_DEPTH,
+    ChessAgentAdapter,
+)
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain
 
 console = Console()
@@ -41,9 +47,11 @@ def _worker_run_ground_a_game(
     game_seed: int,
     nnue_weights_white: dict[str, np.ndarray] | None = None,
     nnue_weights_black: dict[str, np.ndarray] | None = None,
+    search_depth: int = SEARCH_DEPTH,
 ) -> tuple[float, float, int, str]:
     """Top-level worker running one Ground A self-play game between two policy snapshots."""
     import random
+
     from hypostases.world_model.nnue_net import NNUENet
 
     random.seed(game_seed)
@@ -78,7 +86,12 @@ def _worker_run_ground_a_game(
     board = domain.initial_state()
     num_moves = 0
     done = False
-    info: dict[str, Any] = {}
+
+    game_pgn = chess.pgn.Game()
+    game_pgn.headers["Event"] = "HYPOSTASES Ground A Self-Play Tournament"
+    game_pgn.headers["White"] = f"HYPOSTASES Gen {game_seed % 1000:02d}"
+    game_pgn.headers["Black"] = f"HYPOSTASES Gen {game_seed % 1000:02d}"
+    node = game_pgn
 
     while not done and num_moves < max_moves:
         legal_moves = domain.valid_actions(board)
@@ -86,23 +99,65 @@ def _worker_run_ground_a_game(
             break
 
         if board.turn == chess.WHITE:
-            chosen_move = agent_w.select_move(board, legal_moves, nnue_net=net_w)
+            chosen_move = agent_w.select_move(
+                board, legal_moves, depth=search_depth, nnue_net=net_w
+            )
         else:
-            chosen_move = agent_b.select_move(board, legal_moves, nnue_net=net_b)
+            chosen_move = agent_b.select_move(
+                board, legal_moves, depth=search_depth, nnue_net=net_b
+            )
 
-        board, reward, done, info = domain.step(board, chosen_move)
+        node = node.add_variation(chosen_move)
+        board, _reward, _done, _info = domain.step(board, chosen_move)
         num_moves += 1
 
-    if not done:
-        return 0.5, 0.5, num_moves, "max_moves_exceeded"
+    outcome = board.outcome()
+    res_str = outcome.result() if outcome is not None else "*"
+    game_pgn.headers["Result"] = res_str
 
-    winner = info.get("winner")
-    if winner is True:
-        return 1.0, 0.0, num_moves, info.get("done_reason", "checkmate")
-    elif winner is False:
-        return 0.0, 1.0, num_moves, info.get("done_reason", "checkmate")
+    pgn_text = str(game_pgn)
+
+    if outcome is not None:
+        if outcome.winner is not None:
+            if outcome.winner == chess.WHITE:
+                return 1.0, 0.0, num_moves, outcome.termination.name, pgn_text
+            else:
+                return 0.0, 1.0, num_moves, outcome.termination.name, pgn_text
+        return 0.5, 0.5, num_moves, outcome.termination.name, pgn_text
+
+    return 0.5, 0.5, num_moves, "max_moves_exceeded", pgn_text
+
+
+def _select_tournament_pairs(
+    snapshots: list[PolicySnapshot],
+    evaluate_generations: list[int] | None = None,
+    eval_last_n_snapshots: int = 0,
+) -> list[tuple[PolicySnapshot, PolicySnapshot]]:
+    """Selects ordered matchup pairs for the internal-Elo tournament.
+
+    Decouples which generations are compared from the snapshot storage cadence:
+    - evaluate_generations (preferred): explicit list of generations to pit against
+      each other in a mini round-robin (all i<j pairs), at any spacing. Entries not
+      present among the stored snapshots are ignored.
+    - eval_last_n_snapshots > 0 (fallback alias): the last N stored snapshots.
+    - Otherwise (0 / None): full round-robin over all stored snapshots.
+    """
+    by_gen = {s.generation: s for s in snapshots}
+
+    if evaluate_generations is not None and len(evaluate_generations) > 0:
+        target_gens = [g for g in evaluate_generations if g in by_gen]
+        target_snaps = [by_gen[g] for g in sorted(target_gens)]
+    elif eval_last_n_snapshots > 0:
+        target_snaps = snapshots[-eval_last_n_snapshots:]
     else:
-        return 0.5, 0.5, num_moves, info.get("done_reason", "draw")
+        target_snaps = snapshots
+
+    pairs: list[tuple[PolicySnapshot, PolicySnapshot]] = []
+    for i, s1 in enumerate(target_snaps):
+        for j, s2 in enumerate(target_snaps):
+            if i < j and s1.generation != s2.generation:
+                pairs.append((s1, s2))
+    return pairs
 
 
 @dataclass
@@ -127,6 +182,7 @@ class TournamentResult:
     games: dict[tuple[int, int], int] = field(default_factory=dict)  # (p1, p2) -> total games
     draw_counts: dict[tuple[int, int], int] = field(default_factory=dict)
     game_lengths: list[int] = field(default_factory=list)
+    termination_counts: dict[str, int] = field(default_factory=dict)
 
 
 class GroundASelfPlay:
@@ -160,7 +216,7 @@ class GroundASelfPlay:
             )
             chosen_move = current_policy(board, legal_moves)
 
-            board, reward, done, info = self.domain.step(board, chosen_move)
+            board, _reward, _done, _info = self.domain.step(board, chosen_move)
             num_moves += 1
 
         if not done:
@@ -177,49 +233,37 @@ class GroundASelfPlay:
     def run_snapshot_tournament(
         self,
         snapshots: list[PolicySnapshot],
-        games_per_pair: int = 10,
-        max_moves: int = 200,
-        eval_last_n_snapshots: int = 0,
+        games_per_pair: int = 8,
+        max_moves: int = 120,
         seed: int = 42,
-        verbose: bool = False,
+        eval_temperature: float | None = None,
+        verbose: bool = True,
+        search_depth: int = SEARCH_DEPTH,
+        evaluate_generations: list[int] | None = None,
+        eval_last_n_snapshots: int = 0,
+        export_pgn_dir: str | Path | None = "exports/pgn/ground_a",
     ) -> TournamentResult:
-        """Runs parallel tournament between snapshots (round-robin if eval_last_n_snapshots=0, or Gen 0 vs LAST + sequential recent steps)."""
+        """Runs a parallel mini round-robin tournament between the evaluated generations.
+
+        The compared generations are decoupled from the snapshot storage cadence via
+        evaluate_generations (explicit list) or eval_last_n_snapshots (last N fallback).
+
+        eval_temperature holds the softmax temperature fixed across all evaluated
+        snapshots so internal-Elo differences measure policy quality rather than
+        exploration-temperature decay.
+        """
         random.seed(seed)
         np.random.seed(seed)
 
         snapshot_ids = [s.generation for s in snapshots]
         result = TournamentResult(snapshot_ids=snapshot_ids)
 
-        pairs = []
-        if eval_last_n_snapshots > 0 and len(snapshots) > 2:
-            gen_0 = snapshots[0]
-            gen_last = snapshots[-1]
-            # 1. Anchor matchup: Gen 0 vs Gen LAST
-            if gen_0.generation != gen_last.generation:
-                pairs.append((gen_0, gen_last))
-
-            # 2. Sequential recent steps: (LAST-1 vs LAST), (LAST-2 vs LAST-1)... for N steps
-            n_bound = min(eval_last_n_snapshots + 1, len(snapshots))
-            recent = snapshots[-n_bound:]
-            for idx in range(len(recent) - 1):
-                s1, s2 = recent[idx], recent[idx + 1]
-                pair_tuple = (s1, s2)
-                inv_tuple = (s2, s1)
-                if (
-                    pair_tuple not in pairs
-                    and inv_tuple not in pairs
-                    and s1.generation != s2.generation
-                ):
-                    pairs.append(pair_tuple)
-        else:
-            for i, s1 in enumerate(snapshots):
-                for j, s2 in enumerate(snapshots):
-                    if i < j:
-                        pairs.append((s1, s2))
+        pairs = _select_tournament_pairs(snapshots, evaluate_generations, eval_last_n_snapshots)
+        participating = {s.generation for pair in pairs for s in pair}
 
         if verbose:
             console.print(
-                f"\n[Ground A] Starting Parallel Self-Play Tournament ({len(snapshots)} snapshots, {len(pairs)} matchups across {self.max_workers} workers)..."
+                f"\n[Ground A] Starting Parallel Self-Play Tournament ({len(participating)} snapshots, {len(pairs)} matchups across {self.max_workers} workers)..."
             )
 
         total_games = len(pairs) * games_per_pair
@@ -262,7 +306,8 @@ class GroundASelfPlay:
             for s1, s2 in pairs:
                 th1 = s1.theta_meta if s1.theta_meta is not None else default_theta
                 th2 = s2.theta_meta if s2.theta_meta is not None else default_theta
-                t1, t2 = s1.temperature, s2.temperature
+                t1 = s1.temperature if eval_temperature is None else eval_temperature
+                t2 = s2.temperature if eval_temperature is None else eval_temperature
 
                 for game_idx in range(games_per_pair):
                     g_seed = seed + game_counter * 101
@@ -278,6 +323,7 @@ class GroundASelfPlay:
                             g_seed,
                             s1.nnue_weights,
                             s2.nnue_weights,
+                            search_depth,
                         )
                         futures_map[fut] = (s1.generation, s2.generation, True)
                     else:
@@ -292,16 +338,27 @@ class GroundASelfPlay:
                             g_seed,
                             s2.nnue_weights,
                             s1.nnue_weights,
+                            search_depth,
                         )
                         futures_map[fut] = (s1.generation, s2.generation, False)
                     game_counter += 1
 
             for future in as_completed(futures_map):
                 g1, g2, is_s1_white = futures_map[future]
-                w_score, b_score, moves, reason = future.result()
+                w_score, b_score, moves, reason, pgn_text = future.result()
 
                 stats = pair_matchup_stats[(g1, g2)]
                 stats["lengths"].append(moves)
+                result.termination_counts[reason] = result.termination_counts.get(reason, 0) + 1
+
+                if export_pgn_dir:
+                    from pathlib import Path
+
+                    out_dir = Path(export_pgn_dir)
+                    out_dir.mkdir(parents=True, exist_ok=True)
+                    pgn_file = out_dir / f"ground_a_gen{g1:02d}_vs_gen{g2:02d}.pgn"
+                    with open(pgn_file, "a", encoding="utf-8") as f:
+                        f.write(pgn_text + "\n\n")
 
                 if is_s1_white:
                     stats["score_g1"] += w_score
@@ -321,6 +378,21 @@ class GroundASelfPlay:
                         stats["draws"] += 1
 
                 progress.update(task_id, advance=1)
+                _p1_gen, _p2_gen = (g1, g2) if is_s1_white else (g2, g1)
+                agent_res = (
+                    "W"
+                    if (w_score == 1.0 if is_s1_white else b_score == 1.0)
+                    else ("L" if (b_score == 1.0 if is_s1_white else w_score == 1.0) else "D")
+                )
+                res_style = (
+                    "bold green"
+                    if agent_res == "W"
+                    else ("bold red" if agent_res == "L" else "yellow")
+                )
+                if verbose:
+                    console.print(
+                        f"  [cyan][Ground A Game][/cyan] Gen {g1:02d} vs Gen {g2:02d} | Result: [{res_style}]{agent_res}[/{res_style}] | Moves: {moves:02d} | Reason: {reason}"
+                    )
 
         digits = len(str(max(snapshot_ids))) if snapshot_ids else 2
         for (g1, g2), stats in pair_matchup_stats.items():

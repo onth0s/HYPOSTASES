@@ -6,7 +6,6 @@ Generates scratch/ARCHITECTURE_DEPENDENCY_AUDIT.md artifact.
 
 import ast
 from pathlib import Path
-import pytest
 
 FORBIDDEN_IMPORTS = {
     "chess",

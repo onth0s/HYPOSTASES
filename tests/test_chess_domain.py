@@ -78,6 +78,7 @@ def test_ground_b_stockfish_mock_fallback() -> None:
 
     assert res.generation == 0
     assert res.games_played == 2
-    assert res.wins + res.losses + res.draws == 2
+    assert res.wins + res.losses + res.draws + res.capped == 2
+    assert res.effective_games == 2 - res.capped
     assert res.reference_elo == 1300.0
     assert res.estimated_elo > 0.0

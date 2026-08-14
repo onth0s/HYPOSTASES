@@ -6,22 +6,12 @@ Spec Ref: Rule 013 (Color output with rich), Rule 014 (Light script <10s runtime
 from __future__ import annotations
 
 import time
-import chess
 
+import chess
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from hypostases.engine.types import (
-    Action,
-    ActionType,
-    Characteristics,
-    GoalHierarchy,
-    PowerExternal,
-    WorldModel,
-    AgentState,
-)
-from hypostases.engine.dynamics import evolve, feedback, pi_decision, step_env
 from hypostases.plugins.domains.chess.chess_agent_adapter import ChessAgentAdapter
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain
 from hypostases.world_model.nnue_net import NNUENet
