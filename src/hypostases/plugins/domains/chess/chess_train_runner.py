@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import signal
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -331,8 +331,8 @@ def run_chess_training(
         snapshots_meta=snapshots_meta,
         started_at=started_at,
         interrupted_at_gen=interrupted_at_gen,
-        interrupted_at=datetime.now(UTC).isoformat() if _interrupted[0] else None,
-        completed_at=datetime.now(UTC).isoformat() if not _interrupted[0] else None,
+        interrupted_at=datetime.now(timezone.utc).isoformat() if _interrupted[0] else None,
+        completed_at=datetime.now(timezone.utc).isoformat() if not _interrupted[0] else None,
     )
 
     # ------------------------------------------------------------------

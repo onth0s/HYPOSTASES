@@ -8,13 +8,14 @@ name = "hypostases"
 version = "0.4.0"
 
 description = "Agent-based modeling framework — formal specification and reference implementation"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 
 license = {text = "MIT"}
 dependencies = [
     "numpy>=1.24",
     "pyyaml>=6.0",
     "rich>=13.0",
+    "rich-argparse>=1.4.0",
 ]
 
 [project.optional-dependencies]

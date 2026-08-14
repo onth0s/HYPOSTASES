@@ -13,7 +13,7 @@ import shutil
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from datetime import UTC
+from datetime import datetime, timezone
 from pathlib import Path
 from queue import Queue
 from threading import Lock
