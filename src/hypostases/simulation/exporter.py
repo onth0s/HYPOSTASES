@@ -4,14 +4,14 @@ Rule 011 & Rule 006 compliant.
 """
 
 import os
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import yaml
 
 from hypostases.meta_learning.meta_state import MetaParameterVector
 
-UTC = UTC
+UTC = timezone.utc  # Python 3.10 compat: datetime.UTC only exists in 3.11+
 
 
 class RunExporter:
