@@ -41,7 +41,7 @@ class UnifiedRunManager:
         Returns the resolved run directory path.
         """
         if run_id is None:
-            ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+            ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
             run_id = f"run_{ts}"
 
         run_dir = self.base_dir / run_id
@@ -155,6 +155,14 @@ class UnifiedRunManager:
         if extra:
             metadata.update(extra)
         self._atomic_write_json(run_dir / "run_metadata.json", metadata)
+
+    def save_run_config(self, run_dir: Path, config: dict[str, Any]) -> None:
+        """Persists the effective resolved training configuration (Rule 006).
+
+        Records the post-precedence config actually used by the run so experiments
+        remain reproducible from the run directory alone.
+        """
+        self._atomic_write_yaml(run_dir / "config.yaml", config)
 
     def load_run_metadata(self, run_dir: Path) -> dict[str, Any]:
         """Loads run_metadata.json from a run directory."""

@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import chess
 import pytest
 
 from hypostases.domains.base import Domain
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain
-from hypostases.plugins.domains.chess.ground_a_self_play import GroundASelfPlay, PolicySnapshot
+from hypostases.plugins.domains.chess.ground_a_self_play import (
+    GroundASelfPlay,
+    PolicySnapshot,
+    run_ground_a_benchmark,
+)
 from hypostases.plugins.domains.chess.ground_b_stockfish import (
     GroundBStockfish,
 )
@@ -59,6 +65,36 @@ def test_ground_a_self_play_tournament_execution() -> None:
     elo_ratings = GroundASelfPlay.compute_internal_elo(result, base_elo=1000.0)
     assert 0 in elo_ratings
     assert 5 in elo_ratings
+
+
+def test_ground_a_benchmark_wrapper_delegates(tmp_path: Path) -> None:
+    """Verifies the module-level run_ground_a_benchmark wrapper runs the tournament.
+
+    Exercises the exact entry point imported by the chess training runner and
+    asserts PGN artifacts land directly in the requested output directory.
+    """
+
+    def random_policy(board: chess.Board, legal_moves: list[chess.Move]) -> chess.Move:
+        return legal_moves[0]
+
+    s0 = PolicySnapshot(generation=0, policy_fn=random_policy)
+    s5 = PolicySnapshot(generation=5, policy_fn=random_policy)
+
+    result = run_ground_a_benchmark(
+        snapshots=[s0, s5],
+        pgn_output_dir=str(tmp_path),
+        games_per_pair=2,
+        max_moves=10,
+        verbose=False,
+        max_workers=2,
+    )
+
+    assert result.snapshot_ids == [0, 5]
+    assert (0, 5) in result.games
+    assert result.games[(0, 5)] == 2
+    pgn_files = list(tmp_path.glob("*.pgn"))
+    assert len(pgn_files) == 1
+    assert pgn_files[0].name == "ground_a_gen00_vs_gen05.pgn"
 
 
 def test_ground_b_stockfish_mock_fallback() -> None:

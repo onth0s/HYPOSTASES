@@ -16,7 +16,7 @@ training:
   min_temperature: 0.20               # Soft temperature floor ensuring stochastic exploration
   feature_basis_k: 10                 # Meta-parameter vector dimension K (8 tactical features + 1 temperature + 1 beta_efe)
   initial_priors: "uniform"            # Prior mode for θ_meta: "random" (isotropic uniform U(0.3,1.0)), "uniform" (ones), or list
-  max_moves_training: 200             # Move cap per self-play training game; long enough to reach real outcomes, bounded vs the 150-ply (75-move) rule grind
+  max_moves_training: 240             # Move cap per self-play training game; long enough to reach real outcomes, bounded vs the 150-ply (75-move) rule grind
   early_adjudication_material: 8.0    # Fallback material adjudication (only after move 15, non-curriculum games): Win/Loss if |material| >= 8 (decisive-but-not-extreme edges adjudicate early)
   adjudicate_bare_king_requires_mate: true # Never adjudicate when the losing side has a bare king and the winner holds mating material (KQK/KRK/etc. must play to mate so conversion is learned)
   search_depth: 3                    # Alpha-beta search depth for move selection (training + eval); global node budget (4096) keeps middlegame ~250ms
@@ -27,7 +27,7 @@ training:
   nnue_epochs: 15                     # NNUE SGD epochs executed per generation completion
   nnue_learning_rate: 0.003           # NNUE SGD learning rate
   replay_capacity: 4000               # FIFO replay buffer capacity (opening + curriculum positions combined)
-  generations: 24                     # Total self-play training generations to execute
+  generations: 48                     # Total self-play training generations to execute
   games_per_generation: 32            # Number of self-play games executed per generation
   log_game_details: false             # Print every per-game submit/result line (default off; GEN SUMMARY + progress bars remain)
 
@@ -36,8 +36,8 @@ training:
 # ------------------------------------------------------------------------------
 ground_a:
   parallel_workers: 20                # Multiprocessing worker pool size (bypasses Python GIL for 100% CPU usage)
-  snapshot_interval_k: 2              # Storage cadence: snapshot saved every K generations (1 = store every gen)
-  evaluate_generations: [6, 12, 18, 24]  # Explicit generations to compare (mini round-robin, any spacing; decoupled from cadence)
+  snapshot_interval_k: 8              # Storage cadence: snapshot saved every K generations (1 = store every gen)
+  evaluate_generations: [24, 48]  # Explicit generations to compare (mini round-robin, any spacing; decoupled from cadence)
   eval_last_n_snapshots: 0            # Fallback alias: last N stored snapshots (0 = all). Ignored when evaluate_generations is set.
   games_per_pair: 12                  # Number of head-to-head games per snapshot pair (4 gens -> 6 pairs * 12 = 72 games)
   max_moves_eval: 360                 # Maximum move limit per evaluation game in Ground A tournament
@@ -49,8 +49,8 @@ ground_a:
 # 3. Ground B Parameters (External Benchmark vs. Stockfish 18 Reference Engine)
 # ------------------------------------------------------------------------------
 ground_b:
-  games_per_elo_estimate_n: 24       # Total benchmark games played per snapshot against Stockfish 18
-  evaluate_generations: [12, 24]   # Explicit generations to benchmark (aligned with Ground A for Pearson correlation)
+  games_per_elo_estimate_n: 32       # Total benchmark games played per snapshot against Stockfish 18
+  evaluate_generations: [24, 48]   # Explicit generations to benchmark (aligned with Ground A for Pearson correlation)
   eval_last_n_snapshots: 0            # Fallback alias: last N stored snapshots (0 = all). Ignored when evaluate_generations is set.
   max_moves_eval: 360                 # Maximum move limit per benchmark game against Stockfish
   calibration_method: "UCI_Elo"       # Calibration mapping for Stockfish difficulty rating

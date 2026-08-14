@@ -261,9 +261,7 @@ class GroundASelfPlay:
         if export_pgn_dir:
             pgn_out_dir = Path(export_pgn_dir)
             if timestamp_runs:
-                from datetime import datetime
-
-                ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+                ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
                 pgn_out_dir = pgn_out_dir / f"run_{ts}"
             pgn_out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -474,3 +472,36 @@ class GroundASelfPlay:
         elo_ratings = {snapshots[i]: float(elo_raw[i] + anchor_offset) for i in range(n)}
 
         return elo_ratings
+
+
+def run_ground_a_benchmark(
+    snapshots: list[PolicySnapshot],
+    pgn_output_dir: str | Path | None = None,
+    games_per_pair: int = 8,
+    max_moves: int = 120,
+    seed: int = 42,
+    eval_temperature: float | None = None,
+    verbose: bool = True,
+    search_depth: int = SEARCH_DEPTH,
+    max_workers: int | None = None,
+) -> TournamentResult:
+    """Runs the Ground A self-play snapshot tournament as a module-level benchmark.
+
+    Convenience entry point wrapping :class:`GroundASelfPlay.run_snapshot_tournament`
+    so callers (e.g. the chess training runner) can invoke the benchmark without
+    constructing a harness. PGN files are written directly into ``pgn_output_dir``
+    (no timestamped subdirectory); when omitted, the harness default
+    ``exports/pgn/ground_a`` is used.
+    """
+    harness = GroundASelfPlay(max_workers=max_workers)
+    return harness.run_snapshot_tournament(
+        snapshots,
+        games_per_pair=games_per_pair,
+        max_moves=max_moves,
+        seed=seed,
+        eval_temperature=eval_temperature,
+        verbose=verbose,
+        search_depth=search_depth,
+        export_pgn_dir=pgn_output_dir or "exports/pgn/ground_a",
+        timestamp_runs=False,
+    )

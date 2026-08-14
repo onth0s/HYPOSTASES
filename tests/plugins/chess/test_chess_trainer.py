@@ -69,3 +69,34 @@ def test_execute_run_generation_barrier_ordering() -> None:
     for snap in snapshots:
         assert np.all(np.isfinite(snap.theta_meta))
         assert np.all(snap.theta_meta[:8] >= 0.0)
+
+
+def test_execute_run_interrupt_flag_short_circuits() -> None:
+    """A tripped interrupt_flag must stop training before generation 1 begins.
+
+    The run returns only the generation-0 snapshot, does not hang, and leaves no
+    dangling gradient batches from a partial generation.
+    """
+    trainer = ChessSelfPlayTrainer(
+        learning_rate=0.05,
+        beta_efe=0.05,
+        initial_temperature=0.8,
+        max_workers=2,
+    )
+    snapshots = trainer.execute_self_play_training_run(
+        total_generations=10,
+        snapshot_interval_k=2,
+        games_per_generation=2,
+        seed=11,
+        max_moves_training=20,
+        curriculum_probability=0.0,
+        nnue_epochs=1,
+        nnue_learning_rate=0.001,
+        replay_capacity=100,
+        search_depth=1,
+        verbose=False,
+        interrupt_flag=lambda: True,
+    )
+
+    assert [s.generation for s in snapshots] == [0]
+    assert trainer._grad_batches == {}

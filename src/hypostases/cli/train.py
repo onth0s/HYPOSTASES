@@ -27,7 +27,9 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import os
 import sys
+import traceback
 
 from rich.console import Console
 
@@ -99,20 +101,32 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:  # type: igno
     )
 
     # Training hyper-parameters
+    # Defaults (None) fall back to chess_experiment_config.yaml, then trainer
+    # defaults — resolved inside the domain runner with CLI > YAML precedence.
     hp_group = parser.add_argument_group("hyperparameters")
-    hp_group.add_argument("--gens", type=int, default=20, help="Total generations (default: 20).")
     hp_group.add_argument(
-        "--games", type=int, default=15, help="Games per generation (default: 15)."
+        "--gens", type=int, default=None, help="Total generations (default: from config YAML)."
+    )
+    hp_group.add_argument(
+        "--games",
+        type=int,
+        default=None,
+        help="Games per generation (default: from config YAML).",
     )
     hp_group.add_argument(
         "--snapshot-interval",
         type=int,
-        default=5,
-        help="Snapshot every N generations (default: 5).",
+        default=None,
+        help="Snapshot every N generations (default: from config YAML).",
     )
-    hp_group.add_argument("--seed", type=int, default=42, help="Random seed (default: 42).")
     hp_group.add_argument(
-        "--workers", type=int, default=20, help="Parallel worker processes (default: 20)."
+        "--seed", type=int, default=None, help="Random seed (default: from config YAML)."
+    )
+    hp_group.add_argument(
+        "--workers",
+        type=int,
+        default=None,
+        help="Parallel worker processes (default: from config YAML).",
     )
 
     # Output flags
@@ -158,14 +172,32 @@ def _cli_handler(args: argparse.Namespace) -> None:
         console.print(f"[bold red][ERROR][/bold red] {exc}")
         sys.exit(1)
 
-    trainer_fn(
-        resume_n=resume_n,
-        run_dir_override=args.run_dir,
-        total_gens=args.gens,
-        games_per_gen=args.games,
-        snapshot_interval=args.snapshot_interval,
-        seed=args.seed,
-        workers=args.workers,
-        verbose=not args.quiet,
-        log_games=args.log_games,
-    )
+    try:
+        trainer_fn(
+            resume_n=resume_n,
+            run_dir_override=args.run_dir,
+            total_gens=args.gens,
+            games_per_gen=args.games,
+            snapshot_interval=args.snapshot_interval,
+            seed=args.seed,
+            workers=args.workers,
+            verbose=not args.quiet,
+            log_games=args.log_games,
+        )
+    except KeyboardInterrupt:
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(130)
+    except BaseException as exc:
+        console.print(f"[bold red][ERROR][/bold red] Chess training failed: {exc}")
+        console.print(traceback.format_exc(), markup=False)
+        sys.stdout.flush()
+        sys.stderr.flush()
+        os._exit(1)
+    # Do NOT return through normal interpreter shutdown: after a graceful interrupt
+    # (or crash) the ProcessPoolExecutor's manager thread can be stuck joining a
+    # queue feeder that blocks forever on CPython 3.10 (see
+    # chess_trainer._terminate_pool_workers), which would hang threading._shutdown.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(0)

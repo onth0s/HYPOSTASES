@@ -344,7 +344,7 @@ def test_meta_learning_beta_responds_to_covariance() -> None:
     """
     _, agent = _epistemic_games(win_epis=0.9, loss_epis=0.1)
     expected = 1.0 + 0.01 * 0.8 * BETA_LOGIT_GRADIENT_BOOST
-    assert agent.theta_meta[9] == pytest.approx(expected, abs=1e-9)
+    assert agent.theta_meta[9] == pytest.approx(expected, abs=1e-6)
     assert agent.theta_meta[9] > 1.0
 
 

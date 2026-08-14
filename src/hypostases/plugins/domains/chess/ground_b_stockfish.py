@@ -448,9 +448,7 @@ class GroundBStockfish:
         if export_pgn_dir and all_pgns:
             out_dir = Path(export_pgn_dir)
             if timestamp_runs:
-                from datetime import datetime
-
-                ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+                ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
                 out_dir = out_dir / f"run_{ts}"
             out_dir.mkdir(parents=True, exist_ok=True)
             pgn_file_path = out_dir / f"ground_b_gen{snapshot.generation:02d}_vs_stockfish.pgn"

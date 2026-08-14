@@ -27,6 +27,7 @@ import signal
 import threading
 import time
 from collections import defaultdict
+from collections.abc import Callable
 from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, as_completed, wait
 from pathlib import Path
 from typing import Any
@@ -90,14 +91,31 @@ def _terminate_pool_workers(executor: ProcessPoolExecutor) -> None:
     """Force-kills all pool worker processes so Ctrl+C or crashes leave no orphans.
 
     Workers are spawned with SIGINT ignored and the runner's SIGINT handler exits via
-    os._exit(130), which would otherwise orphan them. TerminateProcess kills them
-    unconditionally before the executor is torn down without waiting for running games.
+    os._exit(130), which would otherwise orphan them. The teardown order avoids two
+    CPython 3.10 hazards when children are terminated mid-flight:
+
+    1. ``shutdown`` MUST be called first so the executor's manager thread stops
+       respawning replacement workers after a child is terminated.
+    2. ``cancel_join_thread`` detaches the internal call/result queue feeders from
+       interpreter-atexit finalization so they cannot block there.
+
+    Known limitation: on CPython 3.10 a feeder thread blocked in ``send_bytes`` on a
+    full pipe (its reader worker just died) can never be joined, and the non-daemon
+    ``_ExecutorManagerThread`` will block on ``join_thread`` until interpreter shutdown
+    hangs. This function therefore deliberately does NOT join the manager thread; the
+    caller MUST terminate the process via ``os._exit`` (see ``cli.train._cli_handler``)
+    rather than returning through normal interpreter shutdown.
     """
+    with contextlib.suppress(Exception):
+        executor.shutdown(wait=False, cancel_futures=True)
+    for attr in ("_call_queue", "_result_queue"):
+        queue = getattr(executor, attr, None)
+        if queue is not None:
+            with contextlib.suppress(Exception):
+                queue.cancel_join_thread()
     with contextlib.suppress(Exception):
         for p in multiprocessing.active_children():
             p.terminate()
-    with contextlib.suppress(Exception):
-        executor.shutdown(wait=False, cancel_futures=True)
 
 
 def _stm_normalized_label(board: chess.Board, white_perspective_reward: float) -> float:
@@ -613,6 +631,7 @@ class ChessSelfPlayTrainer:
         adjudicate_bare_king_requires_mate: bool = True,
         log_game_details: bool = False,
         verbose: bool = True,
+        interrupt_flag: Callable[[], bool] | None = None,
     ) -> list[PolicySnapshot]:
         """Runs per-generation synchronous self-play training (θ barrier) with a background
         NNUE SGD learner, returning PolicySnapshots.
@@ -624,6 +643,12 @@ class ChessSelfPlayTrainer:
           * The NNUE value learner runs as a background daemon thread (A3C-style staleness):
             generation N plays with the most recently committed net (at most ~1 generation
             behind), which never blocks the pool or the progress display.
+
+        Cooperative interruption: when ``interrupt_flag`` is provided and returns True
+        (polled at each generation boundary and every drain heartbeat), training stops
+        gracefully: in-flight games are terminated, the incomplete generation is dropped
+        without finalizing its gradient, and the partial ``snapshots`` list is returned so
+        the caller can persist an interrupted checkpoint.
         """
         snapshots = []
 
@@ -807,7 +832,16 @@ class ChessSelfPlayTrainer:
                 # Per-generation barrier: submit ONE generation's games at a time, wait
                 # for all to finish, then finalize θ (instant) and kick background SGD.
                 # ------------------------------------------------------------------
+                stopped = False
                 for gen_idx in range(1, total_generations + 1):
+                    if interrupt_flag is not None and interrupt_flag():
+                        console.print(
+                            f"  [bold yellow][INTERRUPTED][/bold yellow] Stop requested before "
+                            f"generation {gen_idx}; finalizing {len(snapshots)} snapshot(s)."
+                        )
+                        stopped = True
+                        break
+
                     agent.temperature = max(
                         min_temperature,
                         self.initial_temperature * (0.93 ** (gen_idx - 1)),
@@ -873,6 +907,17 @@ class ChessSelfPlayTrainer:
                             timeout=HEARTBEAT_INTERVAL,
                         )
                         _drain_sgd_result()
+                        if interrupt_flag is not None and interrupt_flag():
+                            console.print(
+                                f"  [bold yellow][INTERRUPTED][/bold yellow] Stop requested during "
+                                f"generation {gen_idx}; terminating in-flight games and finalizing "
+                                f"{len(snapshots)} snapshot(s)."
+                            )
+                            _terminate_pool_workers(pool_executor)
+                            if gen_idx in task_ids:
+                                progress.remove_task(task_ids.pop(gen_idx))
+                            stopped = True
+                            break
                         if not done_set:
                             now = time.monotonic()
                             longest = max(
@@ -938,6 +983,8 @@ class ChessSelfPlayTrainer:
                                 )
 
                     # ---- generation boundary: θ finalize is instantaneous ----
+                    if stopped:
+                        break
                     self._finalize_generation_gradient(gen_idx, agent)
                     theta_delta = float(np.linalg.norm(agent.theta_meta - theta_before_gen))
 

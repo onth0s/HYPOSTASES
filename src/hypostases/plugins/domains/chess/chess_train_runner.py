@@ -2,9 +2,12 @@
 
 This module is the only place in the Chess plugin that ties together:
   - ChessSelfPlayTrainer
+  - chess_experiment_config.yaml (Rule 006 data-driven defaults)
   - UnifiedRunManager (checkpoint, NNUE, metadata persistence)
-  - Signal-safe mid-training exit handling
+  - Signal-safe mid-training exit handling (graceful + forced second Ctrl-C)
   - Interactive resume / extend prompts
+
+Config precedence: CLI flags > loaded checkpoint (resume) > YAML > trainer defaults.
 
 Import this module (or let cli/train.py do so via importlib) to activate
 the ``@DomainRegistry.register_trainer("chess")`` decorator.
@@ -12,6 +15,9 @@ the ``@DomainRegistry.register_trainer("chess")`` decorator.
 
 from __future__ import annotations
 
+import contextlib
+import multiprocessing
+import os
 import signal
 import sys
 from datetime import datetime, timezone
@@ -23,6 +29,10 @@ from rich.panel import Panel
 from rich.prompt import IntPrompt
 
 from hypostases.domains.registry import DomainRegistry
+from hypostases.plugins.domains.chess.chess_config import (
+    load_chess_experiment_config,
+    resolve_chess_training_config,
+)
 from hypostases.plugins.domains.chess.chess_trainer import ChessSelfPlayTrainer
 from hypostases.plugins.domains.chess.ground_a_self_play import run_ground_a_benchmark
 from hypostases.simulation.run_manager import UnifiedRunManager
@@ -105,6 +115,17 @@ def _interactive_resume_or_extend(
         return "extend", int(extra)
 
 
+def _kill_worker_children() -> None:
+    """Terminates all live multiprocessing child processes (pool workers).
+
+    Called on the forced second Ctrl-C so the hard exit never orphans worker
+    processes (they ignore SIGINT and would otherwise outlive the parent).
+    """
+    with contextlib.suppress(Exception):
+        for p in multiprocessing.active_children():
+            p.terminate()
+
+
 # ---------------------------------------------------------------------------
 # Core training function — registered as the "chess" trainer
 # ---------------------------------------------------------------------------
@@ -115,22 +136,43 @@ def run_chess_training(
     *,
     resume_n: int | None,
     run_dir_override: str | None,
-    total_gens: int,
-    games_per_gen: int,
-    snapshot_interval: int,
-    seed: int,
-    workers: int,
+    total_gens: int | None,
+    games_per_gen: int | None,
+    snapshot_interval: int | None,
+    seed: int | None,
+    workers: int | None,
     verbose: bool,
     log_games: bool,
 ) -> None:
     """Full chess self-play training pipeline.
 
-    Resolves mode (new / resume / extend), restores checkpoint state when
-    resuming, installs a SIGINT/SIGTERM handler for mid-training exits, runs
+    Resolves mode (new / resume / extend), loads chess_experiment_config.yaml as
+    the default parameter source (CLI flags override), restores checkpoint state
+    when resuming, installs a SIGINT/SIGTERM handler for mid-training exits, runs
     ChessSelfPlayTrainer, and atomically persists all artifacts via
     UnifiedRunManager on completion or interruption.
     """
     run_manager = UnifiedRunManager()
+
+    raw_config = load_chess_experiment_config()
+    if raw_config:
+        console.print(
+            "[bold blue][CONFIG][/bold blue] Loaded [cyan]chess_experiment_config.yaml[/cyan]"
+        )
+
+    # CLI values take precedence only when explicitly provided (argparse defaults
+    # to None; the effective values come from resolve_chess_training_config).
+    cli_overrides: dict[str, Any] = {}
+    if total_gens is not None:
+        cli_overrides["gens"] = total_gens
+    if games_per_gen is not None:
+        cli_overrides["games"] = games_per_gen
+    if snapshot_interval is not None:
+        cli_overrides["snapshot_interval"] = snapshot_interval
+    if seed is not None:
+        cli_overrides["seed"] = seed
+    if workers is not None:
+        cli_overrides["workers"] = workers
 
     # ------------------------------------------------------------------
     # 1. Determine mode: new / resume / extend
@@ -162,24 +204,31 @@ def run_chess_training(
             console.print("[yellow]Aborted.[/yellow]")
             sys.exit(0)
 
+        run_dir = resume_run_dir
+    else:
+        run_dir = run_manager.create_run()
+        console.print(f"[bold cyan][NEW RUN][/bold cyan] Created [cyan]{run_dir.name}[/cyan]")
+
+    # Effective configuration (CLI > YAML > defaults)
+    cfg = resolve_chess_training_config(cli=cli_overrides, raw_config=raw_config)
+
+    if resume_n is not None:
         last_completed = meta.get("last_completed_gen", 0)
         target_orig = meta.get("target_generations", last_completed)
 
         if mode == "resume":
             resume_from_gen = last_completed
-            total_gens = target_orig + extra_gens
+            cfg["total_generations"] = target_orig + extra_gens
         else:  # extend
             resume_from_gen = last_completed
-            total_gens = last_completed + extra_gens
+            cfg["total_generations"] = last_completed + extra_gens
 
-        run_dir = resume_run_dir
         console.print(
             f"[bold cyan][RESUME][/bold cyan] Continuing [cyan]{run_dir.name}[/cyan] "
-            f"from gen {resume_from_gen} → target {total_gens}."
+            f"from gen {resume_from_gen} → target {cfg['total_generations']}."
         )
-    else:
-        run_dir = run_manager.create_run()
-        console.print(f"[bold cyan][NEW RUN][/bold cyan] Created [cyan]{run_dir.name}[/cyan]")
+
+    run_manager.save_run_config(run_dir, cfg)
 
     # ------------------------------------------------------------------
     # 2. Load or initialize checkpoint state
@@ -223,20 +272,24 @@ def run_chess_training(
     # 3. Initialize trainer
     # ------------------------------------------------------------------
     trainer = ChessSelfPlayTrainer(
-        beta_efe=loaded_beta_efe or 0.05,
-        initial_temperature=loaded_temperature or 0.8,
-        max_workers=workers,
+        learning_rate=cfg["learning_rate"],
+        beta_efe=loaded_beta_efe or cfg["beta_efe"],
+        initial_temperature=loaded_temperature or cfg["initial_temperature"],
+        value_gamma=cfg["value_gamma"],
+        max_workers=cfg["workers"],
     )
     if loaded_telemetry:
         trainer.telemetry = loaded_telemetry
 
-    initial_priors: Any = loaded_theta_meta if loaded_theta_meta is not None else "random"
+    initial_priors: Any = (
+        loaded_theta_meta if loaded_theta_meta is not None else cfg["initial_priors"]
+    )
 
-    started_at = datetime.now(UTC).isoformat()
+    started_at = datetime.now(timezone.utc).isoformat()
     run_manager.save_run_metadata(
         run_dir,
         status=UnifiedRunManager.STATUS_RUNNING,
-        target_generations=total_gens,
+        target_generations=cfg["total_generations"],
         last_completed_gen=resume_from_gen,
         started_at=started_at,
     )
@@ -247,7 +300,18 @@ def run_chess_training(
     _interrupted = [False]
 
     def _flush_and_exit(signum: int, frame: Any) -> None:
+        if _interrupted[0]:
+            console.print(
+                "\n[bold red][FORCED EXIT][/bold red] Second interrupt received; "
+                "terminating immediately."
+            )
+            _kill_worker_children()
+            os._exit(130)
         _interrupted[0] = True
+        console.print(
+            "\n[bold yellow][Ctrl-C][/bold yellow] Graceful stop requested — finishing "
+            "current generation, then saving checkpoint."
+        )
 
     signal.signal(signal.SIGINT, _flush_and_exit)
     signal.signal(signal.SIGTERM, _flush_and_exit)
@@ -261,10 +325,10 @@ def run_chess_training(
     console.print(
         Panel(
             f"[bold]Run dir:[/bold] [cyan]{run_dir}[/cyan]\n"
-            f"[bold]Total generations:[/bold] {total_gens}  "
+            f"[bold]Total generations:[/bold] {cfg['total_generations']}  "
             f"[bold]Start gen:[/bold] {resume_from_gen}\n"
-            f"[bold]Games / gen:[/bold] {games_per_gen}  "
-            f"[bold]Seed:[/bold] {seed}  [bold]Workers:[/bold] {workers}",
+            f"[bold]Games / gen:[/bold] {cfg['games_per_generation']}  "
+            f"[bold]Seed:[/bold] {cfg['seed']}  [bold]Workers:[/bold] {cfg['workers']}",
             title="[bold cyan]HYPOSTASES Chess Training[/bold cyan]",
             border_style="cyan",
         )
@@ -272,13 +336,26 @@ def run_chess_training(
 
     try:
         snapshots = trainer.execute_self_play_training_run(
-            total_generations=total_gens,
-            snapshot_interval_k=snapshot_interval,
-            games_per_generation=games_per_gen,
-            seed=seed,
+            total_generations=cfg["total_generations"],
+            snapshot_interval_k=cfg["snapshot_interval_k"],
+            games_per_generation=cfg["games_per_generation"],
+            seed=cfg["seed"],
+            min_temperature=cfg["min_temperature"],
+            max_moves_training=cfg["max_moves_training"],
+            early_adjudication_material=cfg["early_adjudication_material"],
+            initial_priors=initial_priors,
+            value_gamma=cfg["value_gamma"],
+            curriculum_probability=cfg["curriculum_probability"],
+            resign_value_threshold=cfg["resign_value_threshold"],
+            resign_confirm_moves=cfg["resign_confirm_moves"],
+            nnue_epochs=cfg["nnue_epochs"],
+            nnue_learning_rate=cfg["nnue_learning_rate"],
+            replay_capacity=cfg["replay_capacity"],
+            search_depth=cfg["search_depth"],
+            adjudicate_bare_king_requires_mate=cfg["adjudicate_bare_king_requires_mate"],
             verbose=verbose,
             log_game_details=log_games,
-            initial_priors=initial_priors,
+            interrupt_flag=lambda: _interrupted[0],
         )
     except KeyboardInterrupt:
         _interrupted[0] = True
@@ -289,8 +366,8 @@ def run_chess_training(
     # ------------------------------------------------------------------
     final_gen = resume_from_gen
     final_theta = None
-    final_temperature = loaded_temperature or 0.8
-    final_beta_efe = loaded_beta_efe or 0.05
+    final_temperature = loaded_temperature or cfg["initial_temperature"]
+    final_beta_efe = loaded_beta_efe or cfg["beta_efe"]
 
     if snapshots:
         last_snap = snapshots[-1]
@@ -320,9 +397,9 @@ def run_chess_training(
     run_manager.save_full_checkpoint(
         run_dir,
         status=status,
-        target_generations=total_gens,
+        target_generations=cfg["total_generations"],
         last_completed_gen=final_gen,
-        total_games_played=final_gen * games_per_gen,
+        total_games_played=final_gen * cfg["games_per_generation"],
         theta_meta=final_theta or (loaded_theta_meta or []),
         temperature=final_temperature,
         beta_efe=final_beta_efe,
@@ -344,7 +421,16 @@ def run_chess_training(
         )
         try:
             pgn_dir = run_dir / "pgn" / "ground_a"
-            run_ground_a_benchmark(snapshots, pgn_output_dir=str(pgn_dir), verbose=verbose)
+            run_ground_a_benchmark(
+                snapshots,
+                pgn_output_dir=str(pgn_dir),
+                games_per_pair=cfg["ground_a_games_per_pair"],
+                max_moves=cfg["ground_a_max_moves_eval"],
+                eval_temperature=cfg["ground_a_eval_temperature"],
+                search_depth=cfg["ground_a_search_depth"],
+                max_workers=cfg["workers"],
+                verbose=verbose,
+            )
             console.print(f"[bold green]✓[/bold green] PGN written to [cyan]{pgn_dir}[/cyan]")
         except Exception as exc:
             console.print(f"[bold yellow][WARN][/bold yellow] Ground A benchmark failed: {exc}")

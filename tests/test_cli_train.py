@@ -36,10 +36,12 @@ def test_train_chess_new_defaults(parser: argparse.ArgumentParser) -> None:
     assert args.chess is True
     assert args.resume is None
     assert args.resume_n is None
-    assert args.gens == 20
-    assert args.games == 15
-    assert args.seed == 42
-    assert args.workers == 20
+    # Hyperparameter flags default to None → resolved from chess_experiment_config.yaml
+    assert args.gens is None
+    assert args.games is None
+    assert args.snapshot_interval is None
+    assert args.seed is None
+    assert args.workers is None
     assert args.quiet is False
     assert args.log_games is False
 
