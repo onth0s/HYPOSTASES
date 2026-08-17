@@ -16,6 +16,7 @@ the ``@DomainRegistry.register_trainer("chess")`` decorator.
 from __future__ import annotations
 
 import contextlib
+import math
 import multiprocessing
 import os
 import signal
@@ -271,9 +272,15 @@ def run_chess_training(
     # ------------------------------------------------------------------
     # 3. Initialize trainer
     # ------------------------------------------------------------------
+    def _beta_from_theta(theta_meta: Any) -> float:
+        """Reads the meta-learned β directly from the θ_meta[9] logit (AGENTS.md 015)."""
+        if getattr(theta_meta, "__len__", None) is not None and len(theta_meta) >= 10:
+            return max(0.01, min(0.99, 1.0 / (1.0 + math.exp(-float(theta_meta[9])))))
+        return loaded_beta_efe or cfg["beta_efe"]
+
     trainer = ChessSelfPlayTrainer(
         learning_rate=cfg["learning_rate"],
-        beta_efe=loaded_beta_efe or cfg["beta_efe"],
+        beta_efe=_beta_from_theta(loaded_theta_meta),
         initial_temperature=loaded_temperature or cfg["initial_temperature"],
         value_gamma=cfg["value_gamma"],
         max_workers=cfg["workers"],
@@ -302,15 +309,18 @@ def run_chess_training(
     def _flush_and_exit(signum: int, frame: Any) -> None:
         if _interrupted[0]:
             console.print(
-                "\n[bold red][FORCED EXIT][/bold red] Second interrupt received; "
-                "terminating immediately."
+                "\n[bold red][FORCED EXIT][/bold red] Second interrupt received — "
+                "terminating immediately. The graceful checkpoint was NOT saved; "
+                "any in-flight progress is lost."
             )
             _kill_worker_children()
             os._exit(130)
         _interrupted[0] = True
         console.print(
             "\n[bold yellow][Ctrl-C][/bold yellow] Graceful stop requested — finishing "
-            "current generation, then saving checkpoint."
+            "in-flight games, preserving the live agent state, then saving checkpoint.\n"
+            "    [bold red]Do NOT press Ctrl-C again[/bold red] — a second press aborts "
+            "the checkpoint save with an immediate forced exit."
         )
 
     signal.signal(signal.SIGINT, _flush_and_exit)
@@ -340,7 +350,6 @@ def run_chess_training(
             snapshot_interval_k=cfg["snapshot_interval_k"],
             games_per_generation=cfg["games_per_generation"],
             seed=cfg["seed"],
-            min_temperature=cfg["min_temperature"],
             max_moves_training=cfg["max_moves_training"],
             early_adjudication_material=cfg["early_adjudication_material"],
             initial_priors=initial_priors,
@@ -374,6 +383,14 @@ def run_chess_training(
         final_gen = resume_from_gen + last_snap.generation
         final_theta = last_snap.theta_meta.tolist()
         final_temperature = last_snap.temperature
+        # Persist the meta-learned β (θ_meta[9] logit) actually in use, not the config prior.
+        if (
+            getattr(last_snap.theta_meta, "__len__", None) is not None
+            and len(last_snap.theta_meta) >= 10
+        ):
+            final_beta_efe = max(
+                0.01, min(0.99, 1.0 / (1.0 + math.exp(-float(last_snap.theta_meta[9]))))
+            )
         nnue_weights = last_snap.nnue_weights
         for snap in snapshots:
             abs_gen = resume_from_gen + snap.generation

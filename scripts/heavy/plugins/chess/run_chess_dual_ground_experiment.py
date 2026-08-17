@@ -112,7 +112,6 @@ def evaluate_dual_grounds(
         total_gens = int(t_cfg.get("generations", 24))
         k_interval = int(g_a_cfg["snapshot_interval_k"])
         games_per_gen = int(t_cfg.get("games_per_generation", 32))
-        min_temp = float(t_cfg.get("min_temperature", 0.20))
         max_moves_train = int(t_cfg.get("max_moves_training", 400))
         early_adj_mat = float(t_cfg.get("early_adjudication_material", 15.0))
         initial_priors = t_cfg.get("initial_priors", "random")
@@ -127,7 +126,6 @@ def evaluate_dual_grounds(
             total_generations=total_gens,
             snapshot_interval_k=k_interval,
             games_per_generation=games_per_gen,
-            min_temperature=min_temp,
             max_moves_training=max_moves_train,
             early_adjudication_material=early_adj_mat,
             initial_priors=initial_priors,

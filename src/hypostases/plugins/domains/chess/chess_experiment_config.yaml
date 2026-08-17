@@ -11,9 +11,8 @@ description: "Pre-registered parameters for Ground A (Self-Play) vs Ground B (St
 # ------------------------------------------------------------------------------
 training:
   learning_rate: 0.05                  # Meta-RL policy gradient learning rate η (Δθ_meta = η * R * f_bar); raised 0.015->0.05 for the batch-normalized REINFORCE estimator (Rule 003 calibration change)
-  efe_beta: 0.05                      # Recalibrated epistemic weight β for chess (bounded EFE entropy term; see adapter)
-  policy_temperature: 0.8             # Initial policy exploration temperature τ_0 for softmax action sampling
-  min_temperature: 0.20               # Soft temperature floor ensuring stochastic exploration
+  efe_beta: 0.05                      # Gen-0 initial prior for the meta-learned epistemic weight β (θ_meta[9] logit). β is NOT a constant: after Gen 0 it is updated exclusively by the meta-learning estimator and its staticity must emerge dynamically (AGENTS.md 015)
+  policy_temperature: 0.8             # Gen-0 initial prior for the meta-learned policy temperature τ (θ_meta[8]). No anneal schedule: τ is learned like β and its decay/convergence emerges from the reward signal (AGENTS.md 015)
   feature_basis_k: 10                 # Meta-parameter vector dimension K (8 tactical features + 1 temperature + 1 beta_efe)
   initial_priors: "uniform"            # Prior mode for θ_meta: "random" (isotropic uniform U(0.3,1.0)), "uniform" (ones), or list
   max_moves_training: 240             # Move cap per self-play training game; long enough to reach real outcomes, bounded vs the 150-ply (75-move) rule grind
@@ -26,8 +25,8 @@ training:
   curriculum_probability: 0.25        # Fraction of training games seeded from schema/chess/endgame_curriculum.yaml presets
   nnue_epochs: 15                     # NNUE SGD epochs executed per generation completion
   nnue_learning_rate: 0.003           # NNUE SGD learning rate
-  replay_capacity: 4000               # FIFO replay buffer capacity (opening + curriculum positions combined)
-  generations: 48                     # Total self-play training generations to execute
+  replay_capacity: 5000               # FIFO replay buffer capacity (opening + curriculum positions combined)
+  generations: 500                     # Total self-play training generations to execute
   games_per_generation: 32            # Number of self-play games executed per generation
   log_game_details: false             # Print every per-game submit/result line (default off; GEN SUMMARY + progress bars remain)
 
@@ -37,7 +36,7 @@ training:
 ground_a:
   parallel_workers: 20                # Multiprocessing worker pool size (bypasses Python GIL for 100% CPU usage)
   snapshot_interval_k: 8              # Storage cadence: snapshot saved every K generations (1 = store every gen)
-  evaluate_generations: [24, 48]  # Explicit generations to compare (mini round-robin, any spacing; decoupled from cadence)
+  evaluate_generations: [250, 5000]  # Explicit generations to compare (mini round-robin, any spacing; decoupled from cadence)
   eval_last_n_snapshots: 0            # Fallback alias: last N stored snapshots (0 = all). Ignored when evaluate_generations is set.
   games_per_pair: 12                  # Number of head-to-head games per snapshot pair (4 gens -> 6 pairs * 12 = 72 games)
   max_moves_eval: 360                 # Maximum move limit per evaluation game in Ground A tournament
@@ -50,7 +49,7 @@ ground_a:
 # ------------------------------------------------------------------------------
 ground_b:
   games_per_elo_estimate_n: 32       # Total benchmark games played per snapshot against Stockfish 18
-  evaluate_generations: [24, 48]   # Explicit generations to benchmark (aligned with Ground A for Pearson correlation)
+  evaluate_generations: [250, 5000]   # Explicit generations to benchmark (aligned with Ground A for Pearson correlation)
   eval_last_n_snapshots: 0            # Fallback alias: last N stored snapshots (0 = all). Ignored when evaluate_generations is set.
   max_moves_eval: 360                 # Maximum move limit per benchmark game against Stockfish
   calibration_method: "UCI_Elo"       # Calibration mapping for Stockfish difficulty rating
@@ -67,6 +66,6 @@ ground_b:
 # 4. Pre-Registration Scientific Ratification Criteria
 # ------------------------------------------------------------------------------
 pre_registration:
-  seeds: [42, 69, 420, 1488, 666]     # Pre-registered random seed suite for experimental reproducibility
+  seeds: [1488, 69, 420, 112, 666, 911]     # Pre-registered random seed suite for experimental reproducibility
   pass_criterion_monotonic_ratio: 0.80 # Pass threshold for monotonic internal/external Elo trajectory ratio
   representation_modes: ["full", "raw"]

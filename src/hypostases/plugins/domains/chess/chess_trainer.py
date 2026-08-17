@@ -28,7 +28,13 @@ import threading
 import time
 from collections import defaultdict
 from collections.abc import Callable
-from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, as_completed, wait
+from concurrent.futures import (
+    FIRST_COMPLETED,
+    CancelledError,
+    ProcessPoolExecutor,
+    as_completed,
+    wait,
+)
 from pathlib import Path
 from typing import Any
 
@@ -80,6 +86,9 @@ FEATURE_SCALES = np.array([9.0, 1.0, 1.0, 10.0, 0.95, 1.0, 10.0, 1.0], dtype=np.
 # numeric safety (a warning fires whenever the clamp actually engages).
 BETA_LOGIT_GRADIENT_BOOST = 5.0
 BETA_LOGIT_MAX = 10.0
+# Cap for the β(1-β)-inverse compensation applied to the β-logit gradient
+# (AGENTS.md 015): 1/(0.05*0.95) ≈ 21 at β≈0.05, so the cap rarely binds.
+BETA_COMPENSATION_CAP = 25.0
 
 
 def _init_worker_process() -> None:
@@ -105,6 +114,13 @@ def _terminate_pool_workers(executor: ProcessPoolExecutor) -> None:
     hangs. This function therefore deliberately does NOT join the manager thread; the
     caller MUST terminate the process via ``os._exit`` (see ``cli.train._cli_handler``)
     rather than returning through normal interpreter shutdown.
+
+    Usage contract: this is reserved for CRASH/forced-exit paths where ``os._exit``
+    immediately follows (train_generation exception, the main-loop BaseException guard,
+    and the CLI's second-Ctrl-C forced exit). The GRACEFUL mid-drain interrupt path does
+    NOT call this: it cancels not-yet-started futures, lets in-flight games drain to
+    completion, discards their partial results, and shuts the pool down normally — so it
+    never risks a blocked feeder and never hangs an in-process (e.g. pytest) caller.
     """
     with contextlib.suppress(Exception):
         executor.shutdown(wait=False, cancel_futures=True)
@@ -303,7 +319,22 @@ def _worker_run_training_game(
             chosen_move = agent.select_move(board, legal_moves, depth=search_depth, nnue_net=net)
             feats = agent.extract_move_features(board, chosen_move)
             if len(theta_meta) >= 9:
-                feats = np.append(feats, 0.5)
+                # Temperature feature (θ_meta[8]): position decisiveness = spread of the
+                # linear tactical valuation across legal moves. Non-constant per position so
+                # the temperature slot carries a real REINFORCE gradient (a constant feature
+                # has identically zero covariance with the centered advantage and would freeze
+                # τ at its prior — AGENTS.md 015). Normalized so the gradient stays comparable
+                # to the tactical features.
+                tactical_scores = [
+                    float(
+                        np.dot(
+                            theta_meta[:8],
+                            agent.extract_move_features(board, m) / FEATURE_SCALES[:8],
+                        )
+                    )
+                    for m in legal_moves
+                ]
+                feats = np.append(feats, float(np.std(tactical_scores) / 2.0))
             if len(theta_meta) >= 10:
                 # Epistemic utility is search-independent (branching entropy * skill):
                 # compute it directly on the post-move board instead of re-searching.
@@ -410,7 +441,10 @@ class ChessSelfPlayTrainer:
         chess_domain: ChessDomain | None = None,
     ) -> None:
         self.learning_rate = learning_rate
-        self.beta_efe = beta_efe
+        # Initial β prior only: seeds the Gen-0 θ_meta[9] logit. After generation 0
+        # the logit is updated exclusively by the meta-learning estimator (AGENTS.md 015);
+        # it is NEVER re-assigned to this value inside the training loop.
+        self.initial_beta_efe = beta_efe
         self.initial_temperature = initial_temperature
         self.max_workers = max(1, max_workers)
         self.value_gamma = value_gamma
@@ -477,8 +511,10 @@ class ChessSelfPlayTrainer:
         The full K=10 meta-parameter vector is learned by this general-purpose estimator
         — including the beta logit (θ[9]). Staticity of β is an EMERGENT property of zero
         reward-feature covariance, never a manual pin. The logit gradient receives the
-        historical x5 boost (small epistemic feature magnitude) before clipping, and the
-        resulting logit is clamped to ±BETA_LOGIT_MAX with a warning on actual clamp hits.
+        β(1-β)-inverse compensation (the true log-policy gradient of a logit scales with
+        β(1-β), vanishing at β≈0.05 — AGENTS.md 015) plus the historical x5 boost (small
+        epistemic feature magnitude) before clipping, and the resulting logit is clamped
+        to ±BETA_LOGIT_MAX with a warning on actual clamp hits.
         """
         batch = self._grad_batches.pop(gen_key, None)
         if batch is None:
@@ -501,6 +537,13 @@ class ChessSelfPlayTrainer:
             grad += self.learning_rate * advantages[i] * grads[i]
 
         if k >= 10:
+            # β(1-β) compensation: the true log-policy gradient of the β-logit scales with
+            # β(1-β), which is only ~0.0475 at β≈0.05. Multiplying by the capped inverse
+            # makes the logit update roughly β-invariant so β can actually move away from a
+            # tiny prior (AGENTS.md 015: compensate a vanishing gradient, never pin it).
+            beta_cur = agent.beta_efe
+            comp = 1.0 / max(0.05, beta_cur * (1.0 - beta_cur))
+            grad[9] *= min(BETA_COMPENSATION_CAP, comp)
             grad[9] *= BETA_LOGIT_GRADIENT_BOOST
 
         grad = np.clip(grad, -0.5, 0.5)
@@ -548,7 +591,7 @@ class ChessSelfPlayTrainer:
                     _termination,
                 ) = _worker_run_training_game(
                     updated_agent.theta_meta,
-                    self.beta_efe,
+                    updated_agent.beta_efe,
                     updated_agent.temperature,
                     max_moves,
                     seed + g_idx,
@@ -565,7 +608,7 @@ class ChessSelfPlayTrainer:
                         exec_inst.submit(
                             _worker_run_training_game,
                             updated_agent.theta_meta,
-                            self.beta_efe,
+                            updated_agent.beta_efe,
                             updated_agent.temperature,
                             max_moves,
                             seed + g_idx,
@@ -615,7 +658,6 @@ class ChessSelfPlayTrainer:
         snapshot_interval_k: int = 5,
         games_per_generation: int = 15,
         seed: int = 42,
-        min_temperature: float = 0.20,
         max_moves_training: int = 400,
         early_adjudication_material: float = 15.0,
         initial_priors: Any = "random",
@@ -646,16 +688,24 @@ class ChessSelfPlayTrainer:
 
         Cooperative interruption: when ``interrupt_flag`` is provided and returns True
         (polled at each generation boundary and every drain heartbeat), training stops
-        gracefully: in-flight games are terminated, the incomplete generation is dropped
-        without finalizing its gradient, and the partial ``snapshots`` list is returned so
-        the caller can persist an interrupted checkpoint.
+        gracefully. A boundary interrupt (no games in flight) immediately persists the
+        LIVE agent state (θ_meta after the last fully-finalized generation, temperature,
+        committed NNUE weights) as a final snapshot. A mid-drain interrupt cancels the
+        not-yet-started games, lets the in-flight games drain to completion, DISCARDS
+        their partial results (a partial batch would bias θ), then persists the live
+        snapshot — so the caller can save an interrupted checkpoint that preserves all
+        completed progress (see runner resume). The graceful path never force-kills
+        workers (CPython 3.10 feeder-thread hazard), and it prints unconditional
+        INTERRUPTED / STOPPING / STOPPED feedback every heartbeat so the user knows the
+        shutdown is progressing and not to press Ctrl-C again (a second press forces an
+        immediate exit that aborts the checkpoint save).
         """
         snapshots = []
 
         # Create initial Gen 0 agent
         agent = ChessAgentAdapter(
             domain=self.domain,
-            beta_efe=self.beta_efe,
+            beta_efe=self.initial_beta_efe,
             temperature=self.initial_temperature,
             theta_meta=initial_priors,
         )
@@ -824,9 +874,47 @@ class ChessSelfPlayTrainer:
                         f"longest {longest:.0f}s | ETA ~{eta_min:.0f}m{ending_part}[/dim]"
                     )
 
+                def _stopping_status(gen_idx: int, done: int) -> str:
+                    """Unconditional status line printed every heartbeat during a graceful
+                    mid-drain shutdown, so the console never goes silent while in-flight
+                    games finish and the user does not press Ctrl-C again (which would
+                    abort the checkpoint save)."""
+                    now = time.monotonic()
+                    inflight = len(pending_futures)
+                    longest = max(
+                        now - start for _f, (_gi, _is_cur, start) in pending_futures.items()
+                    )
+                    return (
+                        f"  [bold yellow][STOPPING][/bold yellow] waiting on {inflight} in-flight "
+                        f"game(s) | longest {longest:.0f}s | done {done}/{games_per_generation} — "
+                        f"finishing gracefully, [bold]do NOT press Ctrl-C again[/bold]"
+                    )
+
                 # Run-global replay buffers carry positions across generations (FIFO capped).
                 replay_positions: list[tuple[chess.Board, float]] = []
                 curriculum_positions: list[tuple[chess.Board, float]] = []
+
+                def _append_live_snapshot(last_completed: int) -> None:
+                    """Appends the LIVE agent state so an interrupted checkpoint preserves progress.
+
+                    Captures θ_meta/temperature as finalized through ``last_completed``
+                    generations plus the currently committed NNUE weights. Skipped when the
+                    last periodic snapshot already covers that generation (avoids a duplicate
+                    gen-0 entry on an interrupt before generation 1).
+                    """
+                    if snapshots and snapshots[-1].generation == last_completed:
+                        return
+                    with committed_lock:
+                        live_net = {k: v.copy() for k, v in committed_weights.items()}
+                    snapshots.append(
+                        PolicySnapshot(
+                            generation=last_completed,
+                            policy_fn=make_policy_fn(copy.deepcopy(agent)),
+                            theta_meta=agent.theta_meta.copy(),
+                            temperature=agent.temperature,
+                            nnue_weights=live_net,
+                        )
+                    )
 
                 # ------------------------------------------------------------------
                 # Per-generation barrier: submit ONE generation's games at a time, wait
@@ -837,16 +925,16 @@ class ChessSelfPlayTrainer:
                     if interrupt_flag is not None and interrupt_flag():
                         console.print(
                             f"  [bold yellow][INTERRUPTED][/bold yellow] Stop requested before "
-                            f"generation {gen_idx}; finalizing {len(snapshots)} snapshot(s)."
+                            f"generation {gen_idx}; no games in flight. Preserving live state "
+                            f"through generation {gen_idx - 1} and saving checkpoint.\n"
+                            "    [bold red]Do NOT press Ctrl-C again[/bold red] — a second press "
+                            "aborts the checkpoint save with an immediate forced exit."
                         )
+                        self._grad_batches.clear()
+                        _append_live_snapshot(gen_idx - 1)
                         stopped = True
                         break
 
-                    agent.temperature = max(
-                        min_temperature,
-                        self.initial_temperature * (0.93 ** (gen_idx - 1)),
-                    )
-                    agent.beta_efe = self.beta_efe
                     formatted_theta = _format_agent_theta(agent)
                     task_ids[gen_idx] = progress.add_task(
                         f"[cyan]Gen {gen_idx:0{digits}d}/{total_generations}[/cyan] [yellow]theta={formatted_theta}[/yellow] [magenta]temp={agent.temperature:.3f}[/magenta] [blue]beta={agent.beta_efe:.3f}[/blue]",
@@ -876,7 +964,7 @@ class ChessSelfPlayTrainer:
                         fut = pool_executor.submit(
                             _worker_run_training_game,
                             agent.theta_meta,
-                            self.beta_efe,
+                            agent.beta_efe,
                             agent.temperature,
                             max_moves_training,
                             seed + game_id,
@@ -900,6 +988,7 @@ class ChessSelfPlayTrainer:
                     # Drain until this generation's games are all complete
                     completed = 0
                     last_beat = 0.0
+                    stopping = False
                     while pending_futures:
                         done_set, _ = wait(
                             pending_futures.keys(),
@@ -908,18 +997,30 @@ class ChessSelfPlayTrainer:
                         )
                         _drain_sgd_result()
                         if interrupt_flag is not None and interrupt_flag():
-                            console.print(
-                                f"  [bold yellow][INTERRUPTED][/bold yellow] Stop requested during "
-                                f"generation {gen_idx}; terminating in-flight games and finalizing "
-                                f"{len(snapshots)} snapshot(s)."
-                            )
-                            _terminate_pool_workers(pool_executor)
-                            if gen_idx in task_ids:
-                                progress.remove_task(task_ids.pop(gen_idx))
-                            stopped = True
-                            break
+                            if not stopping:
+                                stopping = True
+                                for fut in pending_futures:
+                                    fut.cancel()
+                                console.print(
+                                    f"  [bold yellow][INTERRUPTED][/bold yellow] Stop requested during "
+                                    f"generation {gen_idx}.\n"
+                                    f"    [bold]Shutting down:[/bold] finishing "
+                                    f"{len(pending_futures)} in-flight game(s) "
+                                    f"(done {completed}/{games_per_generation}), discarding partial "
+                                    f"generation {gen_idx}, preserving live state through "
+                                    f"generation {gen_idx - 1}.\n"
+                                    "    [bold red]Do NOT press Ctrl-C again[/bold red] — a second "
+                                    "press aborts the checkpoint save with an immediate forced exit."
+                                )
+                            else:
+                                console.print(_stopping_status(gen_idx, completed))
                         if not done_set:
                             now = time.monotonic()
+                            if stopping:
+                                if now - last_beat > HEARTBEAT_PRINT_GAP_S:
+                                    last_beat = now
+                                    console.print(_stopping_status(gen_idx, completed))
+                                continue
                             longest = max(
                                 now - start for _f, (_gi, _is_cur, start) in pending_futures.items()
                             )
@@ -934,15 +1035,22 @@ class ChessSelfPlayTrainer:
 
                         for fut in done_set:
                             _gi, is_curriculum, start_time = pending_futures.pop(fut)
+                            try:
+                                (
+                                    final_reward,
+                                    trajectory_features,
+                                    labeled_positions,
+                                    num_moves,
+                                    mat_bal,
+                                    termination,
+                                ) = fut.result()
+                            except CancelledError:
+                                continue
+                            if stopping:
+                                # Graceful drain: discard partial-generation results so the
+                                # incomplete batch never biases θ (see Cooperative interruption).
+                                continue
                             game_duration = time.monotonic() - start_time
-                            (
-                                final_reward,
-                                trajectory_features,
-                                labeled_positions,
-                                num_moves,
-                                mat_bal,
-                                termination,
-                            ) = fut.result()
                             completed += 1
 
                             stats["terminations"][termination] += 1
@@ -983,6 +1091,20 @@ class ChessSelfPlayTrainer:
                                 )
 
                     # ---- generation boundary: θ finalize is instantaneous ----
+                    if stopping:
+                        console.print(
+                            f"  [bold green][STOPPED][/bold green] In-flight games finished. "
+                            f"Partial generation {gen_idx} discarded. Live state through "
+                            f"generation {gen_idx - 1} preserved — saving checkpoint."
+                        )
+                        if gen_idx in task_ids:
+                            progress.remove_task(task_ids.pop(gen_idx))
+                        # Drop the partial generation (a partial batch would bias θ) and
+                        # persist the LIVE agent state so the checkpoint preserves all
+                        # completed generations' progress.
+                        self._grad_batches.pop(gen_idx, None)
+                        _append_live_snapshot(gen_idx - 1)
+                        stopped = True
                     if stopped:
                         break
                     self._finalize_generation_gradient(gen_idx, agent)

@@ -21,6 +21,7 @@ Verifies, empirically and mathematically:
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 import chess
@@ -30,6 +31,7 @@ import pytest
 from hypostases.plugins.domains.chess.chess_agent_adapter import ChessAgentAdapter
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain
 from hypostases.plugins.domains.chess.chess_trainer import (
+    BETA_COMPENSATION_CAP,
     BETA_LOGIT_GRADIENT_BOOST,
     BETA_LOGIT_MAX,
     FEATURE_SCALES,
@@ -339,11 +341,15 @@ def test_meta_learning_beta_staticity_is_emergent() -> None:
 def test_meta_learning_beta_responds_to_covariance() -> None:
     """β is learnable: genuine reward-feature covariance moves the logit.
 
-    Wins carry high epistemic (0.9), losses low (0.1): Δθ[9] = η·(1·0.9 - 1·0.1) then
-    the historical x5 logit boost, so θ[9] = 1.0 + 0.01·0.8·BETA_LOGIT_GRADIENT_BOOST.
+    Wins carry high epistemic (0.9), losses low (0.1): Δθ[9] = η·(1·0.9 - 1·0.1) then the
+    β(1-β)-inverse compensation (AGENTS.md 015; the true log-policy gradient of a logit
+    scales with β(1-β)) and the historical x5 logit boost. Starting logit 1.0 gives
+    β = σ(1.0), comp = min(CAP, 1/(β(1-β))).
     """
     _, agent = _epistemic_games(win_epis=0.9, loss_epis=0.1)
-    expected = 1.0 + 0.01 * 0.8 * BETA_LOGIT_GRADIENT_BOOST
+    beta_start = 1.0 / (1.0 + math.exp(-1.0))
+    comp = min(BETA_COMPENSATION_CAP, 1.0 / (beta_start * (1.0 - beta_start)))
+    expected = 1.0 + 0.01 * 0.8 * comp * BETA_LOGIT_GRADIENT_BOOST
     assert agent.theta_meta[9] == pytest.approx(expected, abs=1e-6)
     assert agent.theta_meta[9] > 1.0
 

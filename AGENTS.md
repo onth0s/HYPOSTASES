@@ -73,6 +73,10 @@ The `scripts/` directory is partitioned into subdirectories based on computation
 1. **`scripts/heavy/`**: Contains long-running, computationally expensive training routines, Monte Carlo sweeps, and multi-game tournaments. **AI agents must NEVER execute commands or scripts inside `scripts/heavy/`.** The `scripts/heavy/` folder is reserved exclusively for manual execution by the User.
 2. **`scripts/light/`**: Contains fast ($<10$ second) utility scripts, telemetry plotters, report generators, and diagnostic parsers. **AI agents ARE permitted to execute scripts inside `scripts/light/`** to display reports or verify telemetry outputs.
 
+### 015 — Prohibition of Constant Meta-Parameters (β and Every θ_meta Slot)
+
+NEVER hard-pin any meta-parameter to a constant during learning. The active-sensing epistemic weight $\beta_{\text{efe}}$ is a LEARNED meta-parameter stored as the $\theta_{\text{meta}}[9]$ logit (temperature $\tau$ as $\theta_{\text{meta}}[8]$), NOT a configuration constant. Config values (e.g. `efe_beta`, `policy_temperature`) define ONLY the Gen-0 initial prior that seeds the logit/slot; after generation 0 the slot is updated exclusively by the meta-learning estimator. Static convergence of $\beta$ — and of every $\theta_{\text{meta}}$ slot — MUST emerge dynamically from the learning signal (zero reward-feature covariance ⇒ staticity). Never re-assign `agent.beta_efe = <constant>` or overwrite $\theta_{\text{meta}}$ slots inside the training loop (this was the `chess_trainer.py` per-generation pinning bug that froze $\beta = 0.05$ and $\tau$ to the anneal schedule across all generations). If a slot's gradient is vanishing (e.g. the $\beta(1-\beta) \approx 0.0475$ factor at $\beta \approx 0.05$), compensate the estimator — do NOT pin the parameter.
+
 
 
 

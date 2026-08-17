@@ -84,7 +84,6 @@ def resolve_chess_training_config(
         "beta_efe": float(t_cfg.get("efe_beta", 0.05)),
         "initial_temperature": float(t_cfg.get("policy_temperature", 0.8)),
         "value_gamma": float(t_cfg.get("value_gamma", 0.97)),
-        "min_temperature": float(t_cfg.get("min_temperature", 0.20)),
         "max_moves_training": int(t_cfg.get("max_moves_training", 400)),
         "early_adjudication_material": float(t_cfg.get("early_adjudication_material", 15.0)),
         "initial_priors": t_cfg.get("initial_priors", "random"),
