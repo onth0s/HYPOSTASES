@@ -41,7 +41,13 @@ HYPOSTASES/
 │   ├── cli/                       # Command-line architecture (main, trace, infer, sweep, spec, sweep-memory)
 │   └── utils/                     # Package utilities (spec merging)
 │
-├── tests/                     # Test suite (360 tests covering formal math, engine, dynamics, planning, memory, causal models, inference)
+├── formal/                    # Lean 4 & Mathlib4 formal mathematical specifications and theorem proofs
+│   ├── lean-toolchain             # Lean version pin (leanprover/lean4:v4.13.0)
+│   ├── lakefile.lean              # Lake package configuration with mathlib4 dependency
+│   ├── Hypostases.lean            # Formal package root
+│   └── Hypostases/                # Formal theory modules (StateSpace, ActiveInference, TimeModel)
+│
+├── tests/                     # Test suite (360+ tests covering formal math, engine, dynamics, planning, memory, causal models, inference)
 │
 ├── docs/                      # Cognitive Expansion Fronts & Compass Architecture
 │   ├── roadmap_compass.md         # Ratified High-Level Specification and Strategic Compass
@@ -358,4 +364,40 @@ domain = DomainRegistry.get("chess", representation_mode="full")
 initial_state = domain.initial_state()
 valid_moves = domain.valid_actions(initial_state)
 ```
+
+## Formal Verification & Interactive Theorem Proving (Lean 4)
+
+Beyond empirical testing, the core mathematical foundations, variational bounds, dynamical stability invariants, and causal time models of HYPOSTASES are formalized and mechanized in **Lean 4** with **Mathlib4** under the [`formal/`](formal/) package.
+
+### Architecture & Mechanized Theory Modules
+
+| Specification Area | Lean 4 Module | Formal Invariants & Theorems Proved |
+| :--- | :--- | :--- |
+| **Typed State Spaces (Part I §2)** | [`formal/Hypostases/StateSpace.lean`](formal/Hypostases/StateSpace.lean) | • Exact dimension preservation for vector spaces $\mathbb{R}^{n_c}, \mathbb{R}^{n_k}, \mathbb{R}_{\ge 0}^{n_r}$<br>• Dynamic policy simplex invariants: $\forall \pi \in \Delta(K), \sum_k \pi_k = 1 \land 0 \le \pi_k \le 1$<br>• Internal power projection non-negativity: $\forall c \in C, 0 \le \text{proj}_{\text{int}}(c)_i$ |
+| **Active Inference & EFE (Part I §2 & Front 09)** | [`formal/Hypostases/ActiveInference.lean`](formal/Hypostases/ActiveInference.lean) | • Discrete Kullback-Leibler divergence $D_{\mathrm{KL}}(q \parallel p)$ and Variational Free Energy $F[q, y]$<br>• Decomposition of Expected Free Energy $G(\pi)$ into Pragmatic vs. Epistemic value<br>• Dynamic mixing recovery: $\beta_{\text{efe}} = 0 \implies \text{pure pragmatic exploitation}$, $\beta_{\text{efe}} = 1 \implies \text{pure epistemic curiosity}$ |
+| **3-Tier Time & Causality (Part I §1)** | [`formal/Hypostases/TimeModel.lean`](formal/Hypostases/TimeModel.lean) | • Asynchronous Tier-1 monotonic local event clocks: $t_0^{(i)} < t_1^{(i)} < \dots$<br>• Transitive global total ordering with deterministic tie-breaking for causal attribution<br>• Tier-2 synchronous snapshot barrier non-leakage invariants |
+
+### Formalization Principles & Design Alignment
+
+1. **Strict Machine Learning Rationality (Directive 005)**: All formal proofs operate strictly under mathematical state dynamics and optimal game-theoretic payoff adjustments, precluding anthropomorphic cognitive defects.
+2. **Dual-Layer Verification**: 
+   - **Interactive Theorem Prover (Lean 4)**: Mechanized proofs verify analytical bounds and state invariants algebraically.
+   - **Modular Formal Math Suite (Pytest)**: `tests/formal_math/` (124+ automated mathematical tests) empirically verifies asymptotic limits ($N \to \infty$), Monte Carlo bounds, and numerical stability.
+3. **Reproducible Toolchain**: Version-locked against Lean 4 (`v4.13.0`) via [`formal/lean-toolchain`](formal/lean-toolchain) and configured via Lake (`formal/lakefile.lean`).
+
+### Building and Verifying the Formal Proofs
+
+To typecheck and verify the formal proofs locally:
+
+```powershell
+# 1. Ensure elan (Lean toolchain manager) is installed
+winget install -e --id Lean.elan
+
+# 2. Enter formal package, fetch Mathlib4 dependencies and compile
+cd formal
+lake update
+lake build
+```
+
+
 
