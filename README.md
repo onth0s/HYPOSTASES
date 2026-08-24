@@ -115,6 +115,46 @@ All 14 cognitive expansion fronts maintain the core state invariant: $\sigma = (
 5. **Tier-0 Continuous Substrate**: Euler-Maruyama SDE integration for continuous substrate drift and continuous reserve decay.
 6. **Strict Cognitive Integrity (Rule 005)**: Designed strictly to simulate **Machine Learning & Autonomous AI Agents**. Artificially introducing human cognitive deficiencies or irrational biases is strictly prohibited. Human behavior (which includes mental inadequacies on top of rational capability) is a larger **superset** that is explicitly deferred.
 
+## Core State Equation & Closed-Loop Dynamics
+
+### 1. The Core State Invariant ($\sigma$)
+An agent's persistent latent configuration at discrete Tier-1 event time $t$ is strictly defined as a 4-tuple of independent primitives:
+
+$$\sigma^{(i)}_t = \big(c^{(i)}_t, \, w^{(i)}_t, \, g^{(i)}_t, \, \rho_{\text{ext}, t}^{(i)}\big) \in \mathcal{C} \times \mathcal{W} \times \mathcal{G} \times \mathcal{R}_{\text{ext}}$$
+
+- **Characteristics ($c \in \mathcal{C} = \mathbb{R}^{n_c}$)**: Persistent agent traits and internal states (e.g. resilience, sociality, stamina/energy reserve, mood).
+- **World Model ($w \in \mathcal{W}$)**: Joint belief distribution over environmental state $S$ and peer latent states $\prod_{j \neq i} \Sigma^{(j)}$ (Theory of Mind representation), parameterized via $(\mu, \sigma^2)$ or continuous attractor grids.
+- **Goal Hierarchy ($g = u \in \mathcal{G} = \mathbb{R}^{n_k}$)**: Latent utilities/priorities over schema-defined goal dimensions (Survival, Acquisition, Relational, Status).
+- **External Power ($\rho_{\text{ext}} \in \mathcal{R}_{\text{ext}} = \mathbb{R}_{\ge 0}^{n_r}$)**: Externally-held resource vectors (capital, authority, social capital).
+
+**Derived Views & Transient Quantities (Non-Persistent):**
+- **Internal Power (read-only)**: $\rho_{\text{int}} = \operatorname{proj}_{\text{int}}(c) \in \mathbb{R}_{\ge 0}^{n_{r, \text{int}}}$
+- **Willingness**: $\omega = \operatorname{derive}_{\Omega}(u, \rho_{\text{ext}}, \rho_{\text{int}}, c) \in \mathbb{R}_{\ge 0}^{n_k}$
+- **Dynamic Policy Allocation**: $\pi_t = \operatorname{softmax}(u_t / \xi_t) \in \Delta(K)$
+- **Potentialities**: $\mathcal{P}(c) = \{c' \in \mathcal{C} \mid c' \text{ reachable from } c \text{ under budget } R\}$
+
+---
+
+### 2. Closed-Loop Function Composition (Four-Stage Loop)
+
+The operational loop maps the current agent state to the next state via total function composition:
+
+$$\sigma_{t+1} = \operatorname{Evolve}(\sigma_t, a_t, \delta_t) = \sigma_t \oplus \Phi_t$$
+
+1. **Policy Stage (Forward Simulation)**:
+   $$a_t \sim \pi_{\text{decision}}(\sigma_t; \, \xi_t), \quad \text{subject to } \operatorname{cost}_{\text{ext}}(a_t) \le \rho_{\text{ext}, t}$$
+2. **Environment Stage**:
+   $$e_{t+1} = \operatorname{step\_env}\big(e_t, \, \{a^{(i)}_t\}\big)$$
+3. **Feedback Stage**:
+   $$\Phi_t = \operatorname{feedback}\big(\operatorname{obs}(e_t), \, \operatorname{obs}(e_{t+1}), \, a_t, \, w_t\big) = (\Delta c, \, \Delta w, \, \Delta g, \, \Delta \rho_{\text{ext}})$$
+4. **State Evolution Stage**:
+   $$\begin{aligned}
+   c_{t+1} &= c_t + \phi_t.\Delta c \\
+   w_{t+1} &= \operatorname{update}_{\mathcal{W}}(w_t, \phi_t.\Delta w) \\
+   g_{t+1} &= g_t + \phi_t.\Delta g \\
+   \rho_{\text{ext}, t+1} &= \rho_{\text{ext}, t} + \phi_t.\Delta \rho_{\text{ext}} - \operatorname{cost}_{\text{ext}}(a_t, \rho_{\text{ext}, t}, \rho_{\text{int}, t})
+   \end{aligned}$$
+
 ## Machine Learning Agent Modeling & Cognitive Integrity (Rule 005)
 
 HYPOSTASES is fundamentally engineered to model **Machine Learning Agents and Autonomous AI Systems**, operating under spec-compliant, rational, and optimal multi-agent state dynamics.

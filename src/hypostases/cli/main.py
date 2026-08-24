@@ -16,7 +16,11 @@ import sys
 from typing import ClassVar
 
 from rich.console import Console
-from rich_argparse import RichHelpFormatter
+
+try:
+    from rich_argparse import RichHelpFormatter
+except ImportError:
+    from argparse import HelpFormatter as RichHelpFormatter
 
 from hypostases.cli import infer, spec, sweep, sweep_memory, trace, train
 
