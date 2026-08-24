@@ -1,7 +1,8 @@
-"""Compile all formal verification logs (Lean 4 theorem proofs + Pytest formal math tests) with rigorous provenance."""
+"""Compile all formal verification logs (Lean 4 theorem proofs + Pytest formal math tests) with rigorous provenance and sanitized paths."""
 
 import datetime
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -13,6 +14,42 @@ from rich.panel import Panel
 from rich.table import Table
 
 console = Console()
+
+
+def sanitize_text(text: str, repo_root: Path) -> str:
+    """Obscure user directory paths, machine usernames, and environment-specific prefixes from strings."""
+    if not text:
+        return text
+
+    user_home = str(Path.home())
+    user_name = Path.home().name
+    repo_root_str = str(repo_root)
+
+    # Replace repository absolute path with relative <HYPOSTASES_ROOT>
+    text = text.replace(repo_root_str, "<HYPOSTASES_ROOT>")
+    text = text.replace(repo_root_str.replace("\\", "/"), "<HYPOSTASES_ROOT>")
+
+    # Replace user profile / home directory with <USER_HOME>
+    text = text.replace(user_home, "<USER_HOME>")
+    text = text.replace(user_home.replace("\\", "/"), "<USER_HOME>")
+
+    # Catch any remaining Windows User directory patterns (e.g. C:\Users\<Username>\...)
+    text = re.sub(
+        r"[A-Za-z]:\\[Uu]sers\\[^\\]+",
+        r"<USER_HOME>",
+        text,
+    )
+    text = re.sub(
+        r"[A-Za-z]:/[Uu]sers/[^/]+",
+        r"<USER_HOME>",
+        text,
+    )
+
+    # Obscure machine username if still present
+    if user_name:
+        text = re.sub(re.escape(user_name), "<USER>", text, flags=re.IGNORECASE)
+
+    return text
 
 
 def get_git_provenance(repo_root: Path) -> dict[str, str]:
@@ -94,7 +131,7 @@ def run_lean_verification(repo_root: Path) -> dict:
     duration_s = (end_time - start_time).total_seconds()
     output = (proc.stdout + "\n" + proc.stderr).strip()
 
-    # Discover and inspect Hypostases project-specific formal source files (excluding .lake package dependencies)
+    # Discover and inspect Hypostases project-specific formal source files
     hypostases_formal_files = [f for f in formal_dir.glob("**/*.lean") if ".lake" not in f.parts]
     hypostases_formal_files.sort()
 
@@ -113,13 +150,13 @@ def run_lean_verification(repo_root: Path) -> dict:
         )
 
     return {
-        "command": cmd_str,
-        "cwd": str(formal_dir),
+        "command": sanitize_text(cmd_str, repo_root),
+        "cwd": sanitize_text(str(formal_dir), repo_root),
         "exit_code": proc.returncode,
         "start_time": start_time.isoformat(),
         "end_time": end_time.isoformat(),
         "duration_seconds": duration_s,
-        "output": output,
+        "output": sanitize_text(output, repo_root),
         "files": file_metadata,
     }
 
@@ -186,7 +223,7 @@ def run_pytest_formal_math(repo_root: Path, junit_xml_path: Path) -> dict:
         for case in suite.findall("testcase"):
             tc_name = case.attrib.get("name", "")
             tc_classname = case.attrib.get("classname", "")
-            tc_file = case.attrib.get("file", "")
+            tc_file = sanitize_text(case.attrib.get("file", ""), repo_root)
             tc_time = float(case.attrib.get("time", 0.0))
             is_failed = case.find("failure") is not None
             is_error = case.find("error") is not None
@@ -224,13 +261,13 @@ def run_pytest_formal_math(repo_root: Path, junit_xml_path: Path) -> dict:
         )
 
     return {
-        "command": cmd_str,
-        "cwd": str(repo_root),
+        "command": sanitize_text(cmd_str, repo_root),
+        "cwd": sanitize_text(str(repo_root), repo_root),
         "exit_code": proc.returncode,
         "start_time": start_time.isoformat(),
         "end_time": end_time.isoformat(),
         "duration_seconds": duration_s,
-        "output": output,
+        "output": sanitize_text(output, repo_root),
         "summary": {
             "total_tests": total_tests,
             "failures": total_failures,
@@ -254,7 +291,7 @@ def main():
 
     console.print(
         Panel(
-            "[bold cyan]HYPOSTASES — Formal Verification Collector with Full Live Provenance[/bold cyan]",
+            "[bold cyan]HYPOSTASES — Formal Verification Collector with Full Live Provenance (Sanitized)[/bold cyan]",
             expand=False,
         )
     )
@@ -356,7 +393,7 @@ def main():
 
     # Console Presentation Table
     table = Table(
-        title="Live Verification & Provenance Summary",
+        title="Live Verification & Provenance Summary (Sanitized)",
         show_header=True,
         header_style="bold magenta",
     )
@@ -386,9 +423,11 @@ def main():
 
     console.print(table)
     console.print(
-        f"[bold green]Consolidated provenance log written to:[/bold green] {output_filename}"
+        f"[bold green]Consolidated provenance log written to:[/bold green] {sanitize_text(str(output_filename), repo_root)}"
     )
-    console.print(f"[bold green]Latest report snapshot updated at:[/bold green] {latest_symlink}")
+    console.print(
+        f"[bold green]Latest report snapshot updated at:[/bold green] {sanitize_text(str(latest_symlink), repo_root)}"
+    )
 
     # Fail loudly if any test or compilation step failed
     if lean_results["exit_code"] != 0 or pytest_results["exit_code"] != 0:
