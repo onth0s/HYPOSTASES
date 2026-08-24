@@ -186,8 +186,11 @@ def _worker_play_game_vs_stockfish(
 
         # Material balance
         piece_vals = {
-            chess.PAWN: 1.0, chess.KNIGHT: 3.0, chess.BISHOP: 3.25,
-            chess.ROOK: 5.0, chess.QUEEN: 9.0,
+            chess.PAWN: 1.0,
+            chess.KNIGHT: 3.0,
+            chess.BISHOP: 3.25,
+            chess.ROOK: 5.0,
+            chess.QUEEN: 9.0,
         }
         mat_balance = 0.0
         for p_type, val in piece_vals.items():
@@ -197,8 +200,10 @@ def _worker_play_game_vs_stockfish(
 
         # Result scoring
         if outcome is not None:
-            agent_won = (outcome.winner == chess.WHITE) if agent_is_white else (
-                outcome.winner == chess.BLACK
+            agent_won = (
+                (outcome.winner == chess.WHITE)
+                if agent_is_white
+                else (outcome.winner == chess.BLACK)
             )
             if agent_won:
                 result_char, score_val = "W", 1.0
@@ -244,6 +249,7 @@ class StockfishBenchmarkResult:
     def to_dict(self) -> dict[str, Any]:
         """Serialize all fields to a plain dict for JSON/YAML persistence."""
         import dataclasses
+
         return dataclasses.asdict(self)
 
 
@@ -352,7 +358,9 @@ class GroundBStockfish:
 
         # Probe one engine to get the display name
         probe_eng, is_real = _spawn_stockfish_engine(
-            self.stockfish_path, self.reference_elo, self.stockfish_threads,
+            self.stockfish_path,
+            self.reference_elo,
+            self.stockfish_threads,
             self.stockfish_multipv,
         )
         engine_name = "Stockfish 18" if is_real else "MockStockfishEngine"
@@ -402,11 +410,16 @@ class GroundBStockfish:
                     disable=not verbose,
                 ) as progress,
                 ProcessPoolExecutor(
-                    max_workers=pool_size, initializer=_init_worker_process,
+                    max_workers=pool_size,
+                    initializer=_init_worker_process,
                 ) as executor,
             ):
                 task_id = progress.add_task(
-                    "match", total=games_n, wins=0, losses=0, draws=0,
+                    "match",
+                    total=games_n,
+                    wins=0,
+                    losses=0,
+                    draws=0,
                 )
                 futures = [
                     executor.submit(
@@ -458,9 +471,7 @@ class GroundBStockfish:
                         f"  [cyan][Game {completed_count}/{games_n} Completed][/cyan] Result: [bold]{res_char}[/bold] | Moves: {moves} | Score: {wins}W-{losses}L-{draws}D [bold magenta]({capped} capped)[/bold magenta]"
                     )
         except KeyboardInterrupt:
-            console.print(
-                "\n[bold red]Interrupted by User (Ctrl+C).[/bold red]"
-            )
+            console.print("\n[bold red]Interrupted by User (Ctrl+C).[/bold red]")
             sys.exit(1)
 
         # Export all Ground B PGN games

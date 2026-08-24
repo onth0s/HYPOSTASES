@@ -56,9 +56,10 @@ class RichArgumentParser(argparse.ArgumentParser):
 
 def main() -> None:
     # Ensure subcommand errors and help are also rich formatted
-    RichHelpFormatter.highlights.append(
-        r"\b(?P<subcommand>trace|infer|sweep|sweep-memory|spec|train)\b"
-    )
+    if hasattr(RichHelpFormatter, "highlights"):
+        RichHelpFormatter.highlights.append(
+            r"\b(?P<subcommand>trace|infer|sweep|sweep-memory|spec|train)\b"
+        )
 
     parser = RichArgumentParser(
         prog="hypostases",

@@ -30,9 +30,7 @@ from hypostases.plugins.domains.chess.ground_b_stockfish import GroundBStockfish
 console = Console()
 
 DEFAULT_RUN_DIR = Path("exports/runs/run_20260815_032220")
-EXPERIMENT_CONFIG = Path(
-    "src/hypostases/plugins/domains/chess/chess_experiment_config.yaml"
-)
+EXPERIMENT_CONFIG = Path("src/hypostases/plugins/domains/chess/chess_experiment_config.yaml")
 
 
 def load_run_snapshot(run_dir: Path) -> PolicySnapshot:
@@ -136,19 +134,13 @@ def main() -> None:
         help="Path to the training run directory",
     )
     parser.add_argument("--games", type=int, default=32, help="Number of benchmark games")
-    parser.add_argument(
-        "--stockfish-elo", type=float, default=800.0, help="Stockfish target Elo"
-    )
-    parser.add_argument(
-        "--time-control", type=float, default=0.02, help="Seconds per engine move"
-    )
+    parser.add_argument("--stockfish-elo", type=float, default=800.0, help="Stockfish target Elo")
+    parser.add_argument("--time-control", type=float, default=0.02, help="Seconds per engine move")
     parser.add_argument("--workers", type=int, default=20, help="Parallel engine workers")
     parser.add_argument(
         "--stockfish-threads", type=int, default=2, help="CPU threads per Stockfish process"
     )
-    parser.add_argument(
-        "--search-depth", type=int, default=3, help="Agent alpha-beta search depth"
-    )
+    parser.add_argument("--search-depth", type=int, default=3, help="Agent alpha-beta search depth")
     parser.add_argument(
         "--eval-temperature",
         type=float,
@@ -198,7 +190,7 @@ def main() -> None:
 
     console.print(
         f"\n  [yellow]Starting {args.games}-game match vs Stockfish "
-        f"(Elo {args.stockfish_elo:.0f}, {args.time_control*1000:.0f}ms/move, "
+        f"(Elo {args.stockfish_elo:.0f}, {args.time_control * 1000:.0f}ms/move, "
         f"{args.workers} workers, {args.stockfish_threads} threads/engine)...[/yellow]"
     )
 
@@ -266,9 +258,7 @@ def main() -> None:
         "result": result.to_dict(),
     }
     benchmark_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    console.print(
-        f"  [bold green]Benchmark saved:[/bold green] {benchmark_file}"
-    )
+    console.print(f"  [bold green]Benchmark saved:[/bold green] {benchmark_file}")
 
 
 if __name__ == "__main__":

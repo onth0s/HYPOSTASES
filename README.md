@@ -117,6 +117,26 @@ All 14 cognitive expansion fronts maintain the core state invariant: $\sigma = (
 
 ## Core State Equation & Closed-Loop Dynamics
 
+### What is an Agent?
+
+#### Informal Definition (Natural Language Abstraction)
+In **HYPOSTASES**, an **Agent** is an autonomous, goal-directed computational entity that maintains internal traits and capabilities, models its environment and peers, prioritizes competing objectives, and expends finite resources to execute actions and update its beliefs in response to environmental feedback.
+
+#### Formal Definition
+Formally, an agent $i \in \mathcal{I}$ is a discrete-event dynamical system characterized by a 4-tuple of persistent primitive state spaces, a policy parameter space, and an action-perception interface:
+
+$$\text{Agent}^{(i)} \triangleq \Big\langle \mathcal{C}, \, \mathcal{W}, \, \mathcal{G}, \, \mathcal{R}_{\text{ext}}, \, \Xi, \, \mathcal{A}, \, \pi_{\text{decision}}, \, \text{observe}, \, \text{feedback}, \, \text{Evolve} \Big\rangle$$
+
+where:
+- $\sigma_t^{(i)} = (c_t^{(i)}, w_t^{(i)}, g_t^{(i)}, \rho_{\text{ext}, t}^{(i)}) \in \Sigma = \mathcal{C} \times \mathcal{W} \times \mathcal{G} \times \mathcal{R}_{\text{ext}}$ is the persistent state at event tick $t$.
+- $\xi_t \in \Xi$ is the exploration/temperature policy parameter.
+- $\pi_{\text{decision}} : \Sigma \times \Xi \to \Delta(\mathcal{A})$ maps internal state to an action probability distribution.
+- $\text{observe} : \mathcal{E} \to \mathcal{S}$ projects global environment state $\mathcal{E}$ to local observations $\mathcal{S}$.
+- $\text{feedback} : \mathcal{S} \times \mathcal{S} \times \mathcal{A} \times \mathcal{W} \to \Phi$ computes transition feedback deltas $\Phi = \Delta\mathcal{C} \times \Delta\mathcal{W} \times \Delta\mathcal{G} \times \Delta\mathcal{R}_{\text{ext}}$.
+- $\text{Evolve} : \Sigma \times \Phi \times \mathcal{A} \to \Sigma$ integrates feedback deltas into the next persistent state $\sigma_{t+1}^{(i)}$.
+
+---
+
 ### 1. The Core State Invariant ($\sigma$)
 An agent's persistent latent configuration at discrete Tier-1 event time $t$ is strictly defined as a 4-tuple of independent primitives:
 
@@ -128,9 +148,9 @@ $$\sigma^{(i)}_t = \big(c^{(i)}_t, \, w^{(i)}_t, \, g^{(i)}_t, \, \rho_{\text{ex
 - **External Power ($\rho_{\text{ext}} \in \mathcal{R}_{\text{ext}} = \mathbb{R}_{\ge 0}^{n_r}$)**: Externally-held resource vectors (capital, authority, social capital).
 
 **Derived Views & Transient Quantities (Non-Persistent):**
-- **Internal Power (read-only)**: $\rho_{\text{int}} = \operatorname{proj}_{\text{int}}(c) \in \mathbb{R}_{\ge 0}^{n_{r, \text{int}}}$
-- **Willingness**: $\omega = \operatorname{derive}_{\Omega}(u, \rho_{\text{ext}}, \rho_{\text{int}}, c) \in \mathbb{R}_{\ge 0}^{n_k}$
-- **Dynamic Policy Allocation**: $\pi_t = \operatorname{softmax}(u_t / \xi_t) \in \Delta(K)$
+- **Internal Power (read-only)**: $\rho_{\text{int}} = \text{proj}_{\text{int}}(c) \in \mathbb{R}_{\ge 0}^{n_{r, \text{int}}}$
+- **Willingness**: $\omega = \text{derive}_{\Omega}(u, \rho_{\text{ext}}, \rho_{\text{int}}, c) \in \mathbb{R}_{\ge 0}^{n_k}$
+- **Dynamic Policy Allocation**: $\pi_t = \text{softmax}(u_t / \xi_t) \in \Delta(K)$
 - **Potentialities**: $\mathcal{P}(c) = \{c' \in \mathcal{C} \mid c' \text{ reachable from } c \text{ under budget } R\}$
 
 ---
@@ -139,20 +159,20 @@ $$\sigma^{(i)}_t = \big(c^{(i)}_t, \, w^{(i)}_t, \, g^{(i)}_t, \, \rho_{\text{ex
 
 The operational loop maps the current agent state to the next state via total function composition:
 
-$$\sigma_{t+1} = \operatorname{Evolve}(\sigma_t, a_t, \delta_t) = \sigma_t \oplus \Phi_t$$
+$$\sigma_{t+1} = \text{Evolve}(\sigma_t, a_t, \delta_t) = \sigma_t \oplus \Phi_t$$
 
 1. **Policy Stage (Forward Simulation)**:
-   $$a_t \sim \pi_{\text{decision}}(\sigma_t; \, \xi_t), \quad \text{subject to } \operatorname{cost}_{\text{ext}}(a_t) \le \rho_{\text{ext}, t}$$
+   $$a_t \sim \pi_{\text{decision}}(\sigma_t; \, \xi_t), \quad \text{subject to } \text{cost}_{\text{ext}}(a_t) \le \rho_{\text{ext}, t}$$
 2. **Environment Stage**:
-   $$e_{t+1} = \operatorname{step\_env}\big(e_t, \, \{a^{(i)}_t\}\big)$$
+   $$e_{t+1} = \text{step\_env}\big(e_t, \, \{a^{(i)}_t\}\big)$$
 3. **Feedback Stage**:
-   $$\Phi_t = \operatorname{feedback}\big(\operatorname{obs}(e_t), \, \operatorname{obs}(e_{t+1}), \, a_t, \, w_t\big) = (\Delta c, \, \Delta w, \, \Delta g, \, \Delta \rho_{\text{ext}})$$
+   $$\Phi_t = \text{feedback}\big(\text{obs}(e_t), \, \text{obs}(e_{t+1}), \, a_t, \, w_t\big) = (\Delta c, \, \Delta w, \, \Delta g, \, \Delta \rho_{\text{ext}})$$
 4. **State Evolution Stage**:
    $$\begin{aligned}
    c_{t+1} &= c_t + \phi_t.\Delta c \\
-   w_{t+1} &= \operatorname{update}_{\mathcal{W}}(w_t, \phi_t.\Delta w) \\
+   w_{t+1} &= \text{update}_{\mathcal{W}}(w_t, \phi_t.\Delta w) \\
    g_{t+1} &= g_t + \phi_t.\Delta g \\
-   \rho_{\text{ext}, t+1} &= \rho_{\text{ext}, t} + \phi_t.\Delta \rho_{\text{ext}} - \operatorname{cost}_{\text{ext}}(a_t, \rho_{\text{ext}, t}, \rho_{\text{int}, t})
+   \rho_{\text{ext}, t+1} &= \rho_{\text{ext}, t} + \phi_t.\Delta \rho_{\text{ext}} - \text{cost}_{\text{ext}}(a_t, \rho_{\text{ext}, t}, \rho_{\text{int}, t})
    \end{aligned}$$
 
 ## Machine Learning Agent Modeling & Cognitive Integrity (Rule 005)

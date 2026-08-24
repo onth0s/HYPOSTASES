@@ -19,7 +19,7 @@ def test_loader_reads_plugin_config() -> None:
     """The loader must resolve chess_experiment_config.yaml next to the plugin."""
     cfg = load_chess_experiment_config()
     assert cfg.get("experiment_id") == "chess_dual_testing_grounds_v1"
-    assert cfg["training"]["generations"] == 48
+    assert cfg["training"]["generations"] == 500
     assert cfg["training"]["games_per_generation"] == 32
     assert cfg["ground_a"]["snapshot_interval_k"] == 8
     assert cfg["ground_a"]["parallel_workers"] == 20
