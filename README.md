@@ -162,17 +162,20 @@ The operational loop maps the current agent state to the next state via total fu
 $$\sigma_{t+1} = \text{Evolve}(\sigma_t, a_t, \delta_t) = \sigma_t \oplus \Phi_t$$
 
 1. **Policy Stage (Forward Simulation)**:
-   $$a_t \sim \pi_{\text{decision}}(\sigma_t; \, \xi_t), \quad \text{subject to } \text{cost}_{\text{ext}}(a_t) \le \rho_{\text{ext}, t}$$
+   $$a_t \sim \pi_{\text{decision}}(\sigma_t; \, \xi_t) \quad \text{where} \quad \text{cost}_{\text{ext}}(a_t) \le \rho_{\text{ext}, t}$$
+
 2. **Environment Stage**:
-   $$e_{t+1} = \text{step\_env}\big(e_t, \, \{a^{(i)}_t\}\big)$$
+   $$e_{t+1} = \text{step\_env}(e_t, \, \{a^{(i)}_t\})$$
+
 3. **Feedback Stage**:
-   $$\Phi_t = \text{feedback}\big(\text{obs}(e_t), \, \text{obs}(e_{t+1}), \, a_t, \, w_t\big) = (\Delta c, \, \Delta w, \, \Delta g, \, \Delta \rho_{\text{ext}})$$
+   $$\Phi_t = \text{feedback}(\text{obs}(e_t), \, \text{obs}(e_{t+1}), \, a_t, \, w_t) = (\Delta c, \, \Delta w, \, \Delta g, \, \Delta \rho_{\text{ext}})$$
+
 4. **State Evolution Stage**:
    $$\begin{aligned}
    c_{t+1} &= c_t + \phi_t.\Delta c \\
-   w_{t+1} &= \text{update}_{\mathcal{W}}(w_t, \phi_t.\Delta w) \\
+   w_{t+1} &= \text{update}_{\mathcal{W}}(w_t, \, \phi_t.\Delta w) \\
    g_{t+1} &= g_t + \phi_t.\Delta g \\
-   \rho_{\text{ext}, t+1} &= \rho_{\text{ext}, t} + \phi_t.\Delta \rho_{\text{ext}} - \text{cost}_{\text{ext}}(a_t, \rho_{\text{ext}, t}, \rho_{\text{int}, t})
+   \rho_{\text{ext}, t+1} &= \rho_{\text{ext}, t} + \phi_t.\Delta \rho_{\text{ext}} - \text{cost}_{\text{ext}}(a_t, \, \rho_{\text{ext}, t}, \, \rho_{\text{int}, t})
    \end{aligned}$$
 
 ## Machine Learning Agent Modeling & Cognitive Integrity (Rule 005)
