@@ -125,7 +125,7 @@ In **HYPOSTASES**, an **Agent** is an autonomous, goal-directed computational en
 #### Formal Definition
 Formally, an agent $i \in \mathcal{I}$ is a discrete-event dynamical system characterized by a 4-tuple of persistent primitive state spaces, a policy parameter space, and an action-perception interface:
 
-$$\text{Agent}^{(i)} \triangleq \Big\langle \mathcal{C}, \, \mathcal{W}, \, \mathcal{G}, \, \mathcal{R}_{\text{ext}}, \, \Xi, \, \mathcal{A}, \, \pi_{\text{decision}}, \, \text{observe}, \, \text{feedback}, \, \text{Evolve} \Big\rangle$$
+$$\text{Agent}^{(i)} \triangleq \langle \mathcal{C}, \mathcal{W}, \mathcal{G}, \mathcal{R}_{\text{ext}}, \Xi, \mathcal{A}, \pi_{\text{decision}}, \text{observe}, \text{feedback}, \text{Evolve} \rangle$$
 
 where:
 - $\sigma_t^{(i)} = (c_t^{(i)}, w_t^{(i)}, g_t^{(i)}, \rho_{\text{ext}, t}^{(i)}) \in \Sigma = \mathcal{C} \times \mathcal{W} \times \mathcal{G} \times \mathcal{R}_{\text{ext}}$ is the persistent state at event tick $t$.
@@ -140,7 +140,7 @@ where:
 ### 1. The Core State Invariant ($\sigma$)
 An agent's persistent latent configuration at discrete Tier-1 event time $t$ is strictly defined as a 4-tuple of independent primitives:
 
-$$\sigma^{(i)}_t = \big(c^{(i)}_t, \, w^{(i)}_t, \, g^{(i)}_t, \, \rho_{\text{ext}, t}^{(i)}\big) \in \mathcal{C} \times \mathcal{W} \times \mathcal{G} \times \mathcal{R}_{\text{ext}}$$
+$$\sigma^{(i)}_t = (c^{(i)}_t, w^{(i)}_t, g^{(i)}_t, \rho_{\text{ext}, t}^{(i)}) \in \mathcal{C} \times \mathcal{W} \times \mathcal{G} \times \mathcal{R}_{\text{ext}}$$
 
 - **Characteristics ($c \in \mathcal{C} = \mathbb{R}^{n_c}$)**: Persistent agent traits and internal states (e.g. resilience, sociality, stamina/energy reserve, mood).
 - **World Model ($w \in \mathcal{W}$)**: Joint belief distribution over environmental state $S$ and peer latent states $\prod_{j \neq i} \Sigma^{(j)}$ (Theory of Mind representation), parameterized via $(\mu, \sigma^2)$ or continuous attractor grids.
@@ -165,17 +165,17 @@ $$\sigma_{t+1} = \text{Evolve}(\sigma_t, a_t, \delta_t) = \sigma_t \oplus \Phi_t
    $$a_t \sim \pi_{\text{decision}}(\sigma_t; \, \xi_t) \quad \text{where} \quad \text{cost}_{\text{ext}}(a_t) \le \rho_{\text{ext}, t}$$
 
 2. **Environment Stage**:
-   $$e_{t+1} = \text{step\_env}(e_t, \, \{a^{(i)}_t\})$$
+   $$e_{t+1} = \text{step\_env}(e_t, \{a^{(i)}_t\})$$
 
 3. **Feedback Stage**:
-   $$\Phi_t = \text{feedback}(\text{obs}(e_t), \, \text{obs}(e_{t+1}), \, a_t, \, w_t) = (\Delta c, \, \Delta w, \, \Delta g, \, \Delta \rho_{\text{ext}})$$
+   $$\Phi_t = \text{feedback}(\text{obs}(e_t), \text{obs}(e_{t+1}), a_t, w_t) = (\Delta c, \Delta w, \Delta g, \Delta \rho_{\text{ext}})$$
 
 4. **State Evolution Stage**:
    $$\begin{aligned}
    c_{t+1} &= c_t + \phi_t.\Delta c \\
-   w_{t+1} &= \text{update}_{\mathcal{W}}(w_t, \, \phi_t.\Delta w) \\
+   w_{t+1} &= \text{update}_{\mathcal{W}}(w_t, \phi_t.\Delta w) \\
    g_{t+1} &= g_t + \phi_t.\Delta g \\
-   \rho_{\text{ext}, t+1} &= \rho_{\text{ext}, t} + \phi_t.\Delta \rho_{\text{ext}} - \text{cost}_{\text{ext}}(a_t, \, \rho_{\text{ext}, t}, \, \rho_{\text{int}, t})
+   \rho_{\text{ext}, t+1} &= \rho_{\text{ext}, t} + \phi_t.\Delta \rho_{\text{ext}} - \text{cost}_{\text{ext}}(a_t, \rho_{\text{ext}, t}, \rho_{\text{int}, t})
    \end{aligned}$$
 
 ## Machine Learning Agent Modeling & Cognitive Integrity (Rule 005)
