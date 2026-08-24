@@ -33,10 +33,10 @@ def ExternalResources := Fin d.nr_ext → { r : ℝ // 0 ≤ r }
 structure PolicySimplex where
   prob : Fin d.nk → ℝ
   nonneg : ∀ i, 0 ≤ prob i
-  sum_one : (Finset.univ.sum prob) = 1
+  sum_one : (∑ i : Fin d.nk, prob i) = 1
 
 /-- Derived: Internal Power projection ρ_int = proj_int(c) ∈ ℝ≥0^{n_{r,int}} -/
-def proj_int (c : Characteristics d) (proj_map : Fin d.nr_int → Fin d.nc) :
+noncomputable def proj_int (c : Characteristics d) (proj_map : Fin d.nr_int → Fin d.nc) :
     Fin d.nr_int → ℝ :=
   fun i => max 0 (c (proj_map i))
 
@@ -48,10 +48,11 @@ theorem proj_int_nonneg (c : Characteristics d) (proj_map : Fin d.nr_int → Fin
 
 /-- Theorem: Simplex elements are bounded in [0, 1]. -/
 theorem simplex_elem_le_one (π : PolicySimplex d) (i : Fin d.nk) : π.prob i ≤ 1 := by
-  have h_sum : π.prob i + Finset.sum (Finset.univ.erase i) π.prob = 1 := by
-    rw [← π.sum_one]
-    exact (Finset.add_sum_erase Finset.univ π.prob (Finset.mem_univ i)).symm
-  have h_others_nonneg : 0 ≤ Finset.sum (Finset.univ.erase i) π.prob := by
+  have h_split : π.prob i + ∑ j ∈ Finset.univ.erase i, π.prob j = ∑ j : Fin d.nk, π.prob j :=
+    Finset.add_sum_erase Finset.univ π.prob (Finset.mem_univ i)
+  have h_sum : π.prob i + ∑ j ∈ Finset.univ.erase i, π.prob j = 1 := by
+    rw [h_split, π.sum_one]
+  have h_others_nonneg : 0 ≤ ∑ j ∈ Finset.univ.erase i, π.prob j := by
     apply Finset.sum_nonneg
     intro j _
     exact π.nonneg j

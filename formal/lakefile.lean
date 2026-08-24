@@ -9,6 +9,5 @@ require mathlib from git
   "https://github.com/leanprover-community/mathlib4.git" @ "v4.13.0"
 
 @[default_target]
-lean_lib "Hypostases" where
+lean_lib «Hypostases» where
   srcDir := "."
-  roots := #[Hypostases]
