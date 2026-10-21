@@ -11,6 +11,7 @@ Exercises `src/hypostases/causal/` against theorems from:
 """
 
 import numpy as np
+import pytest
 
 from hypostases.causal.causal_discovery import CausalDiscoveryEngine
 from hypostases.causal.causal_types import (
@@ -275,6 +276,7 @@ def test_theorem8_8_notears_structure_recovery_pinned_seed() -> None:
     assert shd <= 1, f"Pinned seed SHD failed: expected <= 1, got {shd}"
 
 
+@pytest.mark.slow
 def test_theorem8_9_notears_multi_seed_stability() -> None:
     """Theorem 8.9: Multi-Seed NOTEARS Stability & Metric Distribution (20 Seeds).
 

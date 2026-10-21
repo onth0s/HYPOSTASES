@@ -6,14 +6,15 @@ Defines hypothesis categories, evidence records, and metric structures for abduc
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 
-try:
+if sys.version_info >= (3, 11):
     from enum import StrEnum
-except ImportError:
+else:
     from enum import Enum
 
-    class StrEnum(str, Enum):
+    class StrEnum(str, Enum):  # type: ignore[no-redef]
         def __str__(self) -> str:
             return str(self.value)
 

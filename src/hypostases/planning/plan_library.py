@@ -154,6 +154,7 @@ class PlanLibrary:
 
         if self.storage_path is None:
             self._init_storage()
+        assert self.storage_path is not None
 
         filepath = self.storage_path / f"{template.template_id}.yaml"
         data = asdict(template)

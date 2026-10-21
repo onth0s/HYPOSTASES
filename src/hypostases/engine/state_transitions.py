@@ -9,10 +9,12 @@ from hypostases.engine.constants import (
     SIGMA2_MAX,
     SIGMA2_MIN,
 )
-from hypostases.engine.types import Action, ActionType, AgentState, DeltaLog, FeedbackDelta
+from hypostases.engine.types import Action, ActionType, AgentState, FeedbackDelta
 
 
-def _integrate_non_world(agent: AgentState, phi: FeedbackDelta) -> None:
+def _integrate_non_world(
+    agent: AgentState, phi: FeedbackDelta, utility_decay_rate: float | None = None
+) -> None:
     """Integrates all primitive state fields EXCEPT the world model (shared by evolve and evolve_rb)."""
     # Integrate Characteristics c
     if "reserve" in phi.delta_c:
@@ -32,7 +34,8 @@ def _integrate_non_world(agent: AgentState, phi: FeedbackDelta) -> None:
         )
 
     # Integrate Goal Hierarchy latent utilities u with baseline decay regularization
-    agent.g.u = (1.0 - const.UTILITY_DECAY_RATE) * agent.g.u + phi.delta_g
+    decay_rate = const.UTILITY_DECAY_RATE if utility_decay_rate is None else utility_decay_rate
+    agent.g.u = (1.0 - decay_rate) * agent.g.u + phi.delta_g
 
     # Integrate External Power ρ_ext
     if "social_capital" in phi.delta_rho_ext:
@@ -85,9 +88,9 @@ def _record_memory_event(agent: AgentState, phi: FeedbackDelta) -> None:
         agent.w.m_work.recent_events.append(event)
 
 
-def evolve(agent: AgentState, phi: FeedbackDelta) -> None:
+def evolve(agent: AgentState, phi: FeedbackDelta, utility_decay_rate: float | None = None) -> None:
     """Part II §3.4: State Evolution Stage integrating deltas into primitives."""
-    _integrate_non_world(agent, phi)
+    _integrate_non_world(agent, phi, utility_decay_rate=utility_decay_rate)
 
     # Integrate World Model w
     if "mu" in phi.delta_w:
@@ -112,45 +115,3 @@ def evolve(agent: AgentState, phi: FeedbackDelta) -> None:
         agent.w.sigma2 = max(SIGMA2_MIN, 1.0 / max(tau, 1e-9))
 
     _record_memory_event(agent, phi)
-
-
-def step_env(
-    pool_state: float,
-    agent_actions: list[tuple[str, Action]],
-    replenish_rate: float = 1.0,
-) -> tuple[float, DeltaLog]:
-    """Part II §3.2: Environment Stage (Shared Field Resource Step).
-
-    Processes joint actions over shared resource pool S_t and updates pool state.
-
-    Returns:
-        tuple (next_pool_state, delta_log)
-    """
-    total_requested = 0.0
-    total_shared = 0.0
-    total_withdrawn = 0.0
-    total_punished = 0.0
-
-    for _, act in agent_actions:
-        if act.action_type == ActionType.REQUEST:
-            total_requested += act.amount
-        elif act.action_type == ActionType.SHARE:
-            total_shared += act.amount
-        elif act.action_type == ActionType.WITHDRAW:
-            total_withdrawn += act.amount
-        elif act.action_type == ActionType.PUNISH:
-            total_punished += act.amount
-
-    # Net extraction and replenishment
-    net_extraction = total_requested + total_withdrawn - total_shared
-    next_pool = max(0.0, pool_state - net_extraction + replenish_rate)
-
-    delta_log: DeltaLog = {
-        "total_requested": total_requested,
-        "total_shared": total_shared,
-        "total_withdrawn": total_withdrawn,
-        "total_punished": total_punished,
-        "replenish_rate": replenish_rate,
-        "net_extraction": net_extraction,
-    }
-    return next_pool, delta_log

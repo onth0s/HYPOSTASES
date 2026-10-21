@@ -7,6 +7,8 @@ and running forward simulation traces.
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 
 from hypostases.engine import (
@@ -155,7 +157,7 @@ def run_simulation_trace(
         pool_after, delta_log = step_env(pool, actions)
 
         # 3. Feedback & State Evolution stage per agent
-        step_record = {
+        step_record: dict[str, Any] = {
             "step": step,
             "pool_before": pool,
             "pool_after": pool_after,

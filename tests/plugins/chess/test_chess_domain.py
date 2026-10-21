@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import pytest
+
+chess = pytest.importorskip("chess")
+
 from pathlib import Path
 
-import chess
 import pytest
 
 from hypostases.domains.base import Domain

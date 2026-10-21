@@ -2,7 +2,7 @@
 
 Agent-based modeling framework — formal specification (v4 Target), reference implementation, continuous substrate integration, vanguard game-theoretic mechanism design, cognitive expansion research fronts, and inverse inference engine.
 
-**Current Version**: `v0.4.0` | **Status**: 360/360 tests passing · `ruff` clean · Formal math & schema verified
+**Current Version**: `v0.4.1` | **Status**: 462/462 tests passing · `ruff` clean · Formal math & schema verified
 
 ## Project Structure
 
@@ -331,8 +331,8 @@ All ground-truth definitions live in `schema/` as YAML files. Validate any agent
 ```python
 from hypostases.schemas import assert_invariants, assert_schema_completeness
 
-assert_invariants(agent_state)         # Raises InvariantViolationError if invalid
-assert_schema_completeness()           # Audits schema branches for state-independence
+assert_invariants(agent_state)  # Raises InvariantViolationError if invalid
+assert_schema_completeness()  # Audits schema branches for state-independence
 ```
 
 The static auditor (`audit_schemas.py`) detects branches that degenerate to state-independent constants and raises warnings unless decorated with `@declared_simplification` (Directive 003).

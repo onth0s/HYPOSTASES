@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import os
 import random
-import signal
 from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -29,13 +28,9 @@ from hypostases.plugins.domains.chess.chess_agent_adapter import (
     ChessAgentAdapter,
 )
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain
+from hypostases.plugins.domains.chess.multiprocess_utils import _init_worker_process
 
 console = Console()
-
-
-def _init_worker_process() -> None:
-    """Worker process initializer ignoring SIGINT so main process handles Ctrl+C cleanly."""
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
 def _worker_run_ground_a_game(
@@ -49,7 +44,7 @@ def _worker_run_ground_a_game(
     nnue_weights_white: dict[str, np.ndarray] | None = None,
     nnue_weights_black: dict[str, np.ndarray] | None = None,
     search_depth: int = SEARCH_DEPTH,
-) -> tuple[float, float, int, str]:
+) -> tuple[float, float, int, str, str]:
     """Top-level worker running one Ground A self-play game between two policy snapshots."""
     import random
 
@@ -205,7 +200,7 @@ class GroundASelfPlay:
         board = self.domain.initial_state()
         num_moves = 0
         done = False
-        info = {}
+        info: dict[str, Any] = {}
 
         while not done and num_moves < max_moves:
             legal_moves = self.domain.valid_actions(board)
@@ -281,8 +276,8 @@ class GroundASelfPlay:
         # Default theta_meta if not provided
         default_theta = np.array([1.0, 0.3, 0.5, 0.8, 0.2, 0.4, 0.5, 0.3], dtype=np.float32)
 
-        futures_map = {}
-        pair_matchup_stats = {}
+        futures_map: dict[Any, tuple[int, int, bool]] = {}
+        pair_matchup_stats: dict[tuple[int, int], dict[str, Any]] = {}
 
         for s1, s2 in pairs:
             pair_matchup_stats[(s1.generation, s2.generation)] = {

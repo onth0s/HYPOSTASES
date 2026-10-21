@@ -10,10 +10,16 @@ from hypostases.inference.particle_filter import (
 )
 from hypostases.inference.prior import sample_prior
 from hypostases.inference.resampling import resample_joint_particles, resample_particles
-from hypostases.inference.summaries import goal_posterior, summarize_kalman, summarize_map
+from hypostases.inference.summaries import (
+    KalmanSummary,
+    goal_posterior,
+    summarize_kalman,
+    summarize_map,
+)
 
 __all__ = [
     "JointParticle",
+    "KalmanSummary",
     "Particle",
     "goal_posterior",
     "infer",

@@ -12,6 +12,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from hypostases.engine.constants import MOOD_DECAY_RATE
 from hypostases.plugins.domains.chess.chess_agent_adapter import ChessAgentAdapter
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain
 from hypostases.plugins.domains.chess.nnue_net import NNUENet
@@ -65,7 +66,7 @@ def run_emergence_check() -> None:
             board.push(move)
 
             # Update core agent state characteristics (Mood decay per Rule 004)
-            adapter.characteristics.mood *= 0.9  # 10% MOOD_DECAY_RATE
+            adapter.characteristics.mood *= 1.0 - MOOD_DECAY_RATE  # Rule 004
             adapter.characteristics.reserve = max(0.0, adapter.characteristics.reserve - 0.1)
 
             table.add_row(

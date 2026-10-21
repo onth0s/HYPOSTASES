@@ -15,7 +15,6 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-import hypostases.engine.constants as const
 from hypostases.engine.dynamics import evolve, feedback, pi_decision, step_env
 from hypostases.inference import sample_prior
 
@@ -24,10 +23,6 @@ KAPPA = 0.0
 LAMBDA = 0.0
 N_STEPS = 500
 CHECKPOINTS = {0, 10, 50, 100, 500}
-
-const.SCARCITY_COST_KAPPA = KAPPA
-const.GOVERNANCE_SCALING_LAMBDA = LAMBDA
-const.UTILITY_DECAY_RATE = 0.0
 
 console = Console()
 
@@ -49,13 +44,19 @@ for s in SEEDS:
 
     for step in range(1, N_STEPS + 1):
         agent_actions = [
-            (name, pi_decision(ag, pool_belief=pool, xi=xi, rng=rng)) for name, ag in agents.items()
+            (name, pi_decision(ag, pool_belief=pool, xi=xi, rng=rng, kappa=KAPPA))
+            for name, ag in agents.items()
         ]
-        pool, delta_log = step_env(pool, agent_actions, enable_withdraw_fee=(LAMBDA > 0))
+        pool, delta_log = step_env(
+            pool,
+            agent_actions,
+            enable_withdraw_fee=(LAMBDA > 0),
+            governance_lambda=LAMBDA,
+        )
         for name, ag in agents.items():
             act = delta_log["actions_log"][name]
             phi = feedback(ag, delta_log["pool_before"], pool, act, delta_log, agent_name=name)
-            evolve(ag, phi)
+            evolve(ag, phi, utility_decay_rate=0.0)
 
         if step in CHECKPOINTS:
             u_curr = np.mean([ag.g.u.copy() for ag in agents.values()], axis=0)

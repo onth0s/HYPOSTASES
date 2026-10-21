@@ -6,6 +6,10 @@ baseline-corrected REINFORCE update on theta_meta, and the generation-barrier
 ordering of execute_self_play_training_run (P2.2 sync fix).
 """
 
+import pytest
+
+chess = pytest.importorskip("chess")
+
 import numpy as np
 
 from hypostases.plugins.domains.chess.chess_agent_adapter import ChessAgentAdapter
@@ -153,6 +157,7 @@ def test_execute_run_interrupt_preserves_live_state() -> None:
     assert trainer._grad_batches == {}
 
 
+@pytest.mark.slow
 def test_execute_run_interrupt_during_drain_preserves_live_state(capsys) -> None:
     """A mid-drain interrupt must drain, discard the partial gen, and print feedback.
 

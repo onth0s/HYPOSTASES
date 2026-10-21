@@ -3,7 +3,10 @@
 Spec Ref: scratch/DISSONANCES.md D-007 (Renamed to Numerical Invariant Verification)
 """
 
-import chess
+import pytest
+
+chess = pytest.importorskip("chess")
+
 import numpy as np
 
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain

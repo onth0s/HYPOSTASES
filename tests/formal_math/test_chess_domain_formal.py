@@ -10,7 +10,10 @@ Verifies end-to-end mathematical invariants:
 
 from __future__ import annotations
 
-import chess
+import pytest
+
+chess = pytest.importorskip("chess")
+
 import numpy as np
 import pytest
 

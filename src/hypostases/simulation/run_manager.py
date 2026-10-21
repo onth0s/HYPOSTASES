@@ -218,7 +218,7 @@ class UnifiedRunManager:
         """Saves NNUE weights as a .npz archive atomically."""
         target = run_dir / "nnue" / f"nnue_{tag}.npz"
         tmp = target.with_suffix(".tmp.npz")
-        np.savez(tmp, **weights)
+        np.savez(str(tmp), **weights)  # type: ignore[arg-type]
         os.replace(tmp, target)
 
     def load_nnue_weights(self, run_dir: Path, tag: str = "latest") -> dict[str, np.ndarray]:

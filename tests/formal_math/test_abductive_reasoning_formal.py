@@ -58,7 +58,7 @@ def test_theorem11_3_surprise_threshold_anomaly_classification() -> None:
     detector = SurpriseDetector(surprise_threshold=2.0)
 
     # Small residual: F below threshold
-    is_anom_low, fe_low = detector.check_anomaly(
+    is_anom_low, _fe_low = detector.check_anomaly(
         observed_val=10.0, predicted_mean=10.1, predicted_var=2.0
     )
     assert not is_anom_low

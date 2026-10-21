@@ -28,6 +28,7 @@ from rich.progress import BarColumn, MofNCompleteColumn, Progress, SpinnerColumn
 from hypostases.plugins.domains.chess.chess_agent_adapter import SEARCH_DEPTH
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain
 from hypostases.plugins.domains.chess.ground_a_self_play import PolicySnapshot
+from hypostases.plugins.domains.chess.multiprocess_utils import _init_worker_process
 
 console = Console()
 
@@ -35,11 +36,6 @@ console = Console()
 # ---------------------------------------------------------------------------
 # Module-level worker function (picklable) for ProcessPoolExecutor
 # ---------------------------------------------------------------------------
-
-
-def _init_worker_process() -> None:
-    """Worker process initializer ignoring SIGINT so only main process handles Ctrl+C cleanly."""
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
 def _spawn_stockfish_engine(

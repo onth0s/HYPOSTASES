@@ -29,11 +29,21 @@ class SearchConfig:
 # Type aliases for domain-agnostic callbacks
 EvaluatorFn = Callable[[Any], float]
 OrderingFn = Callable[[Any, list[Any]], list[Any]]
+TacticalFilterFn = Callable[[Any, Any], bool]
 
 
 def default_ordering_fn(state: Any, actions: list[Any]) -> list[Any]:
     """Default string representation sort for deterministic tie-breaking."""
     return sorted(actions, key=lambda a: str(a))
+
+
+def default_tactical_filter(state: Any, action: Any) -> bool:
+    """Domain-agnostic tactical predicate filter (gracefully checks for captures/checks if supported)."""
+    is_cap = getattr(state, "is_capture", None)
+    gives_chk = getattr(state, "gives_check", None)
+    if callable(is_cap) and callable(gives_chk):
+        return bool(is_cap(action) or gives_chk(action))
+    return False
 
 
 class AlphaBetaSearch:
@@ -46,12 +56,14 @@ class AlphaBetaSearch:
         config: SearchConfig | None = None,
         ordering_fn: OrderingFn | None = None,
         quiescence_evaluator: EvaluatorFn | None = None,
+        tactical_filter: TacticalFilterFn | None = None,
     ) -> None:
         self.domain = domain
         self.evaluator = evaluator
         self.config = config or SearchConfig()
         self.ordering_fn = ordering_fn or default_ordering_fn
         self.quiescence_evaluator = quiescence_evaluator or evaluator
+        self.tactical_filter = tactical_filter or default_tactical_filter
         self.tt: dict[str, tuple[int, float, str]] = {}  # state_key -> (depth, eval, flag)
         self.recorder = TelemetryRecorder(mode=self.config.telemetry_mode)
         self._qnode_remaining: int | None = (
@@ -262,7 +274,7 @@ class AlphaBetaSearch:
 
         valid_actions = self.domain.valid_actions(state)
         # Quiescence filtering: only search tactical moves (captures or checks)
-        tactical_actions = [a for a in valid_actions if state.is_capture(a) or state.gives_check(a)]
+        tactical_actions = [a for a in valid_actions if self.tactical_filter(state, a)]
 
         for action in tactical_actions:
             next_state, _, _, _ = self.domain.step(state, action)

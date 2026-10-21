@@ -10,6 +10,8 @@ Implements the core loop stages:
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import numpy as np
 
 from hypostases.engine._math import softmax
@@ -44,6 +46,9 @@ from hypostases.engine.state_transitions import (
     _integrate_non_world as _integrate_non_world,
 )
 from hypostases.engine.state_transitions import (
+    _record_memory_event as _record_memory_event,
+)
+from hypostases.engine.state_transitions import (
     evolve as evolve,
 )
 from hypostases.engine.types import (
@@ -68,12 +73,28 @@ from hypostases.engine.utility_dynamics import (
     goal_probs,
 )
 
+EpistemicHandler = Callable[[AgentState, Action, float], FeedbackDelta]
+_epistemic_handler: EpistemicHandler | None = None
+
+
+def register_epistemic_handler(handler: EpistemicHandler) -> None:
+    """Registers the active-perception dispatcher for epistemic actions (Phase 3)."""
+    global _epistemic_handler
+    _epistemic_handler = handler
+
+
+def get_epistemic_handler() -> EpistemicHandler | None:
+    """Returns the registered epistemic action handler, if any."""
+    return _epistemic_handler
+
 
 def pi_decision(
     agent: AgentState,
     pool_belief: float,
     xi: np.ndarray,
     rng: np.random.Generator | None = None,
+    kappa: float | None = None,
+    thresh: float | None = None,
 ) -> Action:
     """Part II §3.1: Decision Policy (Forward Simulation).
 
@@ -88,7 +109,7 @@ def pi_decision(
     if rng is None:
         rng = np.random.default_rng()
 
-    probs = goal_probs(agent, xi, pool_belief=pool_belief)
+    probs = goal_probs(agent, xi, pool_belief=pool_belief, kappa=kappa, thresh=thresh)
     chosen_goal_idx = int(rng.choice(len(K), p=probs))
 
     goal = K[chosen_goal_idx]
@@ -201,6 +222,7 @@ def step_env(
     concurrency_operator: str = "shares-first",
     priorities: dict[str, float] | None = None,
     rng: np.random.Generator | None = None,
+    governance_lambda: float | None = None,
 ) -> tuple[float, DeltaLog]:
     """Part II §3.2, Part III §5.6: Environment Stage under concurrency.
 
@@ -225,7 +247,8 @@ def step_env(
     withdraw_deductions = 0.0
     if enable_withdraw_fee:
         # Contention 3: Dynamic governance scaling — fee amplified by defection prevalence
-        dynamic_fee = WITHDRAW_FEE * (1.0 + GOVERNANCE_SCALING_LAMBDA * withdraw_prevalence)
+        gov_lam = GOVERNANCE_SCALING_LAMBDA if governance_lambda is None else governance_lambda
+        dynamic_fee = WITHDRAW_FEE * (1.0 + gov_lam * withdraw_prevalence)
         withdraw_deductions += withdraws_count * dynamic_fee
     if enable_withdraw_degrade:
         withdraw_deductions += withdraws_count * WITHDRAW_DEGRADE
@@ -466,6 +489,10 @@ def feedback(
         _apply_cross_cutting_c; crowding-out hysteresis shift applied in _apply_crowding_out.
     """
     if action.action_type in EPISTEMIC_ACTION_TYPES:
+        if _epistemic_handler is not None:
+            return _epistemic_handler(agent, action, pool_after)
+
+        # Fallback deferred import if handler has not been explicitly registered
         from hypostases.active_perception import execute_epistemic_action
 
         return execute_epistemic_action(agent, action, ground_truth_val=pool_after)
@@ -503,47 +530,6 @@ def feedback(
         delta_rho_ext=delta_rho_ext,
         delta_peer_beliefs=delta_peer_beliefs,
     )
-
-
-def _record_memory_event(agent: AgentState, phi: FeedbackDelta) -> None:
-    """Record transition event into Front 03 memory sub-systems if present on agent.w."""
-    if agent.w.m_ep is None:
-        return
-
-    from hypostases.engine.memory import EpisodicEvent
-
-    surprise = float(phi.delta_w.get("last_surprise", 0.0))
-    utility_impact = float(np.linalg.norm(phi.delta_g))
-    urgency = float(1.0 / max(1.0, agent.c.reserve))
-    trust = float(sum(phi.delta_peer_beliefs.values())) if phi.delta_peer_beliefs else 0.5
-    info_gain = float(abs(phi.delta_w.get("sigma2", 0.0)))
-    novelty = float(abs(phi.delta_w.get("mu", 0.0)) * 0.05)
-
-    gateway = agent.w.thalamic_gateway
-    if gateway is not None:
-        salience = gateway.compute_salience(
-            surprise, info_gain, utility_impact, urgency, trust, novelty
-        )
-    else:
-        salience = 0.5 * (abs(surprise) + utility_impact)
-
-    event = EpisodicEvent(
-        tick=0,
-        state_snapshot={"reserve": agent.c.reserve, "mu": agent.w.mu},
-        action=Action(action_type=ActionType.REQUEST, amount=0.0),
-        surprise=surprise,
-        utility_delta=utility_impact,
-        next_state_snapshot={"reserve": agent.c.reserve, "mu": agent.w.mu},
-        salience_score=salience,
-    )
-    agent.w.m_ep.add_event(event)
-
-    if (
-        agent.w.m_work is not None
-        and gateway is not None
-        and gateway.should_gate_to_working_memory(salience)
-    ):
-        agent.w.m_work.recent_events.append(event)
 
 
 def evolve_rb(

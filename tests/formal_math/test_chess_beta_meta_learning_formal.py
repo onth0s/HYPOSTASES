@@ -14,6 +14,10 @@ These tests drive the estimator's batch finalization deterministically and verif
 
 from __future__ import annotations
 
+import pytest
+
+chess = pytest.importorskip("chess")
+
 import numpy as np
 import pytest
 

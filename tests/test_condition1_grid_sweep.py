@@ -15,6 +15,7 @@ establishing that role formation is regime-dependent rather than a universal att
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from hypostases.engine.dynamics import evolve, feedback, pi_decision, step_env
 from hypostases.inference import sample_prior
@@ -37,40 +38,29 @@ def _run_single_trajectory(
 
     u_history = [u_0.copy()]
 
-    import hypostases.engine.constants as const
-
-    orig_kappa = const.SCARCITY_COST_KAPPA
-    orig_lam = const.GOVERNANCE_SCALING_LAMBDA
-    orig_decay = const.UTILITY_DECAY_RATE
-
-    orig_thresh = const.SCARCITY_POOL_THRESHOLD
-
-    const.SCARCITY_COST_KAPPA = kappa
-    const.GOVERNANCE_SCALING_LAMBDA = lam
-    const.UTILITY_DECAY_RATE = decay
-    const.SCARCITY_POOL_THRESHOLD = 15.0
-
     pool = 3.0  # Initialized below SCARCITY_POOL_THRESHOLD (5.0) to active scarcity cost scaling
 
-    try:
-        for _step in range(n_steps):
-            agent_actions = [
-                (name, pi_decision(ag, pool_belief=pool, xi=xi, rng=rng))
-                for name, ag in agents.items()
-            ]
-            pool, delta_log = step_env(pool, agent_actions, enable_withdraw_fee=(lam > 0))
-            for name, ag in agents.items():
-                act = delta_log["actions_log"][name]
-                phi = feedback(ag, delta_log["pool_before"], pool, act, delta_log, agent_name=name)
-                evolve(ag, phi)
+    for _step in range(n_steps):
+        agent_actions = [
+            (
+                name,
+                pi_decision(ag, pool_belief=pool, xi=xi, rng=rng, kappa=kappa, thresh=15.0),
+            )
+            for name, ag in agents.items()
+        ]
+        pool, delta_log = step_env(
+            pool,
+            agent_actions,
+            enable_withdraw_fee=(lam > 0),
+            governance_lambda=lam,
+        )
+        for name, ag in agents.items():
+            act = delta_log["actions_log"][name]
+            phi = feedback(ag, delta_log["pool_before"], pool, act, delta_log, agent_name=name)
+            evolve(ag, phi, utility_decay_rate=decay)
 
-            u_curr = np.mean([ag.g.u.copy() for ag in agents.values()], axis=0)
-            u_history.append(u_curr.copy())
-    finally:
-        const.SCARCITY_COST_KAPPA = orig_kappa
-        const.GOVERNANCE_SCALING_LAMBDA = orig_lam
-        const.UTILITY_DECAY_RATE = orig_decay
-        const.SCARCITY_POOL_THRESHOLD = orig_thresh
+        u_curr = np.mean([ag.g.u.copy() for ag in agents.values()], axis=0)
+        u_history.append(u_curr.copy())
 
     u_history_arr = np.array(u_history)
     u_0_vec = u_history_arr[0]
@@ -137,6 +127,7 @@ def evaluate_grid_cell(
 
 
 class TestCondition1PreRegisteredGrid:
+    @pytest.mark.slow
     def test_side_by_side_grid_sweep(self):
         """Executes side-by-side comparison between decay=0.0 (pure dynamics) and decay=0.05 (decay regularized)."""
         kappas = [0.0, 0.5, 1.0]

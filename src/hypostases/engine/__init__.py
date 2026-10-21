@@ -7,8 +7,10 @@ from hypostases.engine.dynamics import (
     evolve,
     evolve_rb,
     feedback,
+    get_epistemic_handler,
     goal_probs,
     pi_decision,
+    register_epistemic_handler,
     step_env,
 )
 from hypostases.engine.likelihood import action_likelihood, expected_action_type, predict_amount
@@ -57,9 +59,11 @@ __all__ = [
     "evolve_rb",
     "expected_action_type",
     "feedback",
+    "get_epistemic_handler",
     "goal_probs",
     "pi_decision",
     "predict_amount",
+    "register_epistemic_handler",
     "step_continuous_agent",
     "step_continuous_substrate",
     "step_env",

@@ -10,7 +10,10 @@ Verifies end-to-end mathematical invariants for HYPOSTASES Chess integration:
 
 from __future__ import annotations
 
-import chess
+import pytest
+
+chess = pytest.importorskip("chess")
+
 import numpy as np
 import pytest
 
@@ -95,6 +98,7 @@ def test_formal_adjudication_bare_king_guard() -> None:
     assert _should_material_adjudicate(q_r_vs_r, chess.WHITE, 8.0, False) is True
 
 
+@pytest.mark.slow
 def test_formal_curriculum_games_never_adjudicated() -> None:
     """P1.1: curriculum games (seeded endgame presets) never yield MATERIAL_ADJUDICATION.
 

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hypostases"
-version = "0.4.0"
+version = "0.4.1"
 
 description = "Agent-based modeling framework — formal specification and reference implementation"
 requires-python = ">=3.10"
@@ -13,6 +13,7 @@ requires-python = ">=3.10"
 license = {text = "MIT"}
 dependencies = [
     "numpy>=1.24",
+    "scipy>=1.10.0",
     "pyyaml>=6.0",
     "rich>=13.0",
     "rich-argparse>=1.4.0",
@@ -27,7 +28,7 @@ dev = [
     "pytest>=8.0",
 ]
 all = [
-    "hypostases[chess]",
+    "hypostases[chess,dev]",
 ]
 
 [project.urls]
@@ -45,6 +46,7 @@ where = ["src"]
 [tool.ruff]
 target-version = "py310"
 line-length = 100
+exclude = ["formal/.lake", "build", "dist", ".venv"]
 
 [tool.ruff.lint]
 select = [
@@ -64,7 +66,8 @@ ignore = [
     "RUF003", # ambiguous unicode characters in mathematical comments (e.g. ρ)
 ]
 
-
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["E402"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["hypostases"]
@@ -73,4 +76,12 @@ known-first-party = ["hypostases"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "--strict-markers"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_configs = true
+ignore_missing_imports = true
 

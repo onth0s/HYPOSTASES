@@ -11,19 +11,29 @@ dynamically inside pi_decision / _goal_probs.
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, field, replace
 
-try:
+if sys.version_info >= (3, 11):
     from enum import StrEnum
-except ImportError:
+else:
     from enum import Enum
 
-    class StrEnum(str, Enum):
+    class StrEnum(str, Enum):  # type: ignore[no-redef]
         def __str__(self) -> str:
             return str(self.value)
 
 
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, TypedDict, cast
+
+if TYPE_CHECKING:
+    from hypostases.engine.memory import (
+        EpisodicMemory,
+        ProceduralMemory,
+        SemanticMemory,
+        ThalamicGateway,
+        WorkingMemory,
+    )
 
 import numpy as np
 
@@ -114,11 +124,11 @@ class WorldModel:
     replenish_rate_est: float = 1.0
     peer_beliefs: dict[str, float] = field(default_factory=dict)
     last_surprise: float = 0.0  # Contention 2: tracks previous surprise for regime-shift detection
-    m_ep: Any = field(default=None)  # EpisodicMemory instance
-    m_sem: Any = field(default=None)  # SemanticMemory instance
-    m_proc: Any = field(default=None)  # ProceduralMemory instance
-    m_work: Any = field(default=None)  # WorkingMemory instance
-    thalamic_gateway: Any = field(default=None)  # ThalamicGateway instance
+    m_ep: EpisodicMemory | None = field(default=None)
+    m_sem: SemanticMemory | None = field(default=None)
+    m_proc: ProceduralMemory | None = field(default=None)
+    m_work: WorkingMemory | None = field(default=None)
+    thalamic_gateway: ThalamicGateway | None = field(default=None)
 
     def clone(self) -> WorldModel:
         return replace(
@@ -216,10 +226,10 @@ class DeltaPowerExternal(TypedDict, total=False):
 class FeedbackDelta:
     """φ ∈ Φ = ΔC × ΔW × ΔG × ΔR_ext (Part I §2.2.1, Part II §3.3)"""
 
-    delta_c: DeltaCharacteristics = field(default_factory=dict)
-    delta_w: DeltaWorldModel = field(default_factory=dict)
+    delta_c: DeltaCharacteristics = field(default_factory=lambda: cast(DeltaCharacteristics, {}))
+    delta_w: DeltaWorldModel = field(default_factory=lambda: cast(DeltaWorldModel, {}))
     delta_g: np.ndarray = field(default_factory=lambda: np.zeros(N_K))
-    delta_rho_ext: DeltaPowerExternal = field(default_factory=dict)
+    delta_rho_ext: DeltaPowerExternal = field(default_factory=lambda: cast(DeltaPowerExternal, {}))
     delta_peer_beliefs: dict[str, float] = field(default_factory=dict)
 
 
@@ -237,7 +247,13 @@ class AgentState:
         """ρ_int = proj_int(c) (derived read-only view, Part I §2.2.2, Part IV §6.6b)"""
         return {"reserve_capacity": self.c.reserve}
 
-    def omega(self, xi: np.ndarray | None = None, pool_belief: float = 10.0) -> np.ndarray:
+    def omega(
+        self,
+        xi: np.ndarray | None = None,
+        pool_belief: float = 10.0,
+        kappa: float | None = None,
+        thresh: float | None = None,
+    ) -> np.ndarray:
         """ω = derive_Ω(u, ρ_ext, ρ_int, c) (derived view, Part I §2.2.2, Part IV §6.5).
 
         In v4, willingness scales transient goal allocation π by affordability against
@@ -246,7 +262,9 @@ class AgentState:
         Parameters:
             pool_belief: Current pool estimate S_t used to compute endogenous scarcity costs.
         """
-        return compute_omega(self.g.u, self.c.reserve, xi, pool_belief=pool_belief)
+        return compute_omega(
+            self.g.u, self.c.reserve, xi, pool_belief=pool_belief, kappa=kappa, thresh=thresh
+        )
 
     def clone(self) -> AgentState:
         return replace(

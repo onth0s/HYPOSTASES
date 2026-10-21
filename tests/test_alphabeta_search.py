@@ -3,7 +3,10 @@
 Spec Ref: scratch/DISSONANCES.md D-008
 """
 
-import chess
+import pytest
+
+chess = pytest.importorskip("chess")
+
 
 from hypostases.plugins.domains.chess.chess_agent_adapter import _make_nnue_evaluator
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain

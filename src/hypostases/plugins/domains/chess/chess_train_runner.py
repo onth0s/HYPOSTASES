@@ -381,24 +381,25 @@ def run_chess_training(
     if snapshots:
         last_snap = snapshots[-1]
         final_gen = resume_from_gen + last_snap.generation
-        final_theta = last_snap.theta_meta.tolist()
+        final_theta = last_snap.theta_meta.tolist() if last_snap.theta_meta is not None else None
         final_temperature = last_snap.temperature
         # Persist the meta-learned β (θ_meta[9] logit) actually in use, not the config prior.
         if (
-            getattr(last_snap.theta_meta, "__len__", None) is not None
+            last_snap.theta_meta is not None
+            and getattr(last_snap.theta_meta, "__len__", None) is not None
             and len(last_snap.theta_meta) >= 10
         ):
             final_beta_efe = max(
                 0.01, min(0.99, 1.0 / (1.0 + math.exp(-float(last_snap.theta_meta[9]))))
             )
-        nnue_weights = last_snap.nnue_weights
+        nnue_weights = last_snap.nnue_weights or {}
         for snap in snapshots:
             abs_gen = resume_from_gen + snap.generation
             snapshots_meta.append(
                 {
                     "generation": abs_gen,
                     "temperature": snap.temperature,
-                    "theta_meta": snap.theta_meta.tolist(),
+                    "theta_meta": snap.theta_meta.tolist() if snap.theta_meta is not None else [],
                 }
             )
     else:

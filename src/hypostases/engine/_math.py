@@ -28,7 +28,11 @@ def compute_temperature(xi: np.ndarray | None, offset: float = 0.0) -> float:
     return max(offset + base, SOFTMAX_EPSILON)
 
 
-def dynamic_action_costs(pool_belief: float) -> np.ndarray:
+def dynamic_action_costs(
+    pool_belief: float,
+    kappa: float | None = None,
+    thresh: float | None = None,
+) -> np.ndarray:
     """Contention 1: Endogenous Scarcity Action Costs (2025 mechanism design alignment).
 
     Scales ACTION_COSTS upward as pool_belief drops below SCARCITY_POOL_THRESHOLD:
@@ -36,11 +40,11 @@ def dynamic_action_costs(pool_belief: float) -> np.ndarray:
 
     When pool_belief >= SCARCITY_POOL_THRESHOLD, returns unmodified ACTION_COSTS.
     """
-    thresh = const.SCARCITY_POOL_THRESHOLD
-    kappa = const.SCARCITY_COST_KAPPA
+    threshold_val = const.SCARCITY_POOL_THRESHOLD if thresh is None else thresh
+    kappa_val = const.SCARCITY_COST_KAPPA if kappa is None else kappa
 
-    scarcity_pressure = max(0.0, thresh - pool_belief) / (pool_belief + SOFTMAX_EPSILON)
-    multiplier = 1.0 + kappa * scarcity_pressure
+    scarcity_pressure = max(0.0, threshold_val - pool_belief) / (pool_belief + SOFTMAX_EPSILON)
+    multiplier = 1.0 + kappa_val * scarcity_pressure
     return ACTION_COSTS * multiplier
 
 
@@ -49,6 +53,8 @@ def compute_omega(
     reserve: float,
     xi: np.ndarray | None = None,
     pool_belief: float = 10.0,
+    kappa: float | None = None,
+    thresh: float | None = None,
 ) -> np.ndarray:
     """ω = derive_Ω(u, ρ_ext, ρ_int, c) (Part I §2.2.2, Part IV §6.5).
 
@@ -64,6 +70,6 @@ def compute_omega(
     logits = u / temp
     pi_transient = softmax(logits)
 
-    costs = dynamic_action_costs(pool_belief)
+    costs = dynamic_action_costs(pool_belief, kappa=kappa, thresh=thresh)
     affordability = np.minimum(1.0, reserve / costs)
     return pi_transient * affordability

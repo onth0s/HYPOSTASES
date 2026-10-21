@@ -19,11 +19,8 @@ Training-signal design (see AGENTS.md 003/006/012 and chess_experiment_config.ya
 
 from __future__ import annotations
 
-import contextlib
 import copy
-import multiprocessing
 import random
-import signal
 import threading
 import time
 from collections import defaultdict
@@ -57,6 +54,10 @@ from hypostases.plugins.domains.chess.chess_agent_adapter import (
 )
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain
 from hypostases.plugins.domains.chess.ground_a_self_play import PolicySnapshot
+from hypostases.plugins.domains.chess.multiprocess_utils import (
+    _init_worker_process,
+    _terminate_pool_workers,
+)
 
 console = Console()
 
@@ -89,49 +90,6 @@ BETA_LOGIT_MAX = 10.0
 # Cap for the β(1-β)-inverse compensation applied to the β-logit gradient
 # (AGENTS.md 015): 1/(0.05*0.95) ≈ 21 at β≈0.05, so the cap rarely binds.
 BETA_COMPENSATION_CAP = 25.0
-
-
-def _init_worker_process() -> None:
-    """Worker process initializer ignoring SIGINT so only main process handles Ctrl+C cleanly."""
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-
-def _terminate_pool_workers(executor: ProcessPoolExecutor) -> None:
-    """Force-kills all pool worker processes so Ctrl+C or crashes leave no orphans.
-
-    Workers are spawned with SIGINT ignored and the runner's SIGINT handler exits via
-    os._exit(130), which would otherwise orphan them. The teardown order avoids two
-    CPython 3.10 hazards when children are terminated mid-flight:
-
-    1. ``shutdown`` MUST be called first so the executor's manager thread stops
-       respawning replacement workers after a child is terminated.
-    2. ``cancel_join_thread`` detaches the internal call/result queue feeders from
-       interpreter-atexit finalization so they cannot block there.
-
-    Known limitation: on CPython 3.10 a feeder thread blocked in ``send_bytes`` on a
-    full pipe (its reader worker just died) can never be joined, and the non-daemon
-    ``_ExecutorManagerThread`` will block on ``join_thread`` until interpreter shutdown
-    hangs. This function therefore deliberately does NOT join the manager thread; the
-    caller MUST terminate the process via ``os._exit`` (see ``cli.train._cli_handler``)
-    rather than returning through normal interpreter shutdown.
-
-    Usage contract: this is reserved for CRASH/forced-exit paths where ``os._exit``
-    immediately follows (train_generation exception, the main-loop BaseException guard,
-    and the CLI's second-Ctrl-C forced exit). The GRACEFUL mid-drain interrupt path does
-    NOT call this: it cancels not-yet-started futures, lets in-flight games drain to
-    completion, discards their partial results, and shuts the pool down normally — so it
-    never risks a blocked feeder and never hangs an in-process (e.g. pytest) caller.
-    """
-    with contextlib.suppress(Exception):
-        executor.shutdown(wait=False, cancel_futures=True)
-    for attr in ("_call_queue", "_result_queue"):
-        queue = getattr(executor, attr, None)
-        if queue is not None:
-            with contextlib.suppress(Exception):
-                queue.cancel_join_thread()
-    with contextlib.suppress(Exception):
-        for p in multiprocessing.active_children():
-            p.terminate()
 
 
 def _stm_normalized_label(board: chess.Board, white_perspective_reward: float) -> float:
@@ -244,7 +202,7 @@ def load_endgame_curriculum(
         data = yaml.safe_load(f)
 
     presets = data.get("curriculum", {}).get("presets", [])
-    fens = [p.get("fen") for p in presets if isinstance(p, dict) and p.get("fen")]
+    fens = [str(p["fen"]) for p in presets if isinstance(p, dict) and p.get("fen")]
 
     valid: list[str] = []
     for fen in fens:
@@ -450,7 +408,7 @@ class ChessSelfPlayTrainer:
         self.value_gamma = value_gamma
         self.domain = chess_domain or ChessDomain()
         self._grad_batches: dict[Any, tuple[list[np.ndarray], list[float]]] = {}
-        self.telemetry: dict[str, Any] = {}
+        self.telemetry: dict[Any, Any] = {}
 
     def _accumulate_gradient(
         self,
@@ -980,7 +938,11 @@ class ChessSelfPlayTrainer:
                         pending_futures[fut] = (gen_idx, is_curriculum, time.monotonic())
 
                         if verbose and log_game_details and (is_curriculum or game_num == 1):
-                            seed_tag = material_tag(start_fen) if is_curriculum else "opening"
+                            seed_tag = (
+                                material_tag(start_fen)
+                                if is_curriculum and start_fen
+                                else "opening"
+                            )
                             console.print(
                                 f"  [dim][Gen {gen_idx:0{digits}d} Game {game_num:02d}/{games_per_generation:02d}] submitted | seed={seed_tag} | pool busy {len(pending_futures)}/{games_per_generation}[/dim]"
                             )

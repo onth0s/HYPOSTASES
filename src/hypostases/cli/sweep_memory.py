@@ -11,7 +11,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from hypostases.engine import Action, ActionType, evolve, feedback
+from hypostases.engine import Action, ActionType, DeltaLog, evolve, feedback
 from hypostases.engine.constants import SIGMA2_MAX, SIGMA2_MIN
 from hypostases.simulation.harness import build_agent
 
@@ -38,7 +38,7 @@ def run_memory_sweep(steps: int, decay_mode: str, memory_decay: float) -> list[f
         pool_before = 10.0
         pool_after = 10.0
         action = Action(ActionType.REQUEST, amount=1.0)
-        delta_log = {
+        delta_log: DeltaLog = {
             "pool_before": pool_before,
             "pool_after_shares": pool_before,
             "pool_after": pool_after,

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import ClassVar
+from typing import ClassVar, NoReturn
 
 from rich.console import Console
 
@@ -48,7 +48,7 @@ class RichArgumentParser(argparse.ArgumentParser):
         kwargs.setdefault("formatter_class", HypostasesHelpFormatter)
         super().__init__(*args, **kwargs)
 
-    def error(self, message: str) -> None:
+    def error(self, message: str) -> NoReturn:
         self.print_usage(sys.stderr)
         console.print(f"[bold red]error:[/bold red] {message}")
         self.exit(2)

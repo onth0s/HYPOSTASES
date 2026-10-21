@@ -15,14 +15,10 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-import hypostases.engine.constants as const
+from hypostases.engine.constants import MOOD_DECAY_RATE
 from hypostases.engine.dynamics import feedback, pi_decision, step_env
 from hypostases.engine.types import FeedbackDelta
 from hypostases.inference import sample_prior
-
-const.SCARCITY_COST_KAPPA = 0.0
-const.GOVERNANCE_SCALING_LAMBDA = 0.0
-const.UTILITY_DECAY_RATE = 0.0
 
 SEED = 100
 N_STEPS = 500
@@ -42,9 +38,12 @@ u_norms: list[float] = []
 
 for step in range(1, N_STEPS + 1):
     agent_actions = [
-        (name, pi_decision(ag, pool_belief=pool, xi=xi, rng=rng)) for name, ag in agents.items()
+        (name, pi_decision(ag, pool_belief=pool, xi=xi, rng=rng, kappa=0.0))
+        for name, ag in agents.items()
     ]
-    pool, delta_log = step_env(pool, agent_actions, enable_withdraw_fee=False)
+    pool, delta_log = step_env(
+        pool, agent_actions, enable_withdraw_fee=False, governance_lambda=0.0
+    )
 
     step_delta_g_norms = []
     phis: list[FeedbackDelta] = []
@@ -64,7 +63,6 @@ for step in range(1, N_STEPS + 1):
             ag.c.reserve = max(0.0, ag.c.reserve + phi.delta_c["reserve"])
         if "mood" in phi.delta_c:
             ag.c.mood = max(-1.0, min(1.0, ag.c.mood + phi.delta_c["mood"]))
-        from hypostases.engine.constants import MOOD_DECAY_RATE
 
         ag.c.mood *= 1.0 - MOOD_DECAY_RATE
 

@@ -15,8 +15,6 @@ from hypostases.engine.constants import (
     TEMPERATURE_OFFSET,
 )
 from hypostases.engine.types import (
-    EPISTEMIC_ACTION_TYPES,
-    Action,
     ActionType,
     AgentState,
     GoalCategory,
@@ -81,6 +79,8 @@ def goal_probs(
     xi: np.ndarray,
     coupling: float = STATUS_COUPLING,
     pool_belief: float = 10.0,
+    kappa: float | None = None,
+    thresh: float | None = None,
 ) -> np.ndarray:
     """Computes transient goal probabilities π ∈ Δ(K) dynamically from latent utilities u (v4).
 
@@ -93,42 +93,7 @@ def goal_probs(
         pool_belief: Current pool estimate S_t used for endogenous scarcity action cost scaling (Contention 1).
     """
     u_eff = _effective_utilities(agent, coupling=coupling)
-    omega = agent.omega(xi, pool_belief=pool_belief)
+    omega = agent.omega(xi, pool_belief=pool_belief, kappa=kappa, thresh=thresh)
     logits = omega * u_eff
     temperature = compute_temperature(xi, offset=TEMPERATURE_OFFSET)
     return softmax(logits / temperature)
-
-
-def action_likelihood(
-    agent: AgentState,
-    action: Action,
-    xi: np.ndarray,
-    pool_belief: float = 10.0,
-) -> float:
-    """Part II §3.1, Part IV §6.7a: Computes marginal likelihood P(a | σ, ξ).
-
-    Directive 003 Branch Audit (Part III §5.8):
-    Maps observed action type to generating goal categories π ∈ Δ(K).
-      - ActionType.REQUEST -> Sum(π_SURVIVAL, π_ACQUISITION)
-      - ActionType.SHARE -> π_RELATIONAL
-      - ActionType.WITHDRAW -> π_STATUS
-      - Epistemic actions -> Epistemic utility softmax probability
-    """
-    if action.action_type in EPISTEMIC_ACTION_TYPES:
-        from hypostases.epistemic_utility import compute_epistemic_utility
-
-        u_epi = compute_epistemic_utility(action, agent)
-        temperature = compute_temperature(xi, offset=TEMPERATURE_OFFSET)
-        return float(softmax(np.array([u_epi, 0.0]) / temperature)[0])
-
-    probs = goal_probs(agent, xi, pool_belief=pool_belief)
-
-    if action.action_type == ActionType.REQUEST:
-        return float(probs[_SURVIVAL_IDX] + probs[_ACQUISITION_IDX])
-    elif action.action_type == ActionType.SHARE:
-        return float(probs[_RELATIONAL_IDX])
-    elif action.action_type == ActionType.WITHDRAW:
-        return float(probs[_STATUS_IDX])
-    elif action.action_type == ActionType.PUNISH:
-        return 0.05  # Declared baseline probability simplification for altruistic punishment
-    return 0.01

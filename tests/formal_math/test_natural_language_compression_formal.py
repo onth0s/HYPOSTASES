@@ -43,8 +43,8 @@ def test_formal_shannon_rate_distortion_bound() -> None:
     low_var_state = {"c": [0.1] * 8, "w": [0.1] * 8, "g": [0.1] * 8, "rho_ext": [0.1] * 8}
     high_var_state = {"c": [5.0] * 8, "w": [5.0] * 8, "g": [5.0] * 8, "rho_ext": [5.0] * 8}
 
-    tokens_low, len_low, dist_low = engine.compress_state(low_var_state)
-    tokens_high, len_high, dist_high = engine.compress_state(high_var_state)
+    _tokens_low, len_low, dist_low = engine.compress_state(low_var_state)
+    _tokens_high, len_high, dist_high = engine.compress_state(high_var_state)
 
     loss_low = engine.compute_mdl_loss(len_low, dist_low)
     loss_high = engine.compute_mdl_loss(len_high, dist_high)

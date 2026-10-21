@@ -3,7 +3,10 @@
 Spec Ref: scratch/OUTTASTOCKFISH.md §8 (T-NNUE-1) & §9.10–9.11
 """
 
-import chess
+import pytest
+
+chess = pytest.importorskip("chess")
+
 import numpy as np
 
 from hypostases.plugins.domains.chess.chess_domain import ChessDomain

@@ -321,7 +321,7 @@ def generate_and_audit_dataset(
             continue
 
         move = rng.choice(legal_moves)
-        board, _, done, _ = domain.step(board, move)
+        board, _, _done, _ = domain.step(board, move)
         current_ply += 1
         ply_list.append(current_ply)
 

@@ -7,10 +7,22 @@ not separate estimators.
 
 from __future__ import annotations
 
+from typing import TypedDict
+
 import numpy as np
 
 from hypostases.engine import AgentState, K, goal_probs
 from hypostases.inference.particle_filter import Particle
+
+
+class KalmanSummary(TypedDict):
+    """Gaussian mean/variance summary over continuous sub-blocks (c, u)."""
+
+    reserve_mean: float
+    reserve_var: float
+    mood_mean: float
+    u_mean: list[float]
+    u_var: list[float]
 
 
 def summarize_map(particles: list[Particle]) -> AgentState:
@@ -18,7 +30,7 @@ def summarize_map(particles: list[Particle]) -> AgentState:
     return max(particles, key=lambda p: p.weight).sigma
 
 
-def summarize_kalman(particles: list[Particle]) -> dict[str, float | list[float]]:
+def summarize_kalman(particles: list[Particle]) -> KalmanSummary:
     """Part VII §10.1: Gaussian mean/variance summary over continuous sub-blocks (c, u)."""
     weights = np.array([p.weight for p in particles])
     reserves = np.array([p.sigma.c.reserve for p in particles])

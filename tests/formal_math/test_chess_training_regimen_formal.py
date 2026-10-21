@@ -21,10 +21,13 @@ Verifies, empirically and mathematically:
 
 from __future__ import annotations
 
+import pytest
+
+chess = pytest.importorskip("chess")
+
 import math
 from pathlib import Path
 
-import chess
 import numpy as np
 import pytest
 

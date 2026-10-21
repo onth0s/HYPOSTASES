@@ -37,7 +37,7 @@ from hypostases.natural_language_compression import (
     VisualGistCell,
 )
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 
 __all__ = [

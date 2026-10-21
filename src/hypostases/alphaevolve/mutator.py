@@ -53,7 +53,7 @@ class ASTMutator:
     and constructs best-shot prompts for generative model candidate creation.
     """
 
-    OPERATOR_MAP: ClassVar[dict[type[ast.AST], list[ast.AST]]] = {
+    OPERATOR_MAP: ClassVar[dict[type[ast.operator], list[ast.operator]]] = {
         ast.Add: [ast.Sub(), ast.Mult()],
         ast.Sub: [ast.Add(), ast.Mult()],
         ast.Mult: [ast.Add(), ast.Sub()],
@@ -158,7 +158,7 @@ class _ASTMutationVisitor(ast.NodeTransformer):
         self.mutation_rate = mutation_rate
         self.rng = rng
 
-    def visit_BinOp(self, node: ast.BinOp) -> ast.AST:  # noqa: N802
+    def visit_BinOp(self, node: ast.BinOp) -> ast.AST:
         self.generic_visit(node)
         if self.rng.random() < self.mutation_rate:
             op_type = type(node.op)
@@ -167,7 +167,7 @@ class _ASTMutationVisitor(ast.NodeTransformer):
                 node.op = new_op
         return node
 
-    def visit_Constant(self, node: ast.Constant) -> ast.AST:  # noqa: N802
+    def visit_Constant(self, node: ast.Constant) -> ast.AST:
         if isinstance(node.value, int | float) and self.rng.random() < self.mutation_rate:
             delta = self.rng.uniform(-0.5, 0.5)
             if isinstance(node.value, int):

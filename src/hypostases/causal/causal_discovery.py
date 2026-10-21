@@ -197,7 +197,7 @@ class CausalDiscoveryEngine:
 
         Uses partial correlation tests to prune edges between conditionally independent variables.
         """
-        n, d = data_matrix.shape
+        _n, d = data_matrix.shape
         corr = np.corrcoef(data_matrix.T)
 
         adj = np.ones((d, d), dtype=bool)

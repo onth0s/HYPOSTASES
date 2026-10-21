@@ -91,6 +91,7 @@ class ChessAgentAdapter:
         self.goal_hierarchy = GoalHierarchy()  # Latent utility weights u ∈ ℝ^{n_k}
 
         # Meta-parameters θ_meta ∈ ℝ^K for feature valuation, temperature, and learned beta_efe
+        self.theta_meta: np.ndarray
         if isinstance(theta_meta, str) and theta_meta.lower() == "random":
             k_dim = 10
             self.theta_meta = np.random.uniform(0.3, 1.0, size=k_dim).astype(np.float32)

@@ -6,6 +6,10 @@ defaults precedence used by ``hypostases train --chess``.
 
 from __future__ import annotations
 
+import pytest
+
+chess = pytest.importorskip("chess")
+
 from pathlib import Path
 from typing import Any
 

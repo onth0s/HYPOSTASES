@@ -64,7 +64,7 @@ class PlanRepairEngine:
 
         # Analyze missing precondition keys
         missing_keys = []
-        if hasattr(interruption.state, "w"):
+        if isinstance(interruption.state, AgentState):
             w_state = (
                 interruption.state.w.peer_beliefs
                 if hasattr(interruption.state.w, "peer_beliefs")
