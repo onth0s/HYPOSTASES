@@ -19,8 +19,8 @@ from hypostases.engine.types import (
     AgentState,
     GoalCategory,
     K,
+    declared_simplification,
 )
-from hypostases.schemas import declared_simplification
 
 
 def _survival_amount(ag: AgentState, pool: float) -> float:

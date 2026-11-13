@@ -22,8 +22,8 @@ from hypostases.engine.types import (
     AgentState,
     GoalCategory,
     K,
+    declared_simplification,
 )
-from hypostases.schemas import declared_simplification
 
 
 def _is_infeasible(agent: AgentState, action: Action, pool_belief: float = 10.0) -> bool:

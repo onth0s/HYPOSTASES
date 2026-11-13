@@ -22,28 +22,19 @@ from hypostases.engine.types import (
     GoalHierarchy,
     PowerExternal,
     WorldModel,
+    declared_simplification,
+    is_simplification_declared,
 )
 
-# Registry of declared simplifications
-_DECLARED_SIMPLIFICATIONS: set[str] = set()
-
-
-def declared_simplification(name: str) -> Callable[[Any], Any]:
-    """Decorator to declare a function or method contains an intentional simplification."""
-
-    def decorator(func: Any) -> Any:
-        _DECLARED_SIMPLIFICATIONS.add(name)
-        if not hasattr(func, "_declared_simplifications"):
-            func._declared_simplifications = set()
-        func._declared_simplifications.add(name)
-        return func
-
-    return decorator
-
-
-def is_simplification_declared(name: str) -> bool:
-    """Returns True if the given simplification name is declared."""
-    return name in _DECLARED_SIMPLIFICATIONS
+__all__ = [
+    "audit_amount_branches",
+    "audit_feedback_branch",
+    "audit_likelihood_branch",
+    "declared_simplification",
+    "generate_test_states",
+    "is_simplification_declared",
+    "run_completeness_audit",
+]
 
 
 def generate_test_states(seed: int = 42) -> list[AgentState]:

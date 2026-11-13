@@ -52,12 +52,31 @@ class PlanLibrary:
         self._init_storage()
 
     def _init_storage(self) -> None:
-        """Initializes storage directory in schema/plans/."""
-        try:
-            schema_dir = get_schema_dir()
-            self.storage_path = schema_dir / "plans"
-        except FileNotFoundError:
-            self.storage_path = Path("schema/plans")
+        """Initializes storage directory from configuration or defaults to schema/plans/."""
+        if self.storage_dir_name:
+            target_path = Path(self.storage_dir_name)
+            if target_path.is_absolute():
+                self.storage_path = target_path
+            else:
+                try:
+                    schema_dir = get_schema_dir()
+                    if self.storage_dir_name == "schema/plans" or self.storage_dir_name.startswith(
+                        "schema/"
+                    ):
+                        sub = Path(self.storage_dir_name).relative_to("schema")
+                        self.storage_path = schema_dir / sub
+                    else:
+                        self.storage_path = target_path
+                except (FileNotFoundError, ValueError):
+                    self.storage_path = target_path
+        else:
+            try:
+                schema_dir = get_schema_dir()
+                self.storage_path = schema_dir / "plans"
+            except FileNotFoundError:
+                self.storage_path = Path("schema/plans")
+
+        self.storage_path.mkdir(parents=True, exist_ok=True)
 
         self.storage_path.mkdir(parents=True, exist_ok=True)
 

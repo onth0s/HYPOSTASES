@@ -10,9 +10,12 @@ Rule 005 Prohibition: Pure game-theoretic execution dynamics; zero artificial hu
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from hypostases.planning.plan_types import Plan, PlanNode, PlanStatus
+
+if TYPE_CHECKING:
+    from hypostases.engine.types import AgentState
 
 
 class OutOfPlanInterruption(Exception):  # noqa: N818
@@ -65,7 +68,10 @@ class PlanExecutor:
         return True, "OK"
 
     def execute_step(
-        self, plan: Plan, agent_state: dict[str, Any], environment_callback: Any | None = None
+        self,
+        plan: Plan,
+        agent_state: AgentState | dict[str, Any],
+        environment_callback: Any | None = None,
     ) -> ExecutionResult:
         """Executes a single step of the plan with closed-loop monitoring.
 

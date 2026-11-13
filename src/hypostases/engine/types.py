@@ -24,7 +24,8 @@ else:
             return str(self.value)
 
 
-from typing import TYPE_CHECKING, TypedDict, cast
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 if TYPE_CHECKING:
     from hypostases.engine.memory import (
@@ -285,3 +286,25 @@ class Agent:
 
     def clone(self) -> Agent:
         return replace(self, sigma=self.sigma.clone())
+
+
+# Registry of declared simplifications (Rule 003 audit completeness)
+_DECLARED_SIMPLIFICATIONS: set[str] = set()
+
+
+def declared_simplification(name: str) -> Callable[[Any], Any]:
+    """Decorator to declare a function or method contains an intentional simplification."""
+
+    def decorator(func: Any) -> Any:
+        _DECLARED_SIMPLIFICATIONS.add(name)
+        if not hasattr(func, "_declared_simplifications"):
+            func._declared_simplifications = set()
+        func._declared_simplifications.add(name)
+        return func
+
+    return decorator
+
+
+def is_simplification_declared(name: str) -> bool:
+    """Returns True if the given simplification name is declared."""
+    return name in _DECLARED_SIMPLIFICATIONS

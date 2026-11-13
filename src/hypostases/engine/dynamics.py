@@ -492,10 +492,11 @@ def feedback(
         if _epistemic_handler is not None:
             return _epistemic_handler(agent, action, pool_after)
 
-        # Fallback deferred import if handler has not been explicitly registered
-        from hypostases.active_perception import execute_epistemic_action
+        # Fallback dynamic resolution if handler has not been explicitly registered
+        import importlib
 
-        return execute_epistemic_action(agent, action, ground_truth_val=pool_after)
+        ap = importlib.import_module("hypostases.active_perception")
+        return ap.execute_epistemic_action(agent, action, ground_truth_val=pool_after)
 
     if action.action_type == ActionType.REQUEST:
         delta_c, delta_g, delta_rho_ext = _feedback_request(agent, action, delta_log, agent_name)

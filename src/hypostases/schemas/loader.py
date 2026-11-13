@@ -160,3 +160,8 @@ def load_scenarios(config_filename: str = "scenarios.yaml") -> dict:
 def load_nlp_decoder_config(config_filename: str = "nlp_decoder_config.yaml") -> dict:
     """Loads Wave 5 Front 14 NLP decoder configuration."""
     return load_yaml(config_filename)
+
+
+def load_piece_square_tables(config_filename: str = "chess/piece_square_tables.yaml") -> dict:
+    """Loads classical Piece-Square Tables (PST) for chess domain (Rule 006)."""
+    return load_yaml(config_filename)

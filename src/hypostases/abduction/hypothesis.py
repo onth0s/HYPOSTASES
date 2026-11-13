@@ -16,14 +16,15 @@ from typing import Any
 import numpy as np
 
 from hypostases.abduction.types import EvidenceRecord, HypothesisCategory
+from hypostases.schemas.hypothesis import BaseHypothesis
 
 
 @dataclass
-class Hypothesis:
+class Hypothesis(BaseHypothesis):
     """Explicit computational hypothesis object H_k.
 
     Maintains predictive model expectations, structural assumptions, empirical evidence,
-    and MacKay Occam complexity regularization.
+    and MacKay Occam complexity regularization. Inherits from unified BaseHypothesis.
     """
 
     identifier: str = field(default_factory=lambda: f"H_{uuid.uuid4().hex[:8]}")
@@ -39,6 +40,30 @@ class Hypothesis:
     confidence: float = 0.5
     # Optional parameter function or delta dict for forward simulation
     predictive_params: dict[str, float] = field(default_factory=dict)
+
+    @property
+    def hypothesis_id(self) -> str:
+        return self.identifier
+
+    @hypothesis_id.setter
+    def hypothesis_id(self, val: str) -> None:
+        self.identifier = val
+
+    @property
+    def prior_probability(self) -> float:
+        return self.prior
+
+    @prior_probability.setter
+    def prior_probability(self, val: float) -> None:
+        self.prior = val
+
+    @property
+    def posterior_probability(self) -> float:
+        return self.posterior
+
+    @posterior_probability.setter
+    def posterior_probability(self, val: float) -> None:
+        self.posterior = val
 
     def compute_posterior(self, lambda_mdl: float = 0.2) -> float:
         """Computes Bayesian posterior score with MacKay Occam factor penalty.

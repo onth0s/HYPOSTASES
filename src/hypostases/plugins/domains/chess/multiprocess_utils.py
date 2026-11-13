@@ -1,11 +1,13 @@
-"""Multiprocessing utility helpers for chess training and evaluation runners."""
+"""Domain worker pool context manager and helpers for isolated game dispatch."""
 
 from __future__ import annotations
 
 import contextlib
 import multiprocessing
 import signal
-from concurrent.futures import ProcessPoolExecutor
+from collections.abc import Callable
+from concurrent.futures import Future, ProcessPoolExecutor
+from typing import Any
 
 
 def init_worker_process() -> None:
@@ -14,24 +16,7 @@ def init_worker_process() -> None:
 
 
 def terminate_pool_workers(executor: ProcessPoolExecutor) -> None:
-    """Force-kills all pool worker processes so Ctrl+C or crashes leave no orphans.
-
-    Workers are spawned with SIGINT ignored and the runner's SIGINT handler exits via
-    os._exit(130), which would otherwise orphan them. The teardown order avoids two
-    CPython 3.10 hazards when children are terminated mid-flight:
-
-    1. ``shutdown`` MUST be called first so the executor's manager thread stops
-       respawning replacement workers after a child is terminated.
-    2. ``cancel_join_thread`` detaches the internal call/result queue feeders from
-       interpreter-atexit finalization so they cannot block there.
-
-    Known limitation: on CPython 3.10 a feeder thread blocked in ``send_bytes`` on a
-    full pipe (its reader worker just died) can never be joined, and the non-daemon
-    ``_ExecutorManagerThread`` will block on ``join_thread`` until interpreter shutdown
-    hangs. This function therefore deliberately does NOT join the manager thread; the
-    caller MUST terminate the process via ``os._exit`` rather than returning through
-    normal interpreter shutdown.
-    """
+    """Force-kills all pool worker processes so Ctrl+C or crashes leave no orphans."""
     with contextlib.suppress(Exception):
         executor.shutdown(wait=False, cancel_futures=True)
     for attr in ("_call_queue", "_result_queue"):
@@ -44,6 +29,46 @@ def terminate_pool_workers(executor: ProcessPoolExecutor) -> None:
             p.terminate()
 
 
-# Alias for backward compatibility with private helper naming
+class DomainWorkerPool:
+    """Managed ProcessPoolExecutor wrapper with worker initialization and cleanup."""
+
+    def __init__(
+        self,
+        max_workers: int | None = None,
+        initializer: Callable[[], None] = init_worker_process,
+    ) -> None:
+        self.max_workers = max_workers
+        self.initializer = initializer
+        self.executor: ProcessPoolExecutor | None = None
+
+    def __enter__(self) -> DomainWorkerPool:
+        self.executor = ProcessPoolExecutor(
+            max_workers=self.max_workers,
+            initializer=self.initializer,
+        )
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        if self.executor is not None:
+            if exc_type is not None:
+                terminate_pool_workers(self.executor)
+            else:
+                self.executor.shutdown(wait=True)
+            self.executor = None
+
+    def submit(self, fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Future[Any]:
+        """Submit a task to the managed worker pool."""
+        if self.executor is None:
+            raise RuntimeError("DomainWorkerPool is not running. Use as a context manager.")
+        return self.executor.submit(fn, *args, **kwargs)
+
+    def terminate(self) -> None:
+        """Immediately terminate all child worker processes."""
+        if self.executor is not None:
+            terminate_pool_workers(self.executor)
+            self.executor = None
+
+
+# Aliases for backward compatibility
 _init_worker_process = init_worker_process
 _terminate_pool_workers = terminate_pool_workers

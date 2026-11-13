@@ -115,9 +115,12 @@ def _worker_play_game_vs_stockfish(
 
     try:
         # Build agent + NNUE net from serializable data
+        agent_beta = 0.05
+        if theta_meta is not None and len(theta_meta) >= 10:
+            agent_beta = float(1.0 / (1.0 + np.exp(-theta_meta[9])))
         agent = ChessAgentAdapter(
             domain=domain,
-            beta_efe=0.2,
+            beta_efe=agent_beta,
             temperature=eval_temperature if eval_temperature is not None else temperature,
             theta_meta=np.array(theta_meta, dtype=np.float32) if theta_meta is not None else None,
         )

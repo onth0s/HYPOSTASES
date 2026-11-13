@@ -4,22 +4,14 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from hypostases.schemas.hypothesis import BaseHypothesis
+
 
 @dataclass
-class Hypothesis:
+class Hypothesis(BaseHypothesis):
     """Hypothesis object H_k representing candidate explanatory structural model.
 
-    Attributes:
-        hypothesis_id: Unique string identifier.
-        description: Natural language / symbolic summary.
-        causal_edges: List of directed edges (u, v) in structural causal model DAG.
-        parameters: Structural equation parameter dictionary.
-        prior_probability: Prior probability P_0(H_k).
-        posterior_probability: Current Bayesian posterior P(H_k | E_1:t).
-        mdl_complexity: Minimum Description Length (MDL) complexity score C(H_k).
-        elo_rating: Gottweis (2025) evolutionary debate tournament Elo rating.
-        supporting_evidence_count: Number of empirical observations aligned with H_k.
-        contradicting_evidence_count: Number of empirical observations disproving H_k.
+    Inherits from unified BaseHypothesis.
     """
 
     hypothesis_id: str
@@ -32,6 +24,38 @@ class Hypothesis:
     elo_rating: float = 1000.0
     supporting_evidence_count: int = 0
     contradicting_evidence_count: int = 0
+
+    @property
+    def identifier(self) -> str:
+        return self.hypothesis_id
+
+    @identifier.setter
+    def identifier(self, val: str) -> None:
+        self.hypothesis_id = val
+
+    @property
+    def prior(self) -> float:
+        return self.prior_probability
+
+    @prior.setter
+    def prior(self, val: float) -> None:
+        self.prior_probability = val
+
+    @property
+    def posterior(self) -> float:
+        return self.posterior_probability
+
+    @posterior.setter
+    def posterior(self, val: float) -> None:
+        self.posterior_probability = val
+
+    @property
+    def complexity(self) -> float:
+        return self.mdl_complexity
+
+    @complexity.setter
+    def complexity(self, val: float) -> None:
+        self.mdl_complexity = val
 
     def compute_mdl(self, num_nodes: int, num_observations: int = 100) -> float:
         """Compute Minimum Description Length (MDL) Occam complexity score.
